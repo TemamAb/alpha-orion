@@ -1,20 +1,18 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Production Dashboard
 
-# Run and deploy your AI Studio app
+��� **Live Dashboard**: https://dashboard.onrender.com
 
-This contains everything you need to run your app locally.
+## Files
+- Main dashboard: `myneon/monitoring/production/PRODUCTIONDASHBOARD.HTML.html`
+- Server: `server.js`
+- Access: `https://your-app.onrender.com`
 
-View your app in AI Studio: https://ai.studio/apps/drive/1DBTCj1UQuKGx2GuTmIST_2qaiRa_dPOM
+## Deployment Status
+✅ All mock data removed (71% → 0%, $ values → $0)
+✅ Server configured to serve production dashboard
+✅ Auto-deploy from GitHub enabled
+✅ Render hosting active
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Quick Links
+- Dashboard: `/` or `/dashboard`
+- Health check: `/health`

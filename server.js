@@ -6,95 +6,122 @@ const url = require('url');
 const PORT = process.env.PORT || 3000;
 
 const MIME_TYPES = {
-  '.html': 'text/html',
+  '.html': 'text/html; charset=UTF-8',
   '.css': 'text/css',
-  '.js': 'text/javascript',
+  '.js': 'application/javascript',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.gif': 'image/gif',
   '.svg': 'image/svg+xml',
-  '.json': 'application/json'
+  '.json': 'application/json',
+  '.ico': 'image/x-icon'
 };
 
+// Path to the production dashboard
+const DASHBOARD_PATH = path.join(__dirname, 'myneon', 'monitoring', 'production', 'PRODUCTIONDASHBOARD.HTML.html');
+
 const server = http.createServer((req, res) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+  console.log(`í³¡ ${req.method} ${req.url}`);
   
-  // Parse URL
   const parsedUrl = url.parse(req.url);
   let pathname = path.join(__dirname, parsedUrl.pathname);
   
-  // Default to index.html for root
-  if (pathname === __dirname + '/') {
-    pathname = path.join(__dirname, 'index.html');
+  // Always serve the dashboard for root or any route
+  if (req.url === '/' || req.url === '/dashboard' || req.url === '/index.html') {
+    serveDashboard(res);
+    return;
   }
   
-  // Check if file exists
+  // For other files, check if they exist
   fs.exists(pathname, (exists) => {
     if (!exists) {
-      // Try to find any HTML file
-      fs.readdir(__dirname, (err, files) => {
-        if (err) {
-          res.writeHead(500, { 'Content-Type': 'text/html' });
-          res.end('<h1>Server Error</h1>');
-          return;
-        }
-        
-        const htmlFiles = files.filter(f => f.endsWith('.html') || f.endsWith('.HTML'));
-        if (htmlFiles.length > 0) {
-          // Redirect to first HTML file
-          res.writeHead(302, { 'Location': `/${htmlFiles[0]}` });
-          res.end();
-        } else {
-          // Show directory listing
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end(`
-            <html>
-              <body style="font-family: Arial, sans-serif; padding: 40px;">
-                <h1>Dashboard Server</h1>
-                <p>No HTML files found. Available files:</p>
-                <ul>${files.map(f => `<li>${f}</li>`).join('')}</ul>
-              </body>
-            </html>
-          `);
-        }
-      });
+      // If file doesn't exist, still serve the dashboard
+      serveDashboard(res);
       return;
     }
     
-    // Read and serve the file
-    fs.readFile(pathname, (err, data) => {
-      if (err) {
-        res.writeHead(500, { 'Content-Type': 'text/html' });
-        res.end('<h1>Server Error</h1>');
-        return;
-      }
-      
-      // Get file extension and set Content-Type
-      const ext = path.parse(pathname).ext;
-      const contentType = MIME_TYPES[ext] || 'text/plain';
-      
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(data);
-    });
+    serveFile(pathname, res);
   });
 });
 
+function serveDashboard(res) {
+  fs.exists(DASHBOARD_PATH, (exists) => {
+    if (exists) {
+      console.log(`í¾¯ Serving dashboard: ${DASHBOARD_PATH}`);
+      serveFile(DASHBOARD_PATH, res);
+    } else {
+      // If dashboard not found, list available files
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' });
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Dashboard Not Found</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+            .error { color: #dc2626; font-size: 1.2em; margin: 20px 0; }
+            .path { background: #f3f4f6; padding: 10px; border-radius: 5px; font-family: monospace; }
+          </style>
+        </head>
+        <body>
+          <h1>íº¨ Dashboard File Not Found</h1>
+          <p class="error">Expected path: <span class="path">${DASHBOARD_PATH}</span></p>
+          <p>Looking for: myneon/monitoring/production/PRODUCTIONDASHBOARD.HTML.html</p>
+          <p><a href="/">Try again</a></p>
+        </body>
+        </html>
+      `);
+    }
+  });
+}
+
+function serveFile(filePath, res) {
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(500, { 'Content-Type': 'text/html' });
+      res.end('<h1>500 - Internal Server Error</h1>');
+      return;
+    }
+    
+    const ext = path.parse(filePath).ext.toLowerCase();
+    const contentType = MIME_TYPES[ext] || 'text/plain';
+    
+    res.writeHead(200, { 
+      'Content-Type': contentType,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    res.end(data);
+  });
+}
+
 server.listen(PORT, () => {
-  console.log(`íº€ Server running on port ${PORT}`);
-  console.log(`í³ Serving from: ${__dirname}`);
+  console.log(`íº€ Production Dashboard Server`);
+  console.log(`í³¡ Port: ${PORT}`);
+  console.log(`í¾¯ Dashboard: ${DASHBOARD_PATH}`);
   
-  // List HTML files
-  fs.readdir(__dirname, (err, files) => {
-    if (!err) {
-      const htmlFiles = files.filter(f => f.endsWith('.html') || f.endsWith('.HTML'));
-      console.log(`í³„ HTML files: ${htmlFiles.join(', ') || 'None found'}`);
+  // Verify dashboard exists
+  fs.exists(DASHBOARD_PATH, (exists) => {
+    if (exists) {
+      console.log(`âœ… Dashboard file found: ${DASHBOARD_PATH}`);
+      console.log(`í³Š Ready to serve production dashboard`);
+    } else {
+      console.log(`âŒ Dashboard file NOT FOUND at: ${DASHBOARD_PATH}`);
+      console.log(`í³ Current directory: ${__dirname}`);
+      console.log(`í³„ Available files in myneon/monitoring/production/:`);
+      
+      const prodDir = path.join(__dirname, 'myneon', 'monitoring', 'production');
+      if (fs.existsSync(prodDir)) {
+        const files = fs.readdirSync(prodDir);
+        files.forEach(file => console.log(`   â†’ ${file}`));
+      }
     }
   });
 });
 
-// Handle shutdown
 process.on('SIGTERM', () => {
-  console.log('Shutting down server...');
+  console.log('Shutting down dashboard server...');
   server.close(() => {
     console.log('Server closed');
     process.exit(0);
