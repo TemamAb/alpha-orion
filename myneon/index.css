@@ -1,0 +1,15 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #020617;
+    color: #f8fafc;
+    overflow-x: hidden;
+}
+.mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+@keyframes shimmer {
+    0% { transform: translateX(-150%) skewX(45deg); }
+    100% { transform: translateX(150%) skewX(45deg); }
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
