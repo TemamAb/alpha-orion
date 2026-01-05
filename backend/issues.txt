@@ -1,0 +1,17 @@
+Cloning from https://github.com/TemamAb/orion
+==> Checking out commit 55f3da8e1846031341e4f27b5e394a21ab9ed1ec in branch main
+==> Using Node.js version 22.16.0 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm run build'...
+> orion-|-apex-intelligence-terminal@0.0.0 build
+> vite build
+sh: 1: vite: not found
+==> Cloning from https://github.com/TemamAb/orion
+==> Checking out commit ede9ef971779722b509f4ff90861d377289720d0 in branch main
+==> Using Node.js version 22.16.0 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm run build'...
+> orion-|-apex-intelligence-terminal@0.0.0 build
+> vite build
+sh: 1: vite: not found
+==> Build failed 😞Build failed 😞
