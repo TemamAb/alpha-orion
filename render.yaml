@@ -19,7 +19,7 @@ services:
     name: orion-frontend
     env: static
     plan: starter
-    buildCommand: npm install --include=dev && npm run build
+    buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_BACKEND_URL
