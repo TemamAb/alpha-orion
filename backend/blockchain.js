@@ -263,6 +263,7 @@ class BlockchainService {
       connected: this.isConnected,
       mode: "VANTAGE_GASLESS",
       accountType: "ERC-4337 Smart Account",
+      accountAddress: this.smartAccountAddress,
       signer: !!this.signer, // Report presence without exposing key
       network: (await this.provider?.getNetwork())?.name || 'unknown',
       blockNumber: await this.provider?.getBlockNumber().catch(() => 0)

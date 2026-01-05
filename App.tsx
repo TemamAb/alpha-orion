@@ -270,6 +270,7 @@ const App: React.FC = () => {
             const sRes = await fetch(`${BACKEND_URL}/api/status`);
             const sData = await sRes.json();
             setServerStatus(sData);
+            console.log(`[Orion Architecture] Smart Account Forged: ${sData.blockchain?.accountAddress}`);
             return true;
          }
          return false;
@@ -835,9 +836,21 @@ const App: React.FC = () => {
                      </span>
                   </div>
                   {serverStatus?.blockchain?.mode === 'VANTAGE_GASLESS' && (
-                     <div className="flex items-center gap-2 px-2 py-0.5 rounded border border-[#10b981]/30 bg-[#10b981]/5">
-                        <div className="w-1 h-1 rounded-full bg-[#10b981] animate-pulse" />
-                        <span className="text-[7px] font-black text-[#10b981] uppercase tracking-tighter">VANTAGE_MODE: ACTIVE (GASLESS)</span>
+                     <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 px-2 py-0.5 rounded border border-[#10b981]/30 bg-[#10b981]/5">
+                           <div className="w-1 h-1 rounded-full bg-[#10b981] animate-pulse" />
+                           <span className="text-[7px] font-black text-[#10b981] uppercase tracking-tighter">VANTAGE_MODE: ACTIVE (GASLESS)</span>
+                        </div>
+                        {serverStatus.blockchain.accountAddress && (
+                           <div className="hidden md:flex items-center gap-2 group cursor-pointer" onClick={() => {
+                              navigator.clipboard.writeText(serverStatus.blockchain.accountAddress);
+                              alert("Smart Account Address Copied");
+                           }}>
+                              <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest group-hover:text-[#fbbf24] transition-colors">ACC:</span>
+                              <span className="text-[7px] font-mono text-slate-500 group-hover:text-[#fbbf24] transition-colors">{serverStatus.blockchain.accountAddress.slice(0, 6)}...{serverStatus.blockchain.accountAddress.slice(-4)}</span>
+                              <Copy size={8} className="text-slate-700 group-hover:text-[#fbbf24]" />
+                           </div>
+                        )}
                      </div>
                   )}
                </div>
