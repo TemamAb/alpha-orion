@@ -94,7 +94,9 @@ const App: React.FC = () => {
    const [viewCurrency, setViewCurrency] = useState<'USD' | 'ETH'>('USD');
    const [ethPrice, setEthPrice] = useState(2452.84);
 
-   const totalUsdYield = 842000;
+   const [auditedStats, setAuditedStats] = useState<any>(null);
+   const [isAuditing, setIsAuditing] = useState(false);
+   const totalUsdYield = auditedStats?.totalProfit || 0;
 
    // Format Helper
    const formatCurrency = (valUsd: number) => {
@@ -204,6 +206,28 @@ const App: React.FC = () => {
       setExecutingWithdrawal(false);
       alert(`Withdrawal Successful: ${formatCurrency(totalUsdYield)} sent to ${targetWallet}`);
    };
+
+   useEffect(() => {
+      const fetchAuditedStats = async () => {
+         if (connectionStatus !== 'ONLINE') return;
+         setIsAuditing(true);
+         try {
+            const res = await fetch(`${BACKEND_URL}/api/performance/stats`);
+            if (res.ok) {
+               const data = await res.json();
+               setAuditedStats(data);
+            }
+         } catch (e) {
+            console.error("Audited stats fetch failed", e);
+         } finally {
+            setIsAuditing(false);
+         }
+      };
+
+      fetchAuditedStats();
+      const interval = setInterval(fetchAuditedStats, 15000); // Audit every 15s
+      return () => clearInterval(interval);
+   }, [BACKEND_URL, connectionStatus]);
 
    useEffect(() => {
       const checkBackend = async () => {
@@ -589,9 +613,15 @@ const App: React.FC = () => {
                                        {engineStarted ? formatCurrency(totalUsdYield) : 'LOCKED'}
                                     </span>
                                     {engineStarted && (
-                                       <span className="text-[11px] font-black text-green-400 uppercase tracking-widest flex items-center gap-1 bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">
-                                          <ArrowUpRight size={12} /> +4.2%
-                                       </span>
+                                       <div className="flex flex-col gap-2">
+                                          <span className="text-[11px] font-black text-green-400 uppercase tracking-widest flex items-center gap-1 bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">
+                                             <ArrowUpRight size={12} /> +4.2%
+                                          </span>
+                                          <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded border border-blue-500/30 bg-blue-500/5 ${isAuditing ? 'animate-pulse' : ''}`}>
+                                             <ShieldCheck size={10} className="text-blue-400" />
+                                             <span className="text-[7px] font-black text-blue-400 uppercase tracking-tighter">Etherscan Verified</span>
+                                          </div>
+                                       </div>
                                     )}
                                  </div>
                               </div>

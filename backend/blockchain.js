@@ -275,6 +275,28 @@ class BlockchainService {
     const bal = await this.provider.getBalance(address);
     return ethers.formatEther(bal);
   }
+
+  async verifyOnChainStatus(txHash) {
+    try {
+      logger.info(`Auditing Transaction on-chain: ${txHash}`);
+      const receipt = await this.provider.getTransactionReceipt(txHash);
+      if (!receipt) {
+        return { verified: false, status: 'PENDING', message: 'Transaction not yet found in block' };
+      }
+
+      const success = receipt.status === 1;
+      return {
+        verified: true,
+        status: success ? 'SUCCESS' : 'FAILED',
+        blockNumber: receipt.blockNumber,
+        confirmations: await receipt.confirmations(),
+        gasUsed: receipt.gasUsed.toString()
+      };
+    } catch (error) {
+      logger.error(`On-chain audit failed for ${txHash}:`, error);
+      return { verified: false, status: 'ERROR', message: error.message };
+    }
+  }
 }
 
 module.exports = new BlockchainService();
