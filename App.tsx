@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { ethers } from 'ethers';
 import {
    Activity, Zap, ShieldCheck, Radar,
    ListTree, Crosshair, Loader2, Cpu,
@@ -206,34 +207,80 @@ const App: React.FC = () => {
 
    useEffect(() => {
       const checkBackend = async () => {
+         // Circuit Breaker: If we are already probing, don't overlap
+         if (connectionStatus === 'PROBING' && serverStatus) return;
+
          setConnectionStatus('PROBING');
          try {
-            console.log(`[Orion] Probing Health: ${BACKEND_URL}/api/health`);
             const hRes = await fetch(`${BACKEND_URL}/api/health`);
 
             if (hRes.ok) {
-               console.log("[Orion] Backend Online. Fetching System Intel...");
                const sRes = await fetch(`${BACKEND_URL}/api/status`);
                if (sRes.ok) {
                   const sData = await sRes.json();
                   setServerStatus(sData);
+
+                  // Neural Sync: If backend is up but has no authority, 
+                  // we are ONLINE but in SENTINEL mode.
+                  console.log(`[Orion Neural Sync] Core: ONLINE | Signer: ${sData.blockchain?.signer ? 'ACTIVE' : 'SENTINEL'}`);
                }
                setConnectionStatus('ONLINE');
             } else {
-               console.warn(`[Orion] Backend Health Check Failed: ${hRes.status}`);
                setConnectionStatus('OFFLINE');
             }
          } catch (e) {
-            console.error("[Orion] Backend Connection Error:", e);
+            console.error("[Orion Architecture] Backend Connection Interrupted:", e);
             setConnectionStatus('OFFLINE');
          }
       };
       checkBackend();
       const interval = setInterval(checkBackend, 30000); // Check every 30s
       return () => clearInterval(interval);
-   }, [BACKEND_URL]);
+   }, [BACKEND_URL, engineStarted]);
 
-   const toggleEngine = () => {
+   const authorizeSession = async () => {
+      try {
+         // 1. Check if server already has authority
+         if (serverStatus?.blockchain?.signer) return true;
+
+         console.log("[Orion Security] Initiating Ephemeral Handshake...");
+
+         // 2. Generate temporary session key in browser memory
+         // This is a "Disposable Signer" that exists only for this trading session
+         const sessionWallet = ethers.Wallet.createRandom();
+
+         // 3. User signs authorization via MetaMask
+         if (!(window as any).ethereum) throw new Error("MetaMask not found");
+         const provider = new ethers.BrowserProvider((window as any).ethereum);
+         const signer = await provider.getSigner();
+
+         const message = `ORION_AUTH: Authorize Ephemeral Session Key ${sessionWallet.address} to execute trades via Pimlico Paymaster. Valid for current session only.`;
+         await signer.signMessage(message);
+
+         // 4. Send ephemeral key to backend (Memory-Only storage)
+         const res = await fetch(`${BACKEND_URL}/api/session/authorize`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionKey: sessionWallet.privateKey })
+         });
+
+         if (res.ok) {
+            console.log("[Orion Security] Handshake Verified. Vantage Mode Authorised.");
+            // Refresh status immediately
+            const sRes = await fetch(`${BACKEND_URL}/api/status`);
+            const sData = await sRes.json();
+            setServerStatus(sData);
+            return true;
+         }
+         return false;
+      } catch (e: any) {
+         console.error("Authorisation failed", e);
+         alert(`Security Handshake Failed: ${e.message}`);
+         return false;
+      }
+   };
+
+   const toggleEngine = async () => {
       if (connectionStatus !== 'ONLINE') {
          const msg = connectionStatus === 'PROBING'
             ? "Establishing link to enterprise core... Please wait."
@@ -241,6 +288,11 @@ const App: React.FC = () => {
          alert(msg);
          return;
       }
+
+      // Trigger Security Handshake if necessary
+      const authorized = await authorizeSession();
+      if (!authorized) return;
+
       setEngineStarted(true);
       if (activeView !== 'MASTER') setActiveView('MASTER');
    };

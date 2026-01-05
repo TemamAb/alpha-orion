@@ -125,6 +125,30 @@ app.post('/api/strategies', validateInput, async (req, res) => {
   }
 });
 
+// Session Authorization: Orion Ephemeral Handshake
+// This allows the user to authorize the engine with a temporary session key
+// without ever storing a permanent private key on Render.
+app.post('/api/session/authorize', async (req, res) => {
+  try {
+    const { sessionKey } = req.body;
+    if (!sessionKey) return res.status(400).json({ error: 'Session Key Required' });
+
+    logger.info('User Request: Authorizing Ephemeral Session Key...');
+
+    // Inject the session key directly into the running service instance (Memory only)
+    await blockchainService.initialize('ETH', sessionKey);
+
+    res.json({
+      status: 'AUTHORISED',
+      mode: 'VANTAGE_SESSION_MODE',
+      account: blockchainService.smartAccountAddress
+    });
+  } catch (error) {
+    logger.error('Session authorisation failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/strategies/analyze', async (req, res) => {
   try {
     const { walletAddress, chain = 'ETH' } = req.body;
