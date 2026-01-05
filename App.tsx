@@ -118,11 +118,26 @@ const App: React.FC = () => {
    type ConnectionStatus = 'IDLE' | 'PROBING' | 'ONLINE' | 'OFFLINE';
    const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('IDLE');
 
+   // Exact Discovery Logic:
+   // 1. Check build-time env var
+   // 2. Fallback to localhost for dev
+   // 3. AUTO-DISCOVER if running on Render production
    let rawBackendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
+   if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+      // If env var is missing or defaulted to localhost on a production domain, 
+      // construct the URL based on Render's predictable naming scheme.
+      if (rawBackendUrl.includes('localhost') || !rawBackendUrl) {
+         const currentHost = window.location.origin; // e.g. https://orion-frontend.onrender.com
+         rawBackendUrl = currentHost.replace('-frontend', '-backend');
+         console.log(`[Orion Architecture] Dynamic Proxy Activated: Redirecting Localhost -> ${rawBackendUrl}`);
+      }
+   }
+
    // Normalize URL: Remove trailing slash if present
    const BACKEND_URL = rawBackendUrl.replace(/\/$/, "");
 
-   console.log(`[Orion] Connecting to Backend at: ${BACKEND_URL}`);
+   console.log(`[Orion Architecture] Target Core: ${BACKEND_URL}`);
 
    // Live Matrix Polling
    useEffect(() => {
@@ -744,11 +759,11 @@ const App: React.FC = () => {
                <div className="flex items-center gap-8">
                   <div className="flex items-center gap-2">
                      <div className={`w-1.5 h-1.5 rounded-full transition-colors ${connectionStatus === 'ONLINE' ? 'bg-[#10b981] shadow-[0_0_8px_#10b981]' :
-                           connectionStatus === 'PROBING' ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6] animate-pulse' :
-                              'bg-red-500 shadow-[0_0_8px_#ef4444]'
+                        connectionStatus === 'PROBING' ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6] animate-pulse' :
+                           'bg-red-500 shadow-[0_0_8px_#ef4444]'
                         }`} />
                      <span className={`text-[8px] font-black uppercase tracking-widest ${connectionStatus === 'ONLINE' ? 'text-slate-500' :
-                           connectionStatus === 'PROBING' ? 'text-blue-500' : 'text-red-500'
+                        connectionStatus === 'PROBING' ? 'text-blue-500' : 'text-red-500'
                         }`}>
                         {connectionStatus === 'ONLINE' ? 'SERVER: ONLINE' :
                            connectionStatus === 'PROBING' ? 'SERVER: LINKING...' : 'SERVER: DISCONNECTED'}
