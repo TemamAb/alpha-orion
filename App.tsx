@@ -134,28 +134,58 @@ const App: React.FC = () => {
    // 1. Check build-time env var
    // 2. Fallback to localhost for dev
    // 3. AUTO-DISCOVER if running on Render production
-   let rawBackendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+   // Neural discovery: check localStorage override first
+   const [manualBackendUrl, setManualBackendUrl] = useState(localStorage.getItem('ORION_BACKEND_OVERRIDE') || '');
+   let rawBackendUrl = manualBackendUrl || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-   if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
-      // If env var is missing or defaulted to localhost on a production domain, 
-      // construct the URL based on Render's predictable naming scheme.
+   if (!manualBackendUrl && typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
       if (rawBackendUrl.includes('localhost') || !rawBackendUrl) {
          const currentHost = window.location.hostname;
          const protocol = window.location.protocol;
+         const parts = currentHost.split('.')[0].split('-');
+         const suffix = parts.length > 1 ? parts[parts.length - 1] : '';
+         const baseName = parts[0];
 
          if (currentHost.includes('-frontend')) {
             rawBackendUrl = `${protocol}//${currentHost.replace('-frontend', '-backend')}`;
          } else {
-            // Case for custom names: if active host is 'orion-xgnh', target 'orion-xgnh-backend'
-            const baseName = currentHost.split('.')[0];
-            rawBackendUrl = `${protocol}//${baseName}-backend.onrender.com`;
+            // Pattern B: orion-xgnh -> orion-backend-xgnh
+            rawBackendUrl = suffix
+               ? `${protocol}//${baseName}-backend-${suffix}.onrender.com`
+               : `${protocol}//${baseName}-backend.onrender.com`;
          }
-         console.log(`[Orion Architecture] Dynamic Discovery: ${currentHost} -> ${rawBackendUrl}`);
+         console.log(`[Orion Architecture] Neural Discovery: ${currentHost} -> ${rawBackendUrl}`);
       }
    }
 
-   // Normalize URL: Remove trailing slash if present
+   // Normalize URL
    const BACKEND_URL = rawBackendUrl.replace(/\/$/, "");
+
+   // Auto-Sync Sentinel
+   useEffect(() => {
+      if (connectionStatus === 'OFFLINE' && !manualBackendUrl && typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+         const tryPatterns = async () => {
+            const currentHost = window.location.hostname;
+            const base = currentHost.split('.')[0];
+            const protocol = window.location.protocol;
+            const candidates = [
+               `${protocol}//${base}-backend.onrender.com`,
+               `${protocol}//orion-backend.onrender.com`
+            ];
+            for (const url of candidates) {
+               try {
+                  const res = await fetch(`${url}/api/health`);
+                  if (res.ok) {
+                     localStorage.setItem('ORION_BACKEND_OVERRIDE', url);
+                     window.location.reload();
+                     break;
+                  }
+               } catch (e) { }
+            }
+         };
+         tryPatterns();
+      }
+   }, [connectionStatus, manualBackendUrl]);
 
    console.log(`[Orion Architecture] Target Core: ${BACKEND_URL}`);
 
@@ -413,7 +443,7 @@ const App: React.FC = () => {
       if (connectionStatus !== 'ONLINE') {
          const msg = connectionStatus === 'PROBING'
             ? "Establishing link to enterprise core... Please wait."
-            : "Cannot start engine: Backend connection failed. Please ensure the enterprise server is running.";
+            : `Cannot start engine: Connection to Enterprise Core at [${BACKEND_URL}] failed. Please ensure the server is running and verified.`;
          alert(msg);
          return;
       }
@@ -1182,6 +1212,18 @@ const App: React.FC = () => {
                      <span className="hidden lg:block text-[6px] font-mono text-slate-700 uppercase tracking-tighter truncate max-w-[150px]" title={BACKEND_URL}>
                         Core: {BACKEND_URL}
                      </span>
+                     <button
+                        onClick={() => {
+                           const newUrl = prompt("Enter Enterprise Backend URL:", BACKEND_URL);
+                           if (newUrl) {
+                              localStorage.setItem('ORION_BACKEND_OVERRIDE', newUrl);
+                              window.location.reload();
+                           }
+                        }}
+                        className="text-[6px] font-black text-slate-500 hover:text-white transition-colors uppercase"
+                     >
+                        [SET]
+                     </button>
                   </div>
                   <div className="flex items-center gap-2">
                      <div className={`w-1.5 h-1.5 rounded-full transition-colors ${engineStarted ? 'bg-[#10b981] shadow-[0_0_8px_#10b981]' : 'bg-[#fbbf24]'}`} />
