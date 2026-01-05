@@ -827,8 +827,8 @@ const App: React.FC = () => {
                                  <button
                                     onClick={() => setWithdrawalMode('MANUAL')}
                                     className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${withdrawalMode === 'MANUAL'
-                                          ? 'bg-[#fbbf24] text-black'
-                                          : 'bg-white/5 text-slate-600 hover:bg-white/10'
+                                       ? 'bg-[#fbbf24] text-black'
+                                       : 'bg-white/5 text-slate-600 hover:bg-white/10'
                                        }`}
                                  >
                                     Manual
@@ -836,8 +836,8 @@ const App: React.FC = () => {
                                  <button
                                     onClick={() => setWithdrawalMode('AUTO')}
                                     className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${withdrawalMode === 'AUTO'
-                                          ? 'bg-[#10b981] text-black'
-                                          : 'bg-white/5 text-slate-600 hover:bg-white/10'
+                                       ? 'bg-[#10b981] text-black'
+                                       : 'bg-white/5 text-slate-600 hover:bg-white/10'
                                        }`}
                                  >
                                     Auto
@@ -897,16 +897,16 @@ const App: React.FC = () => {
                                     onChange={(e) => handleAddressInput(e.target.value)}
                                     placeholder="Enter Withdrawal Address (0x...)"
                                     className={`w-full bg-black/40 border rounded-[1.5rem] py-6 px-8 text-sm font-mono text-[#fbbf24] focus:outline-none transition-all placeholder:text-slate-800 ${targetWallet && isAddressValid
-                                          ? 'border-green-500/40 focus:border-green-500/60'
-                                          : targetWallet && !isAddressValid
-                                             ? 'border-red-500/40 focus:border-red-500/60'
-                                             : 'border-white/5 focus:border-[#fbbf24]/40'
+                                       ? 'border-green-500/40 focus:border-green-500/60'
+                                       : targetWallet && !isAddressValid
+                                          ? 'border-red-500/40 focus:border-red-500/60'
+                                          : 'border-white/5 focus:border-[#fbbf24]/40'
                                        }`}
                                  />
                                  {targetWallet && (
                                     <div className={`absolute right-6 top-1/2 -translate-y-1/2 p-2 rounded-xl border transition-all ${isAddressValid
-                                          ? 'bg-green-500/10 border-green-500/30'
-                                          : 'bg-red-500/10 border-red-500/30'
+                                       ? 'bg-green-500/10 border-green-500/30'
+                                       : 'bg-red-500/10 border-red-500/30'
                                        }`}>
                                        {isAddressValid ? (
                                           <CheckCircle2 size={16} className="text-green-500" />
@@ -1132,6 +1132,11 @@ const App: React.FC = () => {
                               <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest group-hover:text-[#fbbf24] transition-colors">ACC:</span>
                               <span className="text-[7px] font-mono text-slate-500 group-hover:text-[#fbbf24] transition-colors">{serverStatus.blockchain.accountAddress.slice(0, 6)}...{serverStatus.blockchain.accountAddress.slice(-4)}</span>
                               <Copy size={8} className="text-slate-700 group-hover:text-[#fbbf24]" />
+                           </div>
+                        )}
+                        {deploymentContractNumber && (
+                           <div className="hidden md:flex items-center gap-2 px-2 py-0.5 rounded border border-purple-500/30 bg-purple-500/5">
+                              <span className="text-[7px] font-black text-purple-400 uppercase tracking-tighter">CTR: {deploymentContractNumber}</span>
                            </div>
                         )}
                      </div>
