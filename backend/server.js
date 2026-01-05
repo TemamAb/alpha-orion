@@ -44,10 +44,28 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Middleware
 app.use(helmet(securityHeaders));
+
+const crossOriginList = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:3000', 'http://localhost:5173', 'https://orion-alpha.onrender.com'];
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://orion-alpha.onrender.com', 'https://your-frontend-domain.com']
-    : ['http://localhost:3000', 'http://localhost:5173'],
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+
+    const isAllowed = crossOriginList.some(allowed => {
+      const normalizedAllowed = allowed.replace(/\/$/, "");
+      const normalizedOrigin = origin.replace(/\/$/, "");
+      return normalizedOrigin === normalizedAllowed || allowed === '*';
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      logger.warn(`CORS Blocked: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));

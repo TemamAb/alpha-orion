@@ -115,12 +115,18 @@ const App: React.FC = () => {
    const [matrixStatus, setMatrixStatus] = useState<any>(null);
 
    // Backend Connection Logic
-   const [backendStatus, setBackendStatus] = useState<boolean>(false);
-   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+   type ConnectionStatus = 'IDLE' | 'PROBING' | 'ONLINE' | 'OFFLINE';
+   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('IDLE');
+
+   let rawBackendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+   // Normalize URL: Remove trailing slash if present
+   const BACKEND_URL = rawBackendUrl.replace(/\/$/, "");
+
+   console.log(`[Orion] Connecting to Backend at: ${BACKEND_URL}`);
 
    // Live Matrix Polling
    useEffect(() => {
-      if (!engineStarted) return;
+      if (!engineStarted || connectionStatus !== 'ONLINE') return;
 
       const pollMatrix = async () => {
          try {
@@ -148,7 +154,7 @@ const App: React.FC = () => {
 
       const interval = setInterval(pollMatrix, 2000); // 2s poll for live feel
       return () => clearInterval(interval);
-   }, [engineStarted, BACKEND_URL]);
+   }, [engineStarted, connectionStatus, BACKEND_URL]);
 
    // MetaMask Detection
    const detectWalletAddress = async () => {
@@ -184,22 +190,33 @@ const App: React.FC = () => {
 
    useEffect(() => {
       const checkBackend = async () => {
+         setConnectionStatus('PROBING');
          try {
+            console.log(`[Orion] Probing Health: ${BACKEND_URL}/api/health`);
             const res = await fetch(`${BACKEND_URL}/api/health`);
-            if (res.ok) setBackendStatus(true);
-            else setBackendStatus(false);
+            if (res.ok) {
+               console.log("[Orion] Backend Online");
+               setConnectionStatus('ONLINE');
+            } else {
+               console.warn(`[Orion] Backend Health Check Failed: ${res.status}`);
+               setConnectionStatus('OFFLINE');
+            }
          } catch (e) {
-            setBackendStatus(false);
+            console.error("[Orion] Backend Connection Error:", e);
+            setConnectionStatus('OFFLINE');
          }
       };
       checkBackend();
       const interval = setInterval(checkBackend, 30000); // Check every 30s
       return () => clearInterval(interval);
-   }, []);
+   }, [BACKEND_URL]);
 
    const toggleEngine = () => {
-      if (!backendStatus) {
-         alert("Cannot start engine: Backend connection failed. Please ensure the enterprise server is running.");
+      if (connectionStatus !== 'ONLINE') {
+         const msg = connectionStatus === 'PROBING'
+            ? "Establishing link to enterprise core... Please wait."
+            : "Cannot start engine: Backend connection failed. Please ensure the enterprise server is running.";
+         alert(msg);
          return;
       }
       setEngineStarted(true);
@@ -726,9 +743,15 @@ const App: React.FC = () => {
             <footer className="h-10 border-t border-white/5 bg-black/90 px-6 md:px-10 flex items-center justify-between z-50">
                <div className="flex items-center gap-8">
                   <div className="flex items-center gap-2">
-                     <div className={`w-1.5 h-1.5 rounded-full transition-colors ${backendStatus ? 'bg-[#10b981] shadow-[0_0_8px_#10b981]' : 'bg-red-500 shadow-[0_0_8px_#ef4444]'}`} />
-                     <span className={`text-[8px] font-black uppercase tracking-widest ${backendStatus ? 'text-slate-500' : 'text-red-500'}`}>
-                        {backendStatus ? 'SERVER: ONLINE' : 'SERVER: DISCONNECTED'}
+                     <div className={`w-1.5 h-1.5 rounded-full transition-colors ${connectionStatus === 'ONLINE' ? 'bg-[#10b981] shadow-[0_0_8px_#10b981]' :
+                           connectionStatus === 'PROBING' ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6] animate-pulse' :
+                              'bg-red-500 shadow-[0_0_8px_#ef4444]'
+                        }`} />
+                     <span className={`text-[8px] font-black uppercase tracking-widest ${connectionStatus === 'ONLINE' ? 'text-slate-500' :
+                           connectionStatus === 'PROBING' ? 'text-blue-500' : 'text-red-500'
+                        }`}>
+                        {connectionStatus === 'ONLINE' ? 'SERVER: ONLINE' :
+                           connectionStatus === 'PROBING' ? 'SERVER: LINKING...' : 'SERVER: DISCONNECTED'}
                      </span>
                   </div>
                   <div className="flex items-center gap-2">

@@ -14,13 +14,17 @@ services:
         value: 5000
       - key: ALLOWED_ORIGINS
         fromService:
-          type: web
+          type: static_site
           name: orion-frontend
           property: url
+      - key: MONGODB_URI
+        value: mongodb://mongo:27017/arbitrage
+      - key: REDIS_URL
+        value: redis://redis:6379
     healthCheckPath: /api/health
 
   # Frontend Service
-  - type: web
+  - type: static_site
     name: orion-frontend
     env: static
     plan: starter
@@ -32,3 +36,17 @@ services:
           type: web
           name: orion-backend
           property: url
+
+  # Database Service (Private)
+  - type: private_service
+    name: mongo
+    env: docker
+    image: mongo:6.0
+    plan: starter
+
+  # Cache Service (Private)
+  - type: private_service
+    name: redis
+    env: docker
+    image: redis:alpine
+    plan: starter
