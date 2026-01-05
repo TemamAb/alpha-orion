@@ -140,9 +140,17 @@ const App: React.FC = () => {
       // If env var is missing or defaulted to localhost on a production domain, 
       // construct the URL based on Render's predictable naming scheme.
       if (rawBackendUrl.includes('localhost') || !rawBackendUrl) {
-         const currentHost = window.location.origin; // e.g. https://orion-frontend.onrender.com
-         rawBackendUrl = currentHost.replace('-frontend', '-backend');
-         console.log(`[Orion Architecture] Dynamic Proxy Activated: Redirecting Localhost -> ${rawBackendUrl}`);
+         const currentHost = window.location.hostname;
+         const protocol = window.location.protocol;
+
+         if (currentHost.includes('-frontend')) {
+            rawBackendUrl = `${protocol}//${currentHost.replace('-frontend', '-backend')}`;
+         } else {
+            // Case for custom names: if active host is 'orion-xgnh', target 'orion-xgnh-backend'
+            const baseName = currentHost.split('.')[0];
+            rawBackendUrl = `${protocol}//${baseName}-backend.onrender.com`;
+         }
+         console.log(`[Orion Architecture] Dynamic Discovery: ${currentHost} -> ${rawBackendUrl}`);
       }
    }
 
@@ -306,6 +314,11 @@ const App: React.FC = () => {
          const hRes = await fetch(`${BACKEND_URL}/api/health`);
 
          if (hRes.ok) {
+            const contentType = hRes.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+               throw new Error("Backend returned non-JSON response. Check if Backend URL is correct.");
+            }
+
             try {
                const sRes = await fetch(`${BACKEND_URL}/api/status`);
                if (sRes.ok) {
@@ -366,6 +379,10 @@ const App: React.FC = () => {
          });
 
          if (res.ok) {
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+               throw new Error("Security handshake returned non-JSON. Possible Backend URL mismatch.");
+            }
             console.log("[Orion Security] Handshake Verified. Vantage Mode Authorised.");
             // Refresh status immediately
             const sRes = await fetch(`${BACKEND_URL}/api/status`);
