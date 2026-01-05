@@ -64,10 +64,21 @@ const corsOptions = {
       process.env.ALLOWED_ORIGINS.split(',') :
       ['http://localhost:3000', 'http://localhost:3001'];
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Wildcard support for easier initial config
+    if (allowedOrigins.includes('*')) return callback(null, true);
+
+    const isAllowed = allowedOrigins.some(allowed => {
+      // Handle trailing slashes in both definition and origin
+      const normalizedAllowed = allowed.replace(/\/$/, "");
+      const normalizedOrigin = origin.replace(/\/$/, "");
+      return normalizedOrigin === normalizedAllowed;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`CORS Blocked: ${origin}`);
+      callback(new Error(`Not allowed by CORS: ${origin}`));
     }
   },
   credentials: true,
