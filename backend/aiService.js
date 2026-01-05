@@ -16,6 +16,7 @@ const logger = winston.createLogger({
 class AIService {
   constructor() {
     this.ai = null;
+    this.isReady = false;
     this.MAX_RETRIES = 3;
     this.BASE_DELAY = 1000;
   }
@@ -50,31 +51,33 @@ class AIService {
     }
   }
 
-  async analyzeWallet(walletAddress, chain = 'ETH') {
+  async analyzeWallet(walletAddress, chain = 'ETH', transactionHistory = []) {
     try {
-      const prompt = `Perform an INSTITUTIONAL-GRADE ACTIVITY AUDIT for wallet: ${walletAddress} on ${chain} chain.
-      Mandate: Detect 0.001% Rank Institutional/Bot signatures for arbitrage flash loan strategies.
-      Detection Parameters:
-      - Mempool-Bypass: Is this wallet settling trades without public mempool visibility?
-      - Slot-0 Latency: Is this wallet executing in the exact same block as liquidity events?
-      - Atomic Symmetry: Is this wallet part of a wider cluster (hive-mind) behavior for arbitrage?
-      - Flash Loan Patterns: Does this wallet use flash loans for cross-DEX arbitrage?
+      // 1. Evidence-Based Prompting
+      const prompt = `PERFORM FORENSIC BLOCKCHAIN ANALYSIS.
+      Subject: ${walletAddress} on ${chain}
+      Evidence: ${JSON.stringify(transactionHistory.slice(0, 20))}
+      
+      MANDATE: Classify this wallet's behavior into one of the 7 ORION STRATEGY MATRIX nodes based on the evidence provided:
+      1. "THE GHOST" (Private Transactions / Flashbots / No Mempool)
+      2. "SLOT-0 SNIPER" (First-in-block execution)
+      3. "BUNDLE MASTER" (Atomic group trading / multiple swaps tx)
+      4. "ATOMIC FLUX" (High frequency arbitrage)
+      5. "DARK RELAY" (Liquidity provider sniping)
+      6. "HIVE SYMMETRY" (Copy-trading / Mirroring other wallets)
+      7. "DISCOVERY HUNT" (New token interaction / Early alpha)
 
-      Return a strictly formatted JSON object:
+      Return strictly strictly JSON:
       {
-        "label": "Unique identity name",
-        "winRate": 99.0+,
-        "totalPnl": "USD formatted, e.g., $18.4M",
-        "dailyProfit": "USD formatted, e.g., $242K",
-        "percentile": 0.0001 to 0.0009,
-        "confidence": 99.9+,
-        "isPrivateRPC": true,
-        "chain": "${chain}",
-        "riskRating": "LOW",
-        "strategies": ["Flash Loan Arbitrage", "Cross-DEX Trading", "MEV Protection"],
-        "insights": ["3 specific activity tags, e.g., 'Direct-to-Validator', 'Early-Block Entry', 'Protected Trade'"]
+        "classification": "ONE_OF_THE_ABOVE_LABELS",
+        "confidence": 0-100,
+        "isBot": boolean,
+        "hourlyProfitEst": "string with currency",
+        "riskProfile": "LOW|MED|HIGH",
+        "evidenceTags": ["tag1", "tag2"]
       }`;
 
+      // 2. Call Gemini
       const response = await this.withRetry(() => this.ai.models.generateContent({
         model: "gemini-1.5-pro",
         contents: prompt,
@@ -83,42 +86,27 @@ class AIService {
           responseSchema: {
             type: "object",
             properties: {
-              label: { type: "string" },
-              winRate: { type: "number" },
-              totalPnl: { type: "string" },
-              dailyProfit: { type: "string" },
-              percentile: { type: "number" },
+              classification: { type: "string" },
               confidence: { type: "number" },
-              isPrivateRPC: { type: "boolean" },
-              chain: { type: "string" },
-              riskRating: { type: "string" },
-              strategies: { type: "array", items: { type: "string" } },
-              insights: { type: "array", items: { type: "string" } }
-            },
-            required: ["label", "winRate", "totalPnl", "dailyProfit", "percentile", "confidence", "isPrivateRPC", "chain", "riskRating", "strategies", "insights"]
+              isBot: { type: "boolean" },
+              hourlyProfitEst: { type: "string" },
+              riskProfile: { type: "string" },
+              evidenceTags: { type: "array", items: { type: "string" } }
+            }
           }
         }
       }));
 
       const result = JSON.parse(response.text?.trim() || "{}");
-      logger.info(`Wallet analysis completed for ${walletAddress}`);
-      return { ...result, status: 'VERIFIED' };
+      logger.info(`Forensic analysis completed for ${walletAddress}`);
+      return { ...result, status: 'VERIFIED', timestamp: new Date() };
     } catch (error) {
-      logger.error('Wallet analysis failed:', error);
-      // Fallback with mock data
+      logger.error('Wallet forensic analysis failed:', error);
+      // Fail gracefully but indicate lack of data
       return {
-        label: "APEX_ARBITRAGE_BOT",
-        winRate: 99.8,
-        totalPnl: "$18.4M",
-        dailyProfit: "$242K",
-        percentile: 0.0001,
-        confidence: 99.99,
-        isPrivateRPC: true,
-        chain,
-        riskRating: 'LOW',
-        strategies: ["Flash Loan Arbitrage", "Cross-DEX Trading"],
-        insights: ["Validator-Direct", "Block-0 Entry", "Mempool-Hidden"],
-        status: 'FALLBACK'
+        status: 'FAILED',
+        error: "Insufficient data for forensic analysis",
+        classification: "UNKNOWN"
       };
     }
   }
