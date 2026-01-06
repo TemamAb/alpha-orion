@@ -672,25 +672,34 @@ async function initializeServices() {
   }
 }
 
-// Start server with dynamic port discovery
+// Start server with production-aware port configuration
 async function startServer() {
   const host = '0.0.0.0';
 
   try {
-    // ORION PORT DISCOVERY ACTIVATION
-    const PORT = await findAvailablePort();
-    console.log(`[ORION PORT DISCOVERY] 🚀 Starting Orion Backend on dynamic port: ${PORT}`);
+    // PRODUCTION MODE: Use Render-provided PORT environment variable
+    // DEVELOPMENT MODE: Use dynamic port discovery
+    let PORT;
+
+    if (process.env.NODE_ENV === 'production') {
+      PORT = process.env.PORT || 5000;
+      console.log(`[ORION PRODUCTION] 🚀 Starting Orion Backend on Render port: ${PORT}`);
+    } else {
+      // ORION PORT DISCOVERY ACTIVATION (Development only)
+      PORT = await findAvailablePort();
+      console.log(`[ORION PORT DISCOVERY] 🚀 Starting Orion Backend on dynamic port: ${PORT}`);
+    }
 
     app.listen(PORT, host, async () => {
       logger.info(`Server running on http://${host}:${PORT}`);
       logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`[ORION PORT DISCOVERY] ✅ Dynamic port allocation successful: ${PORT}`);
+      logger.info(`Port Mode: ${process.env.NODE_ENV === 'production' ? 'Render Static' : 'Dynamic Discovery'}`);
 
       // Initialize services after server starts
       await initializeServices();
     });
   } catch (error) {
-    logger.error('[ORION PORT DISCOVERY] ❌ Failed to find available port:', error.message);
+    logger.error(`[${process.env.NODE_ENV === 'production' ? 'ORION PRODUCTION' : 'ORION PORT DISCOVERY'}] ❌ Failed to start server:`, error.message);
     process.exit(1);
   }
 }
