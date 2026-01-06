@@ -628,14 +628,30 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Initialize services
+// Initialize services with enhanced error handling and API key validation
 async function initializeServices() {
+  // Validate critical API keys before initialization
+  const requiredKeys = ['GEMINI_API_KEY', 'PIMLICO_API_KEY'];
+  const missingKeys = requiredKeys.filter(key => !process.env[key]);
+
+  if (missingKeys.length > 0) {
+    logger.error(`❌ CRITICAL: Missing required API keys: ${missingKeys.join(', ')}`);
+    logger.error('Please ensure API keys are properly configured in environment variables');
+    logger.error('For local development: check .env.local file');
+    logger.error('For production: check Render service secrets');
+    process.exit(1); // Exit with error to prevent startup with missing keys
+  }
+
+  logger.info('✅ API key validation passed');
+
   try {
     await aiService.initialize();
     aiService.isReady = true;
     logger.info('AI service initialized successfully');
   } catch (error) {
-    logger.warn('AI service initialization failed, continuing without AI features:', error.message);
+    logger.error('AI service initialization failed:', error);
+    logger.error('This may be due to invalid GEMINI_API_KEY or network issues');
+    // Don't exit - allow partial functionality
   }
 
   try {
@@ -645,8 +661,14 @@ async function initializeServices() {
 
     // Activate Tri-Tier Bot System
     botOrchestrator.start();
+    logger.info('Tri-Tier Bot System activated');
   } catch (error) {
-    logger.warn('Blockchain service initialization failed, continuing without blockchain features:', error.message);
+    logger.error('Blockchain service initialization failed:', error);
+    logger.error('This may be due to invalid PIMLICO_API_KEY, RPC URLs, or network connectivity');
+    logger.error('Available environment variables:', Object.keys(process.env).filter(key =>
+      key.includes('API') || key.includes('RPC') || key.includes('POOL') || key.includes('ROUTER')
+    ));
+    // Don't exit - allow partial functionality but log prominently
   }
 }
 
