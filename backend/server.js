@@ -49,7 +49,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Apply security middleware
-app.use(securityMiddleware);
+app.use(securityMiddleware.apiLimiter);
+app.use(securityMiddleware.validateInput);
+app.use(securityMiddleware.sanitizeInput);
+app.use(securityMiddleware.securityLogger);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
