@@ -82,23 +82,11 @@ app.get('/api/status', (req, res) => {
 // Learning curve endpoints
 app.get('/api/learning/metrics', (req, res) => {
   try {
-    // Mock learning metrics since StrategyForger is disabled
-    const mockMetrics = {
-      totalIterations: 1247,
-      discoveredStrategies: 89,
-      perfectMatchScore: 94.2,
-      confidenceScore: 87.3,
-      learningRate: 0.1,
-      profitDayProgression: [
-        { milestone: '25% Profit Target', achieved: true, iteration: 312, score: '78.4%', date: '2024-01-15' },
-        { milestone: '50% Profit Target', achieved: true, iteration: 624, score: '84.2%', date: '2024-01-22' },
-        { milestone: '75% Profit Target', achieved: true, iteration: 936, score: '89.7%', date: '2024-01-29' },
-        { milestone: '100% Profit Target', achieved: false, iteration: 1248, score: '94.2%', date: '2024-02-05' }
-      ],
-      strategyCombinations: [],
-      historicalPerformance: []
-    };
-    res.json(mockMetrics);
+    // StrategyForger disabled - return service unavailable
+    return res.status(503).json({
+      error: 'Service unavailable',
+      message: 'Learning metrics unavailable - StrategyForger not initialized'
+    });
   } catch (error) {
     logger.error('Error fetching learning metrics:', error);
     res.status(500).json({
@@ -110,16 +98,10 @@ app.get('/api/learning/metrics', (req, res) => {
 
 app.get('/api/learning/history', (req, res) => {
   try {
-    // Mock learning history
-    res.json({
-      historicalPerformance: [],
-      profitDayProgression: [
-        { milestone: '25% Profit Target', achieved: true, iteration: 312, score: '78.4%', date: '2024-01-15' },
-        { milestone: '50% Profit Target', achieved: true, iteration: 624, score: '84.2%', date: '2024-01-22' },
-        { milestone: '75% Profit Target', achieved: true, iteration: 936, score: '89.7%', date: '2024-01-29' },
-        { milestone: '100% Profit Target', achieved: false, iteration: 1248, score: '94.2%', date: '2024-02-05' }
-      ],
-      strategyCombinations: []
+    // StrategyForger disabled - return service unavailable
+    return res.status(503).json({
+      error: 'Service unavailable',
+      message: 'Learning history unavailable - StrategyForger not initialized'
     });
   } catch (error) {
     logger.error('Error fetching learning history:', error);
@@ -132,13 +114,10 @@ app.get('/api/learning/history', (req, res) => {
 
 app.get('/api/learning/performance', (req, res) => {
   try {
-    // Mock learning performance
-    res.json({
-      totalIterations: 1247,
-      discoveredStrategies: 89,
-      perfectMatchScore: 94.2,
-      confidenceScore: 87.3,
-      learningRate: 0.1
+    // StrategyForger disabled - return service unavailable
+    return res.status(503).json({
+      error: 'Service unavailable',
+      message: 'Learning performance unavailable - StrategyForger not initialized'
     });
   } catch (error) {
     logger.error('Error fetching learning performance:', error);
