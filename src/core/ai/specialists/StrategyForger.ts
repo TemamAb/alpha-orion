@@ -909,6 +909,58 @@ Return the adapted strategy parameters.`;
   }
 
   /**
+   * Get learning metrics for dashboard display
+   */
+  getLearningMetrics(): {
+    totalIterations: number;
+    discoveredStrategies: number;
+    perfectMatchScore: number;
+    confidenceScore: number;
+    learningRate: number;
+    profitDayProgression: ProfitDayMilestone[];
+    strategyCombinations: StrategyCombination[];
+    historicalPerformance: PerformanceHistory[];
+  } {
+    // Aggregate learning metrics from all forged strategies
+    const allStrategies = Array.from(this.forgedStrategiesCache.values());
+
+    if (allStrategies.length === 0) {
+      return {
+        totalIterations: 0,
+        discoveredStrategies: 0,
+        perfectMatchScore: 0,
+        confidenceScore: 0.5,
+        learningRate: 0.1,
+        profitDayProgression: [],
+        strategyCombinations: [],
+        historicalPerformance: []
+      };
+    }
+
+    // Aggregate data from all strategies
+    const totalIterations = allStrategies.reduce((sum, s) => sum + s.learningCurveData.iterations, 0);
+    const totalDiscovered = allStrategies.reduce((sum, s) => sum + s.learningCurveData.discoveredStrategies.length, 0);
+    const avgConfidence = allStrategies.reduce((sum, s) => sum + s.learningCurveData.confidenceScore, 0) / allStrategies.length;
+    const avgPerfectMatch = allStrategies.reduce((sum, s) => sum + s.perfectMatchScore, 0) / allStrategies.length;
+
+    // Combine all progression data
+    const allProgression = allStrategies.flatMap(s => s.learningCurveData.profitDayProgression);
+    const allCombinations = allStrategies.flatMap(s => s.learningCurveData.strategyCombinations);
+    const allPerformance = allStrategies.flatMap(s => s.learningCurveData.historicalPerformance);
+
+    return {
+      totalIterations,
+      discoveredStrategies: totalDiscovered,
+      perfectMatchScore: avgPerfectMatch,
+      confidenceScore: avgConfidence,
+      learningRate: 0.1, // Fixed learning rate
+      profitDayProgression: allProgression.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()),
+      strategyCombinations: allCombinations.sort((a, b) => b.lastTested.getTime() - a.lastTested.getTime()),
+      historicalPerformance: allPerformance.sort((a, b) => b.executionTime.getTime() - a.executionTime.getTime())
+    };
+  }
+
+  /**
    * Clear caches
    */
   clearCaches(): void {
