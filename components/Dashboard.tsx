@@ -413,6 +413,10 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
     setHasUnsavedAuto(false);
   };
 
+  const buttonClass = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50' : 'bg-slate-800 text-indigo-400 border border-indigo-500/20 cursor-default') : (isWithdrawing ? 'bg-amber-500 text-white animate-pulse' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-95');
+  const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' : 'Auto Pilot Active') : (isWithdrawing ? 'Processing...' : `Transfer Yield (${currency})`);
+  const buttonIcon = isWithdrawing ? <RefreshCw size={14} className="animate-spin" /> : withdrawalMode === 'auto' ? <ShieldCheck size={14} /> : <ArrowDownCircle size={14} />;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* HEADER COMMAND */}
@@ -1027,17 +1031,13 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
                   <button onClick={triggerTransfer} className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all">Confirm Transfer</button>
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={() => { if (withdrawalMode === 'manual') setShowConfirm(true); }}
                   disabled={isWithdrawing || (withdrawalMode === 'auto' && hasUnsavedAuto)}
-                  className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 transition-all text-[10px] font-black uppercase tracking-widest ${
-                    withdrawalMode === 'auto' 
-                      ? hasUnsavedAuto ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50' : 'bg-slate-800 text-indigo-400 border border-indigo-500/20 cursor-default'
-                      : isWithdrawing ? 'bg-amber-500 text-white animate-pulse' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-95'
-                  }`}
+                  className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 transition-all text-[10px] font-black uppercase tracking-widest ${buttonClass}`}
                 >
-                  {isWithdrawing ? <RefreshCw size={14} className="animate-spin" /> : withdrawalMode === 'auto' ? <ShieldCheck size={14} /> : <ArrowDownCircle size={14} />}
-                  {withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' : 'Auto Pilot Active') : (isWithdrawing ? 'Processing...' : `Transfer Yield (${currency})`)}
+                  {buttonIcon}
+                  {buttonText}
                 </button>
               )}
             </div>
