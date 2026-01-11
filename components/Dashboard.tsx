@@ -19,6 +19,7 @@ interface DashboardProps {
   champions: ChampionWallet[];
   aiInsight: string;
   realTimeData: RealTimeData;
+  activeView?: string;
 }
 
 type Currency = 'USD' | 'ETH';
@@ -327,7 +328,7 @@ const BotPerformanceCard: React.FC<{
   </div>
 );
 
-const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champions, realTimeData }) => {
+const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champions, realTimeData, activeView = 'core-metrics' }) => {
   const [currency, setCurrency] = useState<Currency>('USD');
   const [withdrawalMode, setWithdrawalMode] = useState<WithdrawalMode>('manual');
   

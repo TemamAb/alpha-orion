@@ -1,4 +1,4 @@
-thub.com/TemamAb/alpha-orion import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, AlertCircle, Clock, ExternalLink, Shield, TrendingUp } from 'lucide-react';
 import type { TransactionValidation, ValidatedProfitSummary } from '../services/profitValidationService';
 
