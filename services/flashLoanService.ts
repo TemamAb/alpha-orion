@@ -1,5 +1,7 @@
 import { ethers } from 'ethers';
 import { BlockchainService, CONTRACTS } from './blockchainService';
+import { MEVProtectionService } from './mevProtectionService';
+import { DexService, createDexService } from './dexService';
 
 /**
  * PHASE 1: FLASH LOAN SERVICE
@@ -67,19 +69,21 @@ export interface ArbitrageStrategy {
  * Flash Loan Service Class
  */
 export class FlashLoanService {
-  private blockchainService: BlockchainService;
-  private aavePool: ethers.Contract;
+   private blockchainService: BlockchainService;
+   private mevProtectionService: MEVProtectionService;
+   private aavePool: ethers.Contract;
 
-  constructor(blockchainService: BlockchainService) {
-    this.blockchainService = blockchainService;
-    
-    const provider = blockchainService.getProvider();
-    this.aavePool = new ethers.Contract(
-      CONTRACTS.AAVE_POOL,
-      AAVE_POOL_ABI,
-      provider
-    );
-  }
+   constructor(blockchainService: BlockchainService, mevProtectionService?: MEVProtectionService) {
+     this.blockchainService = blockchainService;
+     this.mevProtectionService = mevProtectionService || new MEVProtectionService(blockchainService);
+
+     const provider = blockchainService.getProvider();
+     this.aavePool = new ethers.Contract(
+       CONTRACTS.AAVE_POOL,
+       AAVE_POOL_ABI,
+       provider
+     );
+   }
 
   /**
    * Calculate flash loan premium (fee)
@@ -220,20 +224,39 @@ export class FlashLoanService {
       // Get wallet with signer
       const wallet = this.blockchainService.getWallet();
       const aavePoolWithSigner = this.aavePool.connect(wallet) as any;
-      
-      // Execute flash loan
+
+      // Execute flash loan with MEV protection if enabled
       console.log('📤 Sending flash loan transaction...');
-      const tx = await aavePoolWithSigner.flashLoanSimple(
-        params.receiverAddress,
-        params.asset,
-        amount,
-        encodedParams,
-        0 // referralCode
-      );
-      
+
+      let tx;
+      if (this.mevProtectionService.isProtectionEnabled()) {
+        console.log('🛡️ Using MEV protection via Flashbots relay');
+
+        // Prepare transaction for Flashbots
+        const txRequest = await aavePoolWithSigner.flashLoanSimple.populateTransaction(
+          params.receiverAddress,
+          params.asset,
+          amount,
+          encodedParams,
+          0 // referralCode
+        );
+
+        // Execute through Flashbots
+        tx = await this.mevProtectionService.executeOnFlashbotsRelay(txRequest);
+      } else {
+        console.log('⚠️ MEV protection disabled - executing on public mempool');
+        tx = await aavePoolWithSigner.flashLoanSimple(
+          params.receiverAddress,
+          params.asset,
+          amount,
+          encodedParams,
+          0 // referralCode
+        );
+      }
+
       console.log('⏳ Waiting for confirmation...');
       console.log('TX Hash:', tx.hash);
-      
+
       const receipt = await tx.wait();
       
       if (receipt?.status === 1) {
@@ -303,14 +326,16 @@ export class FlashLoanService {
       const gasCostETH = ethers.formatEther(gasCost);
       const gasCostUSD = parseFloat(gasCostETH) * 2500; // Assume ETH = $2500
       
-      // SIMULATION: Calculate price difference between DEXs
-      // In production, this would query real DEX prices
-      const priceOnDexA = 1.0; // Price of tokenOut in terms of tokenIn on DEX A
-      const priceOnDexB = 1.005; // Price of tokenOut in terms of tokenIn on DEX B (0.5% higher)
-      
+      // Get real DEX prices using dexService
+      const dexService = createDexService(this.blockchainService);
+
+      // For arbitrage: Buy tokenOut with tokenIn on DEX A, then sell tokenOut for tokenIn on DEX B
+      const quoteA = await dexService.getUniswapQuote(strategy.tokenIn, strategy.tokenOut, strategy.amountIn); // tokenIn -> tokenOut
+      const quoteB = await dexService.getBalancerQuote(strategy.tokenOut, strategy.tokenIn, quoteA.amountOut); // tokenOut -> tokenIn
+
       // Calculate amounts
-      const amountOut = parseFloat(strategy.amountIn) / priceOnDexA; // Buy on DEX A
-      const amountBack = amountOut * priceOnDexB; // Sell on DEX B
+      const amountOut = parseFloat(quoteA.amountOut); // tokenOut received from DEX A
+      const amountBack = parseFloat(quoteB.amountOut); // tokenIn received from DEX B
       
       // Calculate profit
       const grossProfit = amountBack - parseFloat(strategy.amountIn);
@@ -357,6 +382,9 @@ export class FlashLoanService {
 /**
  * Create flash loan service instance
  */
-export function createFlashLoanService(blockchainService: BlockchainService): FlashLoanService {
-  return new FlashLoanService(blockchainService);
+export function createFlashLoanService(
+  blockchainService: BlockchainService,
+  mevProtectionService?: MEVProtectionService
+): FlashLoanService {
+  return new FlashLoanService(blockchainService, mevProtectionService);
 }

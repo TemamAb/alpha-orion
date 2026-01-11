@@ -12,8 +12,9 @@ import {
   PieChart, Target, Database, Zap, Terminal, Wallet, Rocket, Menu, X
 } from 'lucide-react';
 
-type MetricView = 
+type MetricView =
   | 'core-metrics'
+  | 'security-metrics'
   | 'ai-optimization'
   | 'bot-fleets'
   | 'latency-metrics'
@@ -165,6 +166,7 @@ const App: React.FC = () => {
 
   const metricButtons = [
     { id: 'core-metrics', label: 'Core Metrics', icon: <LayoutDashboard size={14} /> },
+    { id: 'security-metrics', label: 'Security Metrics', icon: <ShieldCheck size={14} /> },
     { id: 'ai-optimization', label: 'AI Optimization Engine', icon: <Sparkles size={14} /> },
     { id: 'bot-fleets', label: 'Bot Fleets', icon: <Cpu size={14} /> },
     { id: 'latency-metrics', label: 'Execution Latency', icon: <Clock size={14} /> },

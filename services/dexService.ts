@@ -81,87 +81,94 @@ export class DexService {
     HIGH: 10000    // 1%
   };
 
-  constructor(blockchainService: BlockchainService) {
-    this.blockchainService = blockchainService;
-    
-    const provider = blockchainService.getProvider();
-    
-    // Initialize Uniswap Quoter (for price quotes)
-    // Note: Using router address as quoter for testnet
-    this.uniswapQuoter = new ethers.Contract(
-      CONTRACTS.UNISWAP_ROUTER,
-      UNISWAP_QUOTER_ABI,
-      provider
-    );
-    
-    // Initialize Balancer Vault
-    // Note: Balancer may not be deployed on all testnets
-    this.balancerVault = new ethers.Contract(
-      '0xBA12222222228d8Ba445958a75a0704d566BF2C8', // Balancer Vault (same on all chains)
-      BALANCER_VAULT_ABI,
-      provider
-    );
-  }
+   constructor(blockchainService: BlockchainService) {
+     this.blockchainService = blockchainService;
 
-  /**
-   * Get token decimals
-   */
-  private async getTokenDecimals(tokenAddress: string): Promise<number> {
-    const token = new ethers.Contract(
-      tokenAddress,
-      ERC20_ABI,
-      this.blockchainService.getProvider()
-    );
-    return await token.decimals();
-  }
+     const provider = blockchainService.getProvider();
 
-  /**
-   * Get Uniswap V3 price quote
-   */
-  async getUniswapQuote(
-    tokenIn: string,
-    tokenOut: string,
-    amountIn: string,
-    feeTier: keyof typeof this.FEE_TIERS = 'MEDIUM'
-  ): Promise<DexQuote> {
-    try {
-      const decimalsIn = await this.getTokenDecimals(tokenIn);
-      const decimalsOut = await this.getTokenDecimals(tokenOut);
-      
-      const amountInWei = ethers.parseUnits(amountIn, decimalsIn);
-      
-      // SIMULATION: In production, call actual Uniswap quoter
-      // For now, simulate with a realistic price
-      const simulatedAmountOut = amountInWei * 99n / 100n; // 1% slippage simulation
-      
-      const amountOut = ethers.formatUnits(simulatedAmountOut, decimalsOut);
-      const price = parseFloat(amountOut) / parseFloat(amountIn);
-      const priceImpact = 1.0; // 1% simulated impact
-      
-      return {
-        dex: 'Uniswap',
-        tokenIn,
-        tokenOut,
-        amountIn,
-        amountOut,
-        price,
-        priceImpact,
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      console.error('Error getting Uniswap quote:', error);
-      throw error;
-    }
-  }
+     // Initialize Uniswap Quoter V2 (for price quotes)
+     this.uniswapQuoter = new ethers.Contract(
+       CONTRACTS.UNISWAP_QUOTER,
+       UNISWAP_QUOTER_ABI,
+       provider
+     );
 
-  /**
-   * Get Balancer price quote
-   */
-  async getBalancerQuote(
-    tokenIn: string,
-    tokenOut: string,
-    amountIn: string
-  ): Promise<DexQuote> {
+     // Initialize Balancer Vault
+     // Note: Balancer may not be deployed on all testnets
+     this.balancerVault = new ethers.Contract(
+       '0xBA12222222228d8Ba445958a75a0704d566BF2C8', // Balancer Vault (same on all chains)
+       BALANCER_VAULT_ABI,
+       provider
+     );
+   }
+
+ /**
+  * Get token decimals
+  */
+ private async getTokenDecimals(tokenAddress: string): Promise<number> {
+   const token = new ethers.Contract(
+     tokenAddress,
+     ERC20_ABI,
+     this.blockchainService.getProvider()
+   );
+   return await token.decimals();
+ }
+
+ /**
+  * Get Uniswap V3 price quote
+  */
+ async getUniswapQuote(
+   tokenIn: string,
+   tokenOut: string,
+   amountIn: string,
+   feeTier: keyof typeof this.FEE_TIERS = 'MEDIUM'
+ ): Promise<DexQuote> {
+     try {
+       const decimalsIn = await this.getTokenDecimals(tokenIn);
+       const decimalsOut = await this.getTokenDecimals(tokenOut);
+
+       const amountInWei = ethers.parseUnits(amountIn, decimalsIn);
+       const fee = this.FEE_TIERS[feeTier];
+
+       // Call Uniswap Quoter V2
+       const amountOutWei = await this.uniswapQuoter.quoteExactInputSingle(
+         tokenIn,
+         tokenOut,
+         fee,
+         amountInWei,
+         0 // sqrtPriceLimitX96 (0 = no limit)
+       );
+
+       const amountOut = ethers.formatUnits(amountOutWei, decimalsOut);
+       const price = parseFloat(amountOut) / parseFloat(amountIn);
+
+       // Calculate price impact (simplified)
+       const priceImpact = await this.calculatePriceImpact(tokenIn, tokenOut, amountIn, 'Uniswap');
+
+       return {
+         dex: 'Uniswap',
+         tokenIn,
+         tokenOut,
+         amountIn,
+         amountOut,
+         price,
+         priceImpact,
+         timestamp: Date.now()
+       };
+     } catch (error) {
+       console.error('Error getting Uniswap quote:', error);
+       throw error;
+     }
+   }
+
+ /**
+  * Get Balancer price quote
+  */
+ async getBalancerQuote(
+   tokenIn: string,
+   tokenOut: string,
+   amountIn: string
+ ): Promise<DexQuote> {
     try {
       const decimalsIn = await this.getTokenDecimals(tokenIn);
       const decimalsOut = await this.getTokenDecimals(tokenOut);
@@ -192,14 +199,14 @@ export class DexService {
     }
   }
 
-  /**
-   * Get best price across all DEXs
-   */
-  async getBestPrice(
-    tokenIn: string,
-    tokenOut: string,
-    amountIn: string
-  ): Promise<DexQuote> {
+ /**
+  * Get best price across all DEXs
+  */
+ async getBestPrice(
+   tokenIn: string,
+   tokenOut: string,
+   amountIn: string
+ ): Promise<DexQuote> {
     try {
       // Get quotes from all DEXs
       const [uniswapQuote, balancerQuote] = await Promise.all([
@@ -217,72 +224,77 @@ export class DexService {
     }
   }
 
-  /**
-   * Detect arbitrage opportunities
-   */
-  async detectArbitrageOpportunity(
-    tokenIn: string,
-    tokenOut: string,
-    amountIn: string,
-    minSpread: number = 0.3 // Minimum 0.3% spread
-  ): Promise<ArbitrageOpportunity | null> {
-    try {
-      // Get quotes from both DEXs
-      const [uniswapQuote, balancerQuote] = await Promise.all([
-        this.getUniswapQuote(tokenIn, tokenOut, amountIn),
-        this.getBalancerQuote(tokenIn, tokenOut, amountIn)
-      ]);
-      
-      // Calculate spread
-      const uniswapPrice = uniswapQuote.price;
-      const balancerPrice = balancerQuote.price;
-      const spread = Math.abs(balancerPrice - uniswapPrice) / uniswapPrice * 100;
-      
-      // Determine buy/sell DEXs
-      const buyDex = uniswapPrice < balancerPrice ? 'Uniswap' : 'Balancer';
-      const sellDex = uniswapPrice < balancerPrice ? 'Balancer' : 'Uniswap';
-      const buyPrice = Math.min(uniswapPrice, balancerPrice);
-      const sellPrice = Math.max(uniswapPrice, balancerPrice);
-      
-      // Calculate estimated profit
-      const buyAmount = parseFloat(amountIn);
-      const sellAmount = buyAmount * sellPrice;
-      const grossProfit = sellAmount - buyAmount;
-      
-      // Subtract fees (flash loan 0.09% + gas ~$0.20)
-      const flashLoanFee = buyAmount * 0.0009;
-      const gasCost = 0.20; // Approximate
-      const netProfit = grossProfit - flashLoanFee - gasCost;
-      
-      const profitable = spread >= minSpread && netProfit > 0;
-      
-      return {
-        id: `arb-${Date.now()}`,
-        tokenIn,
-        tokenOut,
-        amountIn,
-        buyDex,
-        sellDex,
-        buyPrice,
-        sellPrice,
-        spread,
-        estimatedProfit: netProfit.toFixed(2),
-        profitable,
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      console.error('Error detecting arbitrage opportunity:', error);
-      return null;
-    }
-  }
+ /**
+  * Detect arbitrage opportunities
+  */
+ async detectArbitrageOpportunity(
+   tokenIn: string,
+   tokenOut: string,
+   amountIn: string,
+   minSpread: number = 0.3 // Minimum 0.3% spread
+ ): Promise<ArbitrageOpportunity | null> {
+     try {
+       // Get quotes from both DEXs for direct swap
+       const [uniswapQuote, balancerQuote] = await Promise.all([
+         this.getUniswapQuote(tokenIn, tokenOut, amountIn),
+         this.getBalancerQuote(tokenIn, tokenOut, amountIn)
+       ]);
 
-  /**
-   * Scan for arbitrage opportunities across multiple token pairs
-   */
-  async scanArbitrageOpportunities(
-    tokenPairs: Array<{ tokenIn: string; tokenOut: string }>,
-    amountIn: string = '10000'
-  ): Promise<ArbitrageOpportunity[]> {
+       // Calculate spread for direct arbitrage
+       const uniswapPrice = uniswapQuote.price;
+       const balancerPrice = balancerQuote.price;
+       const directSpread = Math.abs(balancerPrice - uniswapPrice) / uniswapPrice * 100;
+
+       // For triangular arbitrage, check tokenOut -> tokenIn on both DEXs
+       const [uniswapReverseQuote, balancerReverseQuote] = await Promise.all([
+         this.getUniswapQuote(tokenOut, tokenIn, uniswapQuote.amountOut),
+         this.getBalancerQuote(tokenOut, tokenIn, balancerQuote.amountOut)
+       ]);
+
+       // Calculate triangular arbitrage profit
+       const uniswapTriangularProfit = parseFloat(uniswapReverseQuote.amountOut) - parseFloat(amountIn);
+       const balancerTriangularProfit = parseFloat(balancerReverseQuote.amountOut) - parseFloat(amountIn);
+
+       // Use the better opportunity
+       let spread = directSpread;
+       let estimatedProfit = Math.max(uniswapTriangularProfit, balancerTriangularProfit);
+       let buyDex: 'Uniswap' | 'Balancer' = uniswapTriangularProfit > balancerTriangularProfit ? 'Uniswap' : 'Balancer';
+       let sellDex: 'Uniswap' | 'Balancer' = buyDex === 'Uniswap' ? 'Balancer' : 'Uniswap';
+
+       // Subtract fees (flash loan 0.09% + gas ~$0.20)
+       const flashLoanFee = parseFloat(amountIn) * 0.0009;
+       const gasCost = 0.20; // Approximate
+       const netProfit = estimatedProfit - flashLoanFee - gasCost;
+
+       const profitable = spread >= minSpread && netProfit > 0;
+
+       return {
+         id: `arb-${Date.now()}`,
+         tokenIn,
+         tokenOut,
+         amountIn,
+         buyDex,
+         sellDex,
+         buyPrice: Math.min(uniswapPrice, balancerPrice),
+         sellPrice: Math.max(uniswapPrice, balancerPrice),
+         spread,
+         estimatedProfit: netProfit.toFixed(6),
+         profitable,
+         timestamp: Date.now()
+       };
+     } catch (error) {
+       console.error('Error detecting arbitrage opportunity:', error);
+       return null;
+     }
+   }
+
+ /**
+  * Scan for arbitrage opportunities across multiple token pairs
+  */
+ async scanArbitrageOpportunities(
+   tokenPairs: Array<{ tokenIn: string; tokenOut: string }>,
+   amountIn: string = '10000'
+ ): Promise<ArbitrageOpportunity[]> {
     try {
       const opportunities: ArbitrageOpportunity[] = [];
       
@@ -308,14 +320,14 @@ export class DexService {
     }
   }
 
-  /**
-   * Get real-time price for a token pair
-   */
-  async getPrice(
-    tokenIn: string,
-    tokenOut: string,
-    dex: 'Uniswap' | 'Balancer' = 'Uniswap'
-  ): Promise<number> {
+ /**
+  * Get real-time price for a token pair
+  */
+ async getPrice(
+   tokenIn: string,
+   tokenOut: string,
+   dex: 'Uniswap' | 'Balancer' = 'Uniswap'
+ ): Promise<number> {
     try {
       const quote = dex === 'Uniswap'
         ? await this.getUniswapQuote(tokenIn, tokenOut, '1')
@@ -328,15 +340,15 @@ export class DexService {
     }
   }
 
-  /**
-   * Calculate price impact for a trade
-   */
-  async calculatePriceImpact(
-    tokenIn: string,
-    tokenOut: string,
-    amountIn: string,
-    dex: 'Uniswap' | 'Balancer' = 'Uniswap'
-  ): Promise<number> {
+ /**
+  * Calculate price impact for a trade
+  */
+ async calculatePriceImpact(
+   tokenIn: string,
+   tokenOut: string,
+   amountIn: string,
+   dex: 'Uniswap' | 'Balancer' = 'Uniswap'
+ ): Promise<number> {
     try {
       // Get quote for small amount (reference price)
       const smallQuote = dex === 'Uniswap'
@@ -358,13 +370,13 @@ export class DexService {
     }
   }
 
-  /**
-   * Get DEX statistics
-   */
-  async getDexStats(): Promise<{
-    uniswap: { available: boolean; feeTiers: number[] };
-    balancer: { available: boolean };
-  }> {
+ /**
+  * Get DEX statistics
+  */
+ async getDexStats(): Promise<{
+   uniswap: { available: boolean; feeTiers: number[] };
+   balancer: { available: boolean };
+ }> {
     return {
       uniswap: {
         available: true,

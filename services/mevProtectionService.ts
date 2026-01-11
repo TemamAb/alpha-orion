@@ -538,6 +538,36 @@ export class MEVProtectionService {
   }
 
   /**
+   * Execute transaction through Flashbots relay
+   */
+  async executeOnFlashbotsRelay(tx: ethers.TransactionRequest): Promise<ethers.TransactionResponse> {
+    if (!this.protectionEnabled) {
+      throw new Error('MEV protection is not enabled');
+    }
+
+    try {
+      console.log('🔒 Executing transaction through Flashbots relay...');
+
+      // Create Flashbots provider
+      const flashbotsProvider = new ethers.JsonRpcProvider(this.flashbotsRpcUrl);
+
+      // Get wallet with Flashbots signer
+      const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, flashbotsProvider);
+
+      // Send transaction through Flashbots
+      const txResponse = await wallet.sendTransaction(tx);
+
+      console.log('✅ Transaction sent through Flashbots relay');
+      console.log('TX Hash:', txResponse.hash);
+
+      return txResponse;
+    } catch (error) {
+      console.error('❌ Flashbots execution failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get protection status
    */
   isProtectionEnabled(): boolean {
