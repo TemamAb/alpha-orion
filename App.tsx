@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { BotRole, BotStatus, BotState, Strategy, WalletStats, ChampionWallet } from './types';
 import { forgeEnterpriseAlpha } from './services/geminiService';
+import { ProductionDataService, RealTimeData } from './services/productionDataService';
 import Dashboard from './components/Dashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import WalletManager from './components/WalletManager';
@@ -10,7 +11,20 @@ import {
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  // Initialize with ZERO metrics for production deployment
+  // Production data service
+  const [productionService, setProductionService] = useState<ProductionDataService | null>(null);
+  const [realTimeData, setRealTimeData] = useState<RealTimeData>({
+    balance: '0.00',
+    profits: 0,
+    txCount: 0,
+    pairCount: 0,
+    strategyCount: 0,
+    blockNumber: 0,
+    gasPrice: '0',
+    validatedTransactions: 0
+  });
+
+  // Initialize with ZERO metrics - will be populated by real blockchain data
   const [bots, setBots] = useState<BotState[]>([
     { id: 'bot-1', role: BotRole.ORCHESTRATOR, status: BotStatus.IDLE, lastAction: 'Initializing...', uptime: 0, cpuUsage: 0 },
     { id: 'bot-2', role: BotRole.SCANNER, status: BotStatus.IDLE, lastAction: 'Standby', uptime: 0, cpuUsage: 0 },
@@ -20,7 +34,7 @@ const App: React.FC = () => {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [champions, setChampions] = useState<ChampionWallet[]>([]);
   
-  // Initialize wallet stats with ZERO values
+  // Initialize wallet stats with ZERO values - will be updated by real data
   const [wallet] = useState<WalletStats>({
     address: 'Not Connected',
     balance: '0.00 USDC',
@@ -32,6 +46,22 @@ const App: React.FC = () => {
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState<string>('');
   const [isEngineRunning, setIsEngineRunning] = useState(false);
+
+  // Initialize ProductionDataService on mount
+  useEffect(() => {
+    const initService = async () => {
+      try {
+        const service = new ProductionDataService('ARBITRUM_SEPOLIA');
+        await service.initialize();
+        setProductionService(service);
+        console.log('✅ ProductionDataService initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize ProductionDataService:', error);
+      }
+    };
+
+    initService();
+  }, []);
 
   const handleWalletChange = (address: string) => {
     setConnectedWallet(address);
@@ -72,7 +102,7 @@ const App: React.FC = () => {
 
     setIsAIThinking(true);
     const alpha = await forgeEnterpriseAlpha({ 
-      aave_liquidity: 0, // Start with zero, will be updated by real data
+      aave_liquidity: realTimeData.balance ? parseFloat(realTimeData.balance) : 0,
       active_integrations: ["1Click", "DexTools", "BitQuery", "EtherscanPro"],
       network_load: "Low",
       mempool_volatility: "0.00%"
@@ -83,27 +113,64 @@ const App: React.FC = () => {
     }
     
     setIsAIThinking(false);
-  }, [isEngineRunning]);
+  }, [isEngineRunning, realTimeData.balance]);
+
+  // Monitor wallet for real-time blockchain data
+  useEffect(() => {
+    if (!connectedWallet || !productionService || !isEngineRunning) {
+      return;
+    }
+
+    let cleanup: (() => void) | undefined;
+
+    const setupMonitoring = async () => {
+      try {
+        cleanup = await productionService.monitorWallet(connectedWallet, (data) => {
+          setRealTimeData(data);
+          
+          // Update bot CPU usage based on real activity
+          setBots(prev => prev.map(bot => ({
+            ...bot,
+            cpuUsage: bot.status !== BotStatus.IDLE ? Math.min(data.txCount * 2, 95) : 0,
+            status: bot.role === BotRole.SCANNER && data.pairCount > 0 ? BotStatus.SCANNING : 
+                    bot.role === BotRole.ORCHESTRATOR && data.strategyCount > 0 ? BotStatus.FORGING : 
+                    bot.role === BotRole.EXECUTOR && data.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
+          })));
+        });
+      } catch (error) {
+        console.error('Error setting up wallet monitoring:', error);
+      }
+    };
+
+    setupMonitoring();
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [connectedWallet, productionService, isEngineRunning]);
 
   useEffect(() => {
-    // Only start forging and bot updates when engine is running
+    // Only start forging when engine is running
     if (!isEngineRunning) {
       return;
     }
 
     runAlphaForge();
     
+    // Update bot status periodically based on real data
     const botInterval = setInterval(() => {
-      setBots(prev => prev.map(bot => ({
-        ...bot,
-        status: bot.role === BotRole.SCANNER ? BotStatus.SCANNING : 
-                bot.role === BotRole.ORCHESTRATOR ? BotStatus.FORGING : BotStatus.IDLE,
-        cpuUsage: Math.floor(Math.random() * 30) + 5 // Realistic CPU usage
-      })));
+      if (realTimeData.pairCount > 0 || realTimeData.txCount > 0) {
+        setBots(prev => prev.map(bot => ({
+          ...bot,
+          status: bot.role === BotRole.SCANNER && realTimeData.pairCount > 0 ? BotStatus.SCANNING : 
+                  bot.role === BotRole.ORCHESTRATOR && realTimeData.strategyCount > 0 ? BotStatus.FORGING : 
+                  bot.role === BotRole.EXECUTOR && realTimeData.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
+        })));
+      }
     }, 5000);
     
     return () => clearInterval(botInterval);
-  }, [runAlphaForge, isEngineRunning]);
+  }, [runAlphaForge, isEngineRunning, realTimeData]);
 
   return (
     <ErrorBoundary>
@@ -129,6 +196,31 @@ const App: React.FC = () => {
                   <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">Wallet Configuration</p>
                   <WalletManager onWalletChange={handleWalletChange} />
                 </div>
+
+                {/* Real-time Blockchain Stats */}
+                {isEngineRunning && (
+                  <div className="pt-6 border-t border-slate-900">
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">Live Blockchain Data</p>
+                    <div className="px-4 space-y-2">
+                      <div className="flex justify-between text-[8px]">
+                        <span className="text-slate-500 font-bold uppercase">Block</span>
+                        <span className="text-emerald-400 font-mono">#{realTimeData.blockNumber}</span>
+                      </div>
+                      <div className="flex justify-between text-[8px]">
+                        <span className="text-slate-500 font-bold uppercase">Gas</span>
+                        <span className="text-amber-400 font-mono">{parseFloat(realTimeData.gasPrice).toFixed(2)} Gwei</span>
+                      </div>
+                      <div className="flex justify-between text-[8px]">
+                        <span className="text-slate-500 font-bold uppercase">Pairs</span>
+                        <span className="text-indigo-400 font-mono">{realTimeData.pairCount}</span>
+                      </div>
+                      <div className="flex justify-between text-[8px]">
+                        <span className="text-slate-500 font-bold uppercase">Validated TX</span>
+                        <span className="text-cyan-400 font-mono">{realTimeData.validatedTransactions}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -158,15 +250,24 @@ const App: React.FC = () => {
               <div className="flex items-center gap-6">
                 {isAIThinking && <span className="text-[8px] text-indigo-400 font-black animate-pulse uppercase tracking-[0.2em]">AI Syncing Discovery...</span>}
                 <div className="text-right">
-                  <span className="text-[9px] text-slate-600 uppercase font-black">Cluster Yield</span>
-                  <p className="text-emerald-400 font-black text-xs leading-none">{wallet.totalProfit}</p>
+                  <span className="text-[9px] text-slate-600 uppercase font-black">Validated Profit</span>
+                  <p className="text-emerald-400 font-black text-xs leading-none">${realTimeData.profits.toFixed(2)} USDC</p>
                 </div>
               </div>
             </header>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
               <Routes>
-                <Route path="/" element={<Dashboard wallet={wallet} bots={bots} strategies={strategies} champions={champions} aiInsight="" />} />
+                <Route path="/" element={
+                  <Dashboard 
+                    wallet={wallet} 
+                    bots={bots} 
+                    strategies={strategies} 
+                    champions={champions} 
+                    aiInsight="" 
+                    realTimeData={realTimeData}
+                  />
+                } />
               </Routes>
             </div>
           </main>
