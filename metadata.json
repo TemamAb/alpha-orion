@@ -1,0 +1,5 @@
+{
+  "name": "ArbiNexus Enterprise - Flash Loan Arbitrage",
+  "description": "An enterprise-grade arbitrage platform featuring AI-driven strategy forging, gasless account abstraction via Pimlico, and a tri-tier bot system with multi-million dollar flash loan access.",
+  "requestFramePermissions": []
+}
