@@ -1,46 +1,28 @@
-Service
-alpha-orion
-Node
-Free
-Upgrade your instance
-
-Connect
-
-Manual Deploy
-Service ID:
-srv-d5gm7unfte5s73fnshm0
-
-TemamAb / alpha-orion
-main
-https://alpha-orion.onrender.com
-
-Your free instance will spin down with inactivity, which can delay requests by 50 seconds or more.
-Upgrade now
-January 11, 2026 at 6:52 AM
-building
-920eb17
-fix: Resolve Render deployment - Node v18 + build dependencies
-Cancel deploy
-
-All logs
-Search
-Search
-
-Live tail
-PST
-
-
-
-==> Cloning from https://github.com/TemamAb/alpha-orion
-==> Checking out commit 920eb17054adfbb551cd3eebe888dc46c99b568b in branch main
-==> Requesting Node.js version 18
-==> Using Node.js version 18.20.8 via /opt/render/project/src/.nvmrc
-==> Node.js version 18.20.8 has reached end-of-life.
-==> Upgrade to a maintained version to receive important security updates.
-==> Information on maintained Node.js versions: https://nodejs.org/en/about/previous-releases
-==> Docs on specifying a Node.js version: https://render.com/docs/node-version
-==> Running build command 'npm run build'...
-> arbinexus-enterprise---flash-loan-arbitrage@0.0.0 build
-> vite build
-sh: 1: vite: not found
-==> Build failed 😞
+Uploading build...
+==> Uploaded in 3.9s. Compression took 2.2s
+==> Build successful 🎉
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+==> Deploying...
+==> Running 'npm run start'
+npm error Missing script: "start"
+npm error
+npm error Did you mean one of these?
+npm error   npm star # Mark your favorite packages
+npm error   npm stars # View packages marked as favorites
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /opt/render/.cache/_logs/2026-01-11T16_04_20_510Z-debug-0.log
+==> No open ports detected, continuing to scan...
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+==> Running 'npm run start'
+npm error Missing script: "start"
+npm error
+npm error Did you mean one of these?
+npm error   npm star # Mark your favorite packages
+npm error   npm stars # View packages marked as favorites
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run

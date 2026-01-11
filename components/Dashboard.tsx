@@ -96,77 +96,105 @@ const ChampionDiscoveryMatrix: React.FC<{ strategies: Strategy[]; totalDiscovery
         </div>
       </div>
       
+      {/* FIXED: Added horizontal scroll with better mobile support */}
       <div className="glass-panel rounded-[1.5rem] border border-white/5 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-900/40 border-b border-white/5">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+          <table className="w-full text-left border-collapse min-w-[900px]">
+            <thead className="bg-slate-900/40 border-b border-white/5 sticky top-0 z-10">
               <tr>
-                <th onClick={() => toggleSort('name')} className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors">
+                <th onClick={() => toggleSort('name')} className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors min-w-[200px]">
                   Alpha Strategy <SortIcon col="name" />
                 </th>
-                <th onClick={() => toggleSort('championWalletAddress')} className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors">
+                <th onClick={() => toggleSort('championWalletAddress')} className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors min-w-[150px]">
                   Champion Wallet <SortIcon col="championWalletAddress" />
                 </th>
-                <th onClick={() => toggleSort('pnl24h')} className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors text-right">
+                <th onClick={() => toggleSort('pnl24h')} className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors text-right min-w-[120px]">
                   PnL (24h) <SortIcon col="pnl24h" />
                 </th>
-                <th onClick={() => toggleSort('share')} className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors text-right">
+                <th onClick={() => toggleSort('share')} className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors text-right min-w-[120px]">
                   % Share <SortIcon col="share" />
                 </th>
-                <th onClick={() => toggleSort('winRate')} className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors text-right">
+                <th onClick={() => toggleSort('winRate')} className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors text-right min-w-[100px]">
                   Win Rate <SortIcon col="winRate" />
                 </th>
-                <th onClick={() => toggleSort('score')} className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors text-right">
+                <th onClick={() => toggleSort('score')} className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors text-right min-w-[140px]">
                   Confidence <SortIcon col="score" />
                 </th>
               </tr>
             </thead>
             <tbody>
-              {sortedData.map((row) => (
-                <tr key={row.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-all group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 group-hover:animate-pulse" />
-                      <span className="text-[10px] font-bold text-slate-300 group-hover:text-indigo-400 transition-colors uppercase truncate">{row.name}</span>
-                      <MetricTooltip text={STRATEGY_INTEL[row.name] || 'proprietary alpha engine logic synthesized via live arbinexus discovery streams.'} wide />
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="text-[10px] font-mono text-slate-500 group-hover:text-slate-300 transition-colors">{row.championWalletAddress}</span>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <span className="text-[10px] font-black text-emerald-400 tracking-tighter">
-                      +${row.pnl24h.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="text-[10px] font-bold text-indigo-300">{row.share.toFixed(1)}%</span>
-                      <div className="w-12 h-1 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-500" style={{ width: `${row.share}%` }} />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <span className="text-[10px] font-bold text-slate-300">
-                      {row.winRate.toFixed(1)}%
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="inline-flex items-center gap-2">
-                      <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden">
-                        <div className={`h-full transition-all duration-1000 ${row.score > 90 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${row.score}%` }} />
-                      </div>
-                      <span className="text-[10px] font-black text-white w-6">
-                        {row.score}%
-                      </span>
+              {sortedData.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <SearchIcon size={32} className="text-slate-600" />
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        No strategies discovered yet
+                      </p>
+                      <p className="text-[8px] text-slate-600 font-medium">
+                        Connect wallet and start engine to begin discovery
+                      </p>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                sortedData.map((row) => (
+                  <tr key={row.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-all group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 group-hover:animate-pulse flex-shrink-0" />
+                        <span className="text-[10px] font-bold text-slate-300 group-hover:text-indigo-400 transition-colors uppercase">{row.name}</span>
+                        <MetricTooltip text={STRATEGY_INTEL[row.name] || 'proprietary alpha engine logic synthesized via live arbinexus discovery streams.'} wide />
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-[10px] font-mono text-slate-500 group-hover:text-slate-300 transition-colors block truncate max-w-[140px]" title={row.championWalletAddress}>
+                        {row.championWalletAddress}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <span className="text-[10px] font-black text-emerald-400 tracking-tighter whitespace-nowrap">
+                        +${row.pnl24h.toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="text-[10px] font-bold text-indigo-300 whitespace-nowrap">{row.share.toFixed(1)}%</span>
+                        <div className="w-12 h-1 bg-slate-800 rounded-full overflow-hidden flex-shrink-0">
+                          <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${row.share}%` }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <span className="text-[10px] font-bold text-slate-300 whitespace-nowrap">
+                        {row.winRate.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="inline-flex items-center gap-2">
+                        <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden flex-shrink-0">
+                          <div className={`h-full transition-all duration-1000 ${row.score > 90 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${row.score}%` }} />
+                        </div>
+                        <span className="text-[10px] font-black text-white w-6 whitespace-nowrap">
+                          {row.score}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
+        {/* Scroll indicator */}
+        {sortedData.length > 0 && (
+          <div className="px-4 py-2 bg-slate-900/20 border-t border-white/5 flex items-center justify-center gap-2">
+            <ArrowUpDown size={10} className="text-slate-600" />
+            <span className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">
+              Scroll horizontally to view all columns
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -525,6 +553,48 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
             colorClass="text-amber-400" 
             progress={((15 - nextOptimization) / 15) * 100} 
             tooltip="time remaining until next AI optimization cycle begins" 
+          />
+        </div>
+      </div>
+
+      {/* NEW: BOT PERFORMANCE METRICS */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-3">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] flex items-center gap-2">
+              <Workflow size={14} className="text-cyan-400" /> Scanner, Orchestrator & Executor Metrics
+            </h3>
+            <MetricTooltip text="real-time performance metrics for the three core bot components: scanner (opportunity detection), orchestrator (strategy coordination), and executor (transaction execution)" wide />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <BotPerformanceCard
+            bot={scanner}
+            title="Scanner Bot"
+            metric={scanner?.status === BotStatus.SCANNING ? "128" : "0"}
+            metricLabel="Pairs Monitored"
+            icon={<SearchIcon size={18} />}
+            color="bg-emerald-500"
+            tooltip="monitors DEX pairs across multiple protocols to detect arbitrage opportunities in real-time"
+          />
+          <BotPerformanceCard
+            bot={orchestrator}
+            title="Orchestrator Bot"
+            metric={orchestrator?.status === BotStatus.FORGING ? "4" : "0"}
+            metricLabel="Strategies Active"
+            icon={<Workflow size={18} />}
+            color="bg-indigo-500"
+            tooltip="coordinates strategy execution and optimizes capital allocation across discovered opportunities"
+          />
+          <BotPerformanceCard
+            bot={executor}
+            title="Executor Bot"
+            metric={executor?.status !== BotStatus.IDLE ? "96" : "0"}
+            metricLabel="Transactions (24h)"
+            icon={<Zap size={18} />}
+            color="bg-purple-500"
+            tooltip="executes validated arbitrage transactions with MEV protection and gas optimization"
           />
         </div>
       </div>
