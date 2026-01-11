@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BotState, WalletStats, Strategy, ChampionWallet, BotRole, BotStatus } from '../types';
 import { RealTimeData } from '../services/productionDataService';
+import DeploymentRegistry from './DeploymentRegistry';
 import { 
   Wallet, ShieldCheck, ArrowDownCircle, ChevronDown, Layers, 
   BarChart3, Gauge, Rocket, Clock, Boxes, 
@@ -817,6 +818,9 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
 
       {/* CORE ALPHA MATRIX - CENTERPIECE - Synchronized */}
       <ChampionDiscoveryMatrix strategies={strategies} totalDiscoveryPnL={totalDiscoveryPnL} />
+
+      {/* DEPLOYMENT REGISTRY */}
+      <DeploymentRegistry connectedWallet={wallet.address} />
 
       {/* YIELD TRANSFER SECTION */}
       <div className="glass-panel rounded-[1.5rem] border border-white/5 p-6 relative overflow-hidden bg-gradient-to-br from-slate-900/50 to-transparent">
