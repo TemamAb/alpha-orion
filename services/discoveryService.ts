@@ -7,37 +7,37 @@ import { Strategy, ChampionWallet } from '../types';
  * real arbitrage opportunities and champion wallets.
  */
 
-// Discovery Registry with API endpoints
+// Discovery Registry with API endpoints - Auto-enable if API keys are present
 export const DISCOVERY_SOURCES = {
   ONE_CLICK_ARBITRAGE: {
     id: '1CK-ENTERPRISE-SYNC-882',
     name: '1Click Arbitrage',
     endpoint: 'https://api.1click.io/v1/arbitrage',
-    enabled: false // Enable when API key available
+    enabled: !!(import.meta as any).env?.VITE_1CLICK_API_KEY
   },
   DEXTOOLS_PREMIUM: {
     id: 'DXT-ELITE-ALPHA-091',
     name: 'DexTools Premium',
     endpoint: 'https://api.dextools.io/v1/premium',
-    enabled: false
+    enabled: !!(import.meta as any).env?.VITE_DEXTOOLS_API_KEY
   },
   BITQUERY_V3: {
     id: 'BQ-REALTIME-MESH-772',
     name: 'BitQuery V3',
     endpoint: 'https://graphql.bitquery.io',
-    enabled: false
+    enabled: !!(import.meta as any).env?.VITE_BITQUERY_API_KEY
   },
   ETHERSCAN_PRO: {
     id: 'ETH-PRO-WHALE-TRACK-119',
     name: 'Etherscan Pro',
     endpoint: 'https://api.etherscan.io/api',
-    enabled: false
+    enabled: !!(import.meta as any).env?.VITE_ETHERSCAN_API_KEY
   },
   FLASHBOTS_RPC: {
     id: 'FB-PROTECT-RELAY-SYNC',
     name: 'Flashbots RPC',
     endpoint: 'https://relay.flashbots.net',
-    enabled: false
+    enabled: !!(import.meta as any).env?.VITE_FLASHBOTS_KEY
   }
 };
 
@@ -86,6 +86,36 @@ export class DiscoveryService {
   
   constructor() {
     this.apiKeys = new Map();
+    // Auto-load API keys from environment
+    this.loadApiKeysFromEnv();
+  }
+
+  /**
+   * Load API keys from environment variables
+   */
+  private loadApiKeysFromEnv(): void {
+    const env = (import.meta as any).env;
+    
+    if (env?.VITE_1CLICK_API_KEY) {
+      this.apiKeys.set('ONE_CLICK_ARBITRAGE', env.VITE_1CLICK_API_KEY);
+      console.log('✅ 1Click Arbitrage API key loaded');
+    }
+    if (env?.VITE_DEXTOOLS_API_KEY) {
+      this.apiKeys.set('DEXTOOLS_PREMIUM', env.VITE_DEXTOOLS_API_KEY);
+      console.log('✅ DexTools Premium API key loaded');
+    }
+    if (env?.VITE_BITQUERY_API_KEY) {
+      this.apiKeys.set('BITQUERY_V3', env.VITE_BITQUERY_API_KEY);
+      console.log('✅ BitQuery V3 API key loaded');
+    }
+    if (env?.VITE_ETHERSCAN_API_KEY) {
+      this.apiKeys.set('ETHERSCAN_PRO', env.VITE_ETHERSCAN_API_KEY);
+      console.log('✅ Etherscan Pro API key loaded');
+    }
+    if (env?.VITE_FLASHBOTS_KEY) {
+      this.apiKeys.set('FLASHBOTS_RPC', env.VITE_FLASHBOTS_KEY);
+      console.log('✅ Flashbots RPC key loaded');
+    }
   }
 
   /**
