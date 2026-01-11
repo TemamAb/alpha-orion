@@ -23,14 +23,17 @@ services:
       - key: LOG_LEVEL
         value: info
 
-  # Frontend Static Site
-  - type: static
+  # Frontend Web Service (serving static files)
+  - type: web
     name: arbinexus-enterprise
+    env: node
     region: oregon
     plan: free
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    startCommand: npm start
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: NODE_VERSION
         value: 20
       - key: VITE_API_URL

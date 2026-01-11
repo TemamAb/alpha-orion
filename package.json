@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "npx serve -s dist -l 3000",
     "install:deps": "npm install --include=dev"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.12.0",
+    "serve": "^14.2.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   },
