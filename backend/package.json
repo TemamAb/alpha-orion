@@ -4,11 +4,19 @@
   "description": "Backend API proxy for ArbiNexus Enterprise",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": "18.x",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": ["arbitrage", "flash-loan", "defi"],
+  "keywords": [
+    "arbitrage",
+    "flash-loan",
+    "defi"
+  ],
   "author": "ArbiNexus Team",
   "license": "MIT",
   "dependencies": {

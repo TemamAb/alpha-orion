@@ -1,0 +1,9 @@
+Cloning from https://github.com/TemamAb/alpha-orion
+==> Checking out commit 6f237245e5d11b4b835b9f293d68d89b7f1a3838 in branch main
+==> Using Node.js version 22.16.0 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm run build'...
+> arbinexus-enterprise---flash-loan-arbitrage@0.0.0 build
+> vite build
+sh: 1: vite: not found
+==> Build failed 😞
