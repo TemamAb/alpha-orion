@@ -1,4 +1,4 @@
-Services:
+services:
   # Backend API Service
   - type: web
     name: arbinexus-backend
