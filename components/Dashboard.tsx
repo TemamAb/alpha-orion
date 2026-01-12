@@ -31,7 +31,7 @@ const ETH_PRICE = 2642.50;
 const MetricTooltip: React.FC<{ text: string; wide?: boolean }> = ({ text, wide }) => (
   <div className="group relative inline-block ml-1.5 align-middle translate-y-[-1px]">
     <HelpCircle size={10} className="text-slate-600 hover:text-indigo-400 cursor-help transition-colors" />
-    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block ${wide ? 'w-80' : 'w-48'} p-3 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-[9999] pointer-events-none ring-1 ring-white/5`}>
+    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block ${wide ? 'w-80' : 'w-48'} p-3 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-[9999] pointer-events-none`}>
       <p className="text-[10px] leading-relaxed text-slate-300 font-medium lowercase">
         {text}
       </p>
@@ -41,13 +41,13 @@ const MetricTooltip: React.FC<{ text: string; wide?: boolean }> = ({ text, wide 
 );
 
 const STRATEGY_INTEL: Record<string, string> = {
-  'L2 Flash Arbitrage (Aave-Uni)': 'how: executes atomic cycles by borrowing usdc via aave v3 and swapping across uniswap l2 pools. why: selected for high-speed arb opportunities where slippage is below 0.01%. significance: accounts for 14.2% of l2 arbitrage volume; captures ~$1.2m in daily inefficient spreads.',
+  'L2 Flash Arbitrage (Aave-Uni)': 'how: executes atomic cycles by borrowing usdc via aave v3 and swapping across uniswap l2 pools. why: selected for high-speed arb opportunities where slippage is below 0.01 percent. significance: accounts for 14.2 percent of l2 arbitrage volume; captures approximately $1.2 million in daily inefficient spreads.',
   'Cross-Dex Rebalance (Eth-Usdc)': 'how: simultaneous multi-dex price equalization. why: chosen to exploit liquidity fragmentation across sushiswap and balancer. significance: essential for defi price discovery; yields average net profit of 82bps per successful rebalance event.',
   'Mempool Front-run Protection': 'how: bundles useroperations through flashbots private relays. why: eliminates public exposure to toxic sandwich bots. significance: saves institutional users 15-40bps in mev leakage; vital for maintaining execution integrity on large swaps.',
-  'Stabilizer Alpha #09': 'how: algorithmic smoothing of volatile pairs using jit liquidity. why: high-resilience alpha during peak network congestion. significance: generates consistent 12% apr by capturing micro-volatility noise that manual traders miss.',
-  'L2 Sequential Executor': 'how: chains atomic swaps across multiple l2 rollups via cross-chain messaging. why: capitalizes on price lag between arbitrum and base. significance: institutional-grade bridging arb; captures 0.5% profit on 60% of cross-chain lag events.',
-  'Delta Neutral Forge': 'how: hedges spot exposure with short perpetuals to neutralize market risk. why: provides pure alpha from funding rates and basis spreads. significance: yields 8-15% returns uncorrelated to eth price action; lowers portfolio beta to near-zero.',
-  'Shadow Mempool Sweep': 'how: monitors pending transactions to predict price shifts before block confirmation. why: highest precision alpha requiring ultra-low latency telemetry. significance: accounts for the top 5% of hft profits in the mev ecosystem.'
+  'Stabilizer Alpha #09': 'how: algorithmic smoothing of volatile pairs using jit liquidity. why: high-resilience alpha during peak network congestion. significance: generates consistent 12 percent apr by capturing micro-volatility noise that manual traders miss.',
+  'L2 Sequential Executor': 'how: chains atomic swaps across multiple l2 rollups via cross-chain messaging. why: capitalizes on price lag between arbitrum and base. significance: institutional-grade bridging arb; captures 0.5 percent profit on 60 percent of cross-chain lag events.',
+  'Delta Neutral Forge': 'how: hedges spot exposure with short perpetuals to neutralize market risk. why: provides pure alpha from funding rates and basis spreads. significance: yields 8-15 percent returns uncorrelated to eth price action; lowers portfolio beta to near-zero.',
+  'Shadow Mempool Sweep': 'how: monitors pending transactions to predict price shifts before block confirmation. why: highest precision alpha requiring ultra-low latency telemetry. significance: accounts for the top 5 percent of hft profits in the mev ecosystem.'
 };
 
 const ChampionDiscoveryMatrix: React.FC<{ strategies: Strategy[]; totalDiscoveryPnL: number }> = ({ strategies, totalDiscoveryPnL }) => {
