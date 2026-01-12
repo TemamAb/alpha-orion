@@ -10,7 +10,18 @@ export const forgeEnterpriseAlpha = async (marketContext: any): Promise<{ strate
   try {
     console.log('🔮 Requesting alpha forging from backend API...');
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    let apiUrl = 'http://localhost:3001';
+
+    // Intelligent Backend Discovery
+    if (import.meta.env.VITE_API_URL) {
+      apiUrl = import.meta.env.VITE_API_URL;
+    } else if (typeof window !== 'undefined') {
+      const { hostname } = window.location;
+      // In production (not localhost), use relative path
+      if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        apiUrl = '';
+      }
+    }
 
     const response = await fetch(`${apiUrl}/api/forge-alpha`, {
       method: 'POST',
@@ -42,10 +53,10 @@ export const chatWithAI = async (query: string, systemContext: any): Promise<str
     if (import.meta.env.VITE_API_URL) {
       apiUrl = import.meta.env.VITE_API_URL;
     } else if (typeof window !== 'undefined') {
-      const { hostname, protocol, port } = window.location;
-      // In production (not localhost), assume backend is relative or on the same domain
+      const { hostname } = window.location;
+      // In production (not localhost), use relative path
       if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        apiUrl = ''; // Use relative path for production (monolithic serving)
+        apiUrl = '';
       }
     }
 
@@ -58,6 +69,12 @@ export const chatWithAI = async (query: string, systemContext: any): Promise<str
     });
 
     if (!response.ok) {
+      console.error('AI Response Error:', response.status, response.statusText);
+      const text = await response.text();
+      // Throw explicit error if HTML returned (black screen indicator)
+      if (text.startsWith('<')) {
+        throw new Error('Received HTML instead of JSON. Backend may be offline or Misconfigured.');
+      }
       throw new Error(`AI Terminal API error: ${response.statusText}`);
     }
 
@@ -65,6 +82,11 @@ export const chatWithAI = async (query: string, systemContext: any): Promise<str
     return data.response;
   } catch (error: any) {
     console.error('❌ AI Terminal communication failed:', error.message);
-    return "I apologize, but I am currently experiencing an interruption in my core intelligence uplink. Please verify backend connectivity.";
+
+    if (error.message.includes('Failed to fetch')) {
+      return "⚠️ **Connection Error**: I cannot reach the backend cluster. Ensure the backend server is running and `VITE_API_URL` is correctly configured in your environment.";
+    }
+
+    return `🤖 **Intelligence Uplink Interrupted**: ${error.message}`;
   }
 };
