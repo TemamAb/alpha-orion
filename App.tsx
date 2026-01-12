@@ -7,9 +7,9 @@ import Dashboard from './components/Dashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import WalletManager from './components/WalletManager';
 import AITerminal from './components/AITerminal';
-import { 
-  Sparkles, LayoutDashboard, Gauge, Cpu, Activity, Clock, Fuel, 
-  PieChart, Target, Database, Zap, Terminal, Wallet, Rocket, Menu, X
+import {
+  Sparkles, LayoutDashboard, Gauge, Cpu, Activity, Clock, Fuel,
+  PieChart, Target, Database, Zap, Terminal, Wallet, Rocket, Menu, X, ShieldCheck
 } from 'lucide-react';
 
 type MetricView =
