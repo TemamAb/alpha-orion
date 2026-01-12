@@ -150,14 +150,47 @@ export class MempoolService {
     }
   }
 
+  private monitoringInterval: any = null;
+
   /**
    * Start monitoring loop
    */
   startMonitoring(interval: number = 10000): void { // 10 seconds
-    setInterval(async () => {
+    if (this.monitoringInterval) return;
+
+    this.monitoringInterval = setInterval(async () => {
       await this.monitorMempool();
       this.clearOldData();
     }, interval);
+  }
+
+  /**
+   * Stop monitoring loop
+   */
+  stopMonitoring(): void {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
+    }
+  }
+
+  /**
+   * Get recent volatility signals
+   */
+  getRecentSignals(): PricePrediction[] {
+    return Array.from(this.pricePredictions.values())
+      .filter(p => p.confidence > 50)
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  /**
+   * Get mempool statistics
+   */
+  getMempoolStats(): { txCount: number; highValueTxCount: number } {
+    return {
+      txCount: this.monitoredTransactions.length,
+      highValueTxCount: this.analyzeLargeTransactions(10).length
+    };
   }
 }
 

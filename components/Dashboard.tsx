@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { BotState, WalletStats, Strategy, ChampionWallet, BotRole, BotStatus } from '../types';
 import { RealTimeData } from '../services/productionDataService';
 import DeploymentRegistry from './DeploymentRegistry';
-import { 
-  Wallet, ShieldCheck, ArrowDownCircle, ChevronDown, Layers, 
-  BarChart3, Gauge, Rocket, Clock, Boxes, 
-  Terminal, Workflow, Cpu as CpuIcon2, 
-  Search as SearchIcon, Lock, RefreshCw, Check, History, 
+import {
+  Wallet, ShieldCheck, ArrowDownCircle, ChevronDown, Layers,
+  BarChart3, Gauge, Rocket, Clock, Boxes,
+  Terminal, Workflow, Cpu as CpuIcon2,
+  Search as SearchIcon, Lock, RefreshCw, Check, History,
   TrendingUp, Activity, Zap, Landmark, Info, Database,
   Fuel, Milestone, Percent, Save, HelpCircle,
   Grid3X3, Focus, ZapOff, Globe, ArrowUpDown, ChevronUp, Target, PieChart, Sparkles
@@ -26,7 +26,7 @@ type Currency = 'USD' | 'ETH';
 type WithdrawalMode = 'manual' | 'auto';
 type SortKey = 'name' | 'championWalletAddress' | 'pnl24h' | 'winRate' | 'score' | 'share';
 
-const ETH_PRICE = 2642.50; 
+const ETH_PRICE = 2642.50;
 
 const MetricTooltip: React.FC<{ text: string; wide?: boolean }> = ({ text, wide }) => (
   <div className="group relative inline-block ml-1.5 align-middle translate-y-[-1px]">
@@ -58,7 +58,7 @@ const ChampionDiscoveryMatrix: React.FC<{ strategies: Strategy[]; totalDiscovery
       ...s,
       share: totalDiscoveryPnL > 0 ? (s.pnl24h / totalDiscoveryPnL) * 100 : 0
     }));
-    
+
     sortable.sort((a, b) => {
       const valA = a[sortConfig.key];
       const valB = b[sortConfig.key];
@@ -94,12 +94,13 @@ const ChampionDiscoveryMatrix: React.FC<{ strategies: Strategy[]; totalDiscovery
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-             <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest block">AI Cluster Discovery Target</span>
-             <span className="text-[11px] font-black text-emerald-400 tracking-tighter">${totalDiscoveryPnL.toLocaleString()} USDC</span>
+            <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest block">AI Cluster Discovery Target</span>
+            <span className="text-[11px] font-black text-emerald-400 tracking-tighter">${totalDiscoveryPnL.toLocaleString()} USDC</span>
+            <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest block mt-1">Enterprise Mode Active</span>
           </div>
         </div>
       </div>
-      
+
       {/* FIXED: Added horizontal scroll with better mobile support */}
       <div className="glass-panel rounded-[1.5rem] border border-white border-opacity-5 overflow-hidden">
         <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
@@ -230,9 +231,9 @@ const StatCard: React.FC<{
     {progress !== undefined && (
       <div className="mt-3">
         <div className="w-full h-1 bg-white/[0.03] rounded-full overflow-hidden">
-          <div 
-            className={`h-full ${colorClass.replace('text-', 'bg-')} transition-all duration-1000 ease-out`} 
-            style={{ width: `${Math.min(progress, 100)}%` }} 
+          <div
+            className={`h-full ${colorClass.replace('text-', 'bg-')} transition-all duration-1000 ease-out`}
+            style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
       </div>
@@ -307,7 +308,7 @@ const BotPerformanceCard: React.FC<{
         <span className="text-[8px] text-slate-600 font-bold mt-1">CPU: {bot?.cpuUsage || 0}%</span>
       </div>
     </div>
-    
+
     <div className="space-y-1 mb-4">
       <div className="flex items-center">
         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{title}</h4>
@@ -320,9 +321,9 @@ const BotPerformanceCard: React.FC<{
     </div>
 
     <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-      <div 
-        className={`h-full ${color} transition-all duration-1000 ease-out`} 
-        style={{ width: `${bot?.cpuUsage || 0}%` }} 
+      <div
+        className={`h-full ${color} transition-all duration-1000 ease-out`}
+        style={{ width: `${bot?.cpuUsage || 0}%` }}
       />
     </div>
   </div>
@@ -331,10 +332,10 @@ const BotPerformanceCard: React.FC<{
 const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champions, realTimeData, activeView = 'core-metrics' }) => {
   const [currency, setCurrency] = useState<Currency>('USD');
   const [withdrawalMode, setWithdrawalMode] = useState<WithdrawalMode>('manual');
-  
+
   const [manualAddress, setManualAddress] = useState(wallet.address);
   const [autoAddress, setAutoAddress] = useState(wallet.address);
-  const [autoThreshold, setAutoThreshold] = useState(100000); 
+  const [autoThreshold, setAutoThreshold] = useState(100000);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [lastWithdrawal, setLastWithdrawal] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -343,14 +344,14 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
   // Refresh interval state
   const [refreshInterval, setRefreshInterval] = useState(30);
   const [showRefreshDropdown, setShowRefreshDropdown] = useState(false);
-  
+
   // Profit reinvestment state
   const [reinvestmentPercent, setReinvestmentPercent] = useState(100);
   const [hasUnsavedReinvestment, setHasUnsavedReinvestment] = useState(false);
 
   // ✅ REAL DATA: Use validated profits from blockchain
   const currentProfit = realTimeData.profits;
-  
+
   // ✅ REAL DATA: Calculate from actual validated transactions
   const aiOptimizationRuns = realTimeData.validatedTransactions;
   const totalGains = realTimeData.profits;
@@ -426,7 +427,7 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
   } else if (isWithdrawing) {
     buttonClass = 'bg-amber-500 text-white animate-pulse';
   }
-const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' : 'Auto Pilot Active') : (isWithdrawing ? 'Processing...' : 'Transfer Yield (' + currency + ')');
+  const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' : 'Auto Pilot Active') : (isWithdrawing ? 'Processing...' : 'Transfer Yield (' + currency + ')');
   const buttonIcon = isWithdrawing ? <RefreshCw size={14} className="animate-spin" /> : withdrawalMode === 'auto' ? <ShieldCheck size={14} /> : <ArrowDownCircle size={14} />;
 
   return (
@@ -468,7 +469,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
             </span>
             <ChevronDown size={12} className={`text-slate-500 transition-transform ${showRefreshDropdown ? 'rotate-180' : ''}`} />
           </button>
-          
+
           {showRefreshDropdown && (
             <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-white border-opacity-10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
               {[5, 10, 15, 30, 60].map((interval) => (
@@ -478,11 +479,10 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
                     setRefreshInterval(interval);
                     setShowRefreshDropdown(false);
                   }}
-                  className={`w-full px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest transition-all ${
-                    refreshInterval === interval
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                  }`}
+                  className={`w-full px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest transition-all ${refreshInterval === interval
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
                 >
                   {interval} seconds
                 </button>
@@ -495,14 +495,14 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
       {/* CORE METRICS GRID - Fully Synchronized with Matrix Discovery */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Earnings Speed" value={format(hourlyVelocity, 3)} subLabel="USD / Hour" icon={<Rocket />} colorClass="text-cyan-400" progress={75} tooltip="real-time projected profit velocity per hour across all active nodes" />
-        <StatCard 
-          label="Daily Goal" 
-          value={`${totalDiscoveryPnL > 0 ? ((currentProfit / totalDiscoveryPnL) * 100).toFixed(1) : '0.0'}%`} 
-          subLabel={`${format(totalDiscoveryPnL)} Target`} 
-          icon={<BarChart3 />} 
-          colorClass="text-emerald-400" 
-          progress={totalDiscoveryPnL > 0 ? (currentProfit / totalDiscoveryPnL) * 100 : 0} 
-          tooltip="synchronized achievement tracking: percentage of total profit target achieved from the AI discovery matrix." 
+        <StatCard
+          label="Daily Goal"
+          value={`${totalDiscoveryPnL > 0 ? ((currentProfit / totalDiscoveryPnL) * 100).toFixed(1) : '0.0'}%`}
+          subLabel={`${format(totalDiscoveryPnL)} Target`}
+          icon={<BarChart3 />}
+          colorClass="text-emerald-400"
+          progress={totalDiscoveryPnL > 0 ? (currentProfit / totalDiscoveryPnL) * 100 : 0}
+          tooltip="synchronized achievement tracking: percentage of total profit target achieved from the AI discovery matrix."
         />
         <StatCard label="AI Precision" value="94.2%" subLabel="Match Rate" icon={<Gauge />} colorClass="text-amber-400" progress={94.2} tooltip="confidence score of forged strategies based on backtested mempool simulation" />
         <StatCard label="Active Units" value={activeUnits.toString()} subLabel="Connected Nodes" icon={<Boxes />} colorClass="text-indigo-400" progress={(activeUnits / champions.length) * 100} tooltip="count of champion wallets currently forged and optimized for live execution" />
@@ -734,29 +734,29 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               label="MEV Protection Rate"
-              value="95.2%"
+              value={`${realTimeData.mevProtectionRate.toFixed(1)}%`}
               subLabel="Attack Prevention"
               icon={<ShieldCheck />}
               colorClass="text-red-400"
-              progress={95.2}
+              progress={realTimeData.mevProtectionRate}
               tooltip="overall effectiveness of MEV protection mechanisms - percentage of potential attacks successfully blocked"
             />
             <StatCard
               label="Attacks Blocked (24h)"
-              value="12"
+              value={realTimeData.attemptsBlocked.toString()}
               subLabel="MEV Incidents"
               icon={<ZapOff />}
               colorClass="text-emerald-400"
-              progress={85}
+              progress={Math.min(realTimeData.attemptsBlocked * 10, 100)}
               tooltip="number of MEV attacks detected and blocked in the last 24 hours - frontruns, sandwiches, and backruns"
             />
             <StatCard
               label="Loss Prevented"
-              value="$2,847"
+              value={`$${realTimeData.lossPrevented.toLocaleString()}`}
               subLabel="24h Savings"
               icon={<Save />}
               colorClass="text-cyan-400"
-              progress={92}
+              progress={Math.min(realTimeData.lossPrevented / 100, 100)}
               tooltip="total USD value of potential losses prevented through MEV protection in the last 24 hours"
             />
             <StatCard
@@ -773,29 +773,29 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               label="Sandwich Prevention"
-              value="98.1%"
+              value={`${realTimeData.sandwichPreventionRate.toFixed(1)}%`}
               subLabel="Attack Mitigation"
               icon={<Layers />}
               colorClass="text-amber-400"
-              progress={98.1}
+              progress={realTimeData.sandwichPreventionRate}
               tooltip="effectiveness of sandwich attack prevention through slippage protection and gas optimization"
             />
             <StatCard
               label="Frontrun Protection"
-              value="96.7%"
+              value={`${realTimeData.frontrunProtectionRate.toFixed(1)}%`}
               subLabel="Priority Defense"
               icon={<ArrowUpDown />}
               colorClass="text-purple-400"
-              progress={96.7}
+              progress={realTimeData.frontrunProtectionRate}
               tooltip="protection rate against frontrunning attacks using private mempool and transaction encryption"
             />
             <StatCard
               label="Backrun Defense"
-              value="94.3%"
+              value={`${realTimeData.backrunDefenseRate.toFixed(1)}%`}
               subLabel="Post-Attack Shield"
               icon={<Activity />}
               colorClass="text-rose-400"
-              progress={94.3}
+              progress={realTimeData.backrunDefenseRate}
               tooltip="effectiveness of backrunning attack prevention through atomic execution and flash loan bundling"
             />
             <StatCard
@@ -814,126 +814,126 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
       {/* NEW: PROFIT REINVESTMENT CONTROL */}
       {activeView === 'profit-reinvestment' && (
         <div className="glass-panel rounded-[1.5rem] border border-white/5 p-6 relative overflow-hidden bg-gradient-to-br from-slate-900/50 to-transparent">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/10 shadow-inner">
-              <PieChart size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-md font-bold text-white uppercase tracking-tight">Profit Reinvestment</h3>
-                <MetricTooltip text="configure what percentage of profits are automatically reinvested into active strategies vs. withdrawn to your wallet" />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/10 shadow-inner">
+                <PieChart size={20} />
               </div>
-              <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Automated Capital Allocation</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 px-4 py-2 bg-slate-900 border border-white/5 rounded-xl">
-            <Percent size={14} className="text-emerald-400" />
-            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
-              Current: {reinvestmentPercent}%
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Slider Control */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Reinvestment Rate</span>
+              <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl font-black text-emerald-400 tracking-tight">{reinvestmentPercent}%</span>
+                  <h3 className="text-md font-bold text-white uppercase tracking-tight">Profit Reinvestment</h3>
+                  <MetricTooltip text="configure what percentage of profits are automatically reinvested into active strategies vs. withdrawn to your wallet" />
                 </div>
-              </div>
-              
-              <div className="relative">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={reinvestmentPercent}
-                  onChange={(e) => {
-                    setReinvestmentPercent(Number(e.target.value));
-                    setHasUnsavedReinvestment(true);
-                  }}
-                  className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500 slider-thumb"
-                  style={{
-                    background: 'linear-gradient(to right, rgb(16, 185, 129) 0%, rgb(16, 185, 129) ' + reinvestmentPercent + '%, rgb(30, 41, 59) ' + reinvestmentPercent + '%, rgb(30, 41, 59) 100%)'
-                  }}
-                />
-                <div className="flex justify-between mt-2 text-[8px] font-bold text-slate-600 uppercase tracking-widest">
-                  <span>0% (All Withdraw)</span>
-                  <span>50% (Balanced)</span>
-                  <span>100% (Full Reinvest)</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="p-4 bg-white bg-opacity-[0.01] border border-white/5 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ArrowDownCircle size={12} className="text-indigo-400" />
-                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Withdrawal</span>
-                  </div>
-                  <div className="text-lg font-black text-white tracking-tight">{100 - reinvestmentPercent}%</div>
-                  <p className="text-[8px] text-slate-600 font-bold mt-1">To Wallet</p>
-                </div>
-                <div className="p-4 bg-white bg-opacity-[0.01] border border-white/5 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2">
-                    <RefreshCw size={12} className="text-emerald-400" />
-                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Reinvestment</span>
-                  </div>
-                  <div className="text-lg font-black text-emerald-400 tracking-tight">{reinvestmentPercent}%</div>
-                  <p className="text-[8px] text-slate-600 font-bold mt-1">To Strategies</p>
-                </div>
+                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Automated Capital Allocation</p>
               </div>
             </div>
 
-            {/* Info & Save Panel */}
-            <div className="space-y-4">
-              <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
-                <div className="flex items-start gap-2 mb-3">
-                  <Info size={14} className="text-indigo-400 mt-0.5" />
-                  <div>
-                    <h4 className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">How It Works</h4>
-                    <p className="text-[8px] text-slate-400 leading-relaxed">
-                      Profits are automatically split based on your selected percentage. Reinvested funds compound your strategy positions for exponential growth.
-                    </p>
+            <div className="flex items-center gap-3 px-4 py-2 bg-slate-900 border border-white/5 rounded-xl">
+              <Percent size={14} className="text-emerald-400" />
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
+                Current: {reinvestmentPercent}%
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Slider Control */}
+              <div className="lg:col-span-2 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Reinvestment Rate</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-black text-emerald-400 tracking-tight">{reinvestmentPercent}%</span>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={reinvestmentPercent}
+                    onChange={(e) => {
+                      setReinvestmentPercent(Number(e.target.value));
+                      setHasUnsavedReinvestment(true);
+                    }}
+                    className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500 slider-thumb"
+                    style={{
+                      background: 'linear-gradient(to right, rgb(16, 185, 129) 0%, rgb(16, 185, 129) ' + reinvestmentPercent + '%, rgb(30, 41, 59) ' + reinvestmentPercent + '%, rgb(30, 41, 59) 100%)'
+                    }}
+                  />
+                  <div className="flex justify-between mt-2 text-[8px] font-bold text-slate-600 uppercase tracking-widest">
+                    <span>0% (All Withdraw)</span>
+                    <span>50% (Balanced)</span>
+                    <span>100% (Full Reinvest)</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-6">
+                  <div className="p-4 bg-white bg-opacity-[0.01] border border-white/5 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ArrowDownCircle size={12} className="text-indigo-400" />
+                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Withdrawal</span>
+                    </div>
+                    <div className="text-lg font-black text-white tracking-tight">{100 - reinvestmentPercent}%</div>
+                    <p className="text-[8px] text-slate-600 font-bold mt-1">To Wallet</p>
+                  </div>
+                  <div className="p-4 bg-white bg-opacity-[0.01] border border-white/5 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <RefreshCw size={12} className="text-emerald-400" />
+                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Reinvestment</span>
+                    </div>
+                    <div className="text-lg font-black text-emerald-400 tracking-tight">{reinvestmentPercent}%</div>
+                    <p className="text-[8px] text-slate-600 font-bold mt-1">To Strategies</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 bg-white bg-opacity-[0.01] border border-white/5 rounded-xl space-y-3">
-                <div className="flex justify-between text-[8px] font-bold uppercase tracking-widest">
-                  <span className="text-slate-500">Est. Daily Reinvest</span>
-                  <span className="text-emerald-400">${((totalDailyProfit * reinvestmentPercent) / 100).toFixed(2)}</span>
+              {/* Info & Save Panel */}
+              <div className="space-y-4">
+                <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
+                  <div className="flex items-start gap-2 mb-3">
+                    <Info size={14} className="text-indigo-400 mt-0.5" />
+                    <div>
+                      <h4 className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">How It Works</h4>
+                      <p className="text-[8px] text-slate-400 leading-relaxed">
+                        Profits are automatically split based on your selected percentage. Reinvested funds compound your strategy positions for exponential growth.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between text-[8px] font-bold uppercase tracking-widest">
-                  <span className="text-slate-500">Est. Daily Withdraw</span>
-                  <span className="text-indigo-400">${((totalDailyProfit * (100 - reinvestmentPercent)) / 100).toFixed(2)}</span>
-                </div>
-              </div>
 
-              {hasUnsavedReinvestment && (
-                <button 
-                  onClick={saveReinvestmentSettings}
-                  className="w-full flex items-center justify-center gap-2 text-[9px] font-black text-white bg-emerald-600 hover:bg-emerald-500 px-6 py-4 rounded-xl transition-all uppercase tracking-[0.2em] shadow-lg shadow-emerald-600/20 animate-in fade-in slide-in-from-bottom-2"
-                >
-                  <Save size={14} /> Save Reinvestment Settings
-                </button>
-              )}
-              
-              {!hasUnsavedReinvestment && (
-                <div className="flex items-center justify-center gap-2 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
-                  <Check size={14} className="text-emerald-400" />
-                  <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Settings Saved</span>
+                <div className="p-4 bg-white bg-opacity-[0.01] border border-white/5 rounded-xl space-y-3">
+                  <div className="flex justify-between text-[8px] font-bold uppercase tracking-widest">
+                    <span className="text-slate-500">Est. Daily Reinvest</span>
+                    <span className="text-emerald-400">${((totalDailyProfit * reinvestmentPercent) / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-[8px] font-bold uppercase tracking-widest">
+                    <span className="text-slate-500">Est. Daily Withdraw</span>
+                    <span className="text-indigo-400">${((totalDailyProfit * (100 - reinvestmentPercent)) / 100).toFixed(2)}</span>
+                  </div>
                 </div>
-              )}
+
+                {hasUnsavedReinvestment && (
+                  <button
+                    onClick={saveReinvestmentSettings}
+                    className="w-full flex items-center justify-center gap-2 text-[9px] font-black text-white bg-emerald-600 hover:bg-emerald-500 px-6 py-4 rounded-xl transition-all uppercase tracking-[0.2em] shadow-lg shadow-emerald-600/20 animate-in fade-in slide-in-from-bottom-2"
+                  >
+                    <Save size={14} /> Save Reinvestment Settings
+                  </button>
+                )}
+
+                {!hasUnsavedReinvestment && (
+                  <div className="flex items-center justify-center gap-2 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
+                    <Check size={14} className="text-emerald-400" />
+                    <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Settings Saved</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* CORE ALPHA MATRIX - CENTERPIECE - Synchronized */}
@@ -949,127 +949,130 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
       {/* YIELD TRANSFER SECTION */}
       {activeView === 'profit-withdrawal' && (
         <div className="glass-panel rounded-[1.5rem] border border-white/5 p-6 relative overflow-hidden bg-gradient-to-br from-slate-900/50 to-transparent">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-400 border border-indigo-500/10 shadow-inner">
-              <Wallet size={20} />
-            </div>
-            <div>
-              <h3 className="text-md font-bold text-white uppercase tracking-tight">Transfer Yield</h3>
-              <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Enterprise Sync: <span className="text-white font-mono">{formatAddress(wallet.address)}</span></p>
-            </div>
-          </div>
-
-          <div className="flex p-1 bg-slate-900 border border-white/5 rounded-xl">
-            <button onClick={() => { setWithdrawalMode('manual'); setShowConfirm(false); }} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${withdrawalMode === 'manual' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-400'}`}>Manual</button>
-            <button onClick={() => { setWithdrawalMode('auto'); setShowConfirm(false); }} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${withdrawalMode === 'auto' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-400'}`}>Auto-Pilot</button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-6">
-            <div className="p-5 bg-white bg-opacity-[0.01] border border-white/5 rounded-2xl">
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Settled Balance</span>
-              <div className="flex items-baseline gap-2">
-                <h4 className="text-2xl font-black text-white tracking-tight">{format(currentProfit).replace('ETH', '').replace('$', '')}</h4>
-                <span className="text-xs font-bold text-indigo-400">{currency}</span>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-400 border border-indigo-500/10 shadow-inner">
+                <Wallet size={20} />
+              </div>
+              <div>
+                <h3 className="text-md font-bold text-white uppercase tracking-tight">Transfer Yield</h3>
+                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Enterprise Sync: <span className="text-white font-mono">{formatAddress(wallet.address)}</span></p>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Settlement Address</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={12} />
-                <input 
-                  type="text" 
-                  value={withdrawalMode === 'manual' ? manualAddress : autoAddress}
-                  onChange={(e) => {
-                    if (withdrawalMode === 'manual') setManualAddress(e.target.value);
-                    else { setAutoAddress(e.target.value); setHasUnsavedAuto(true); }
-                  }}
-                  placeholder="0x..."
-                  className="w-full bg-slate-900 border border-white/5 rounded-xl py-3 pl-9 pr-4 text-[11px] font-mono text-white focus:outline-none focus:border-indigo-500/50 transition-all"
-                />
-              </div>
-              <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">
-                Targeted: {formatAddress(withdrawalMode === 'manual' ? manualAddress : autoAddress)}
-              </p>
+            <div className="flex p-1 bg-slate-900 border border-white/5 rounded-xl">
+              <button onClick={() => { setWithdrawalMode('manual'); setShowConfirm(false); }} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${withdrawalMode === 'manual' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-400'}`}>Manual</button>
+              <button onClick={() => { setWithdrawalMode('auto'); setShowConfirm(false); }} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${withdrawalMode === 'auto' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-400'}`}>Auto-Pilot</button>
             </div>
+          </div>
 
-            {withdrawalMode === 'auto' && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                  <span>Transfer Threshold</span>
-                  <span className="text-indigo-400">{format(autoThreshold)}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div className="p-5 bg-white bg-opacity-[0.01] border border-white/5 rounded-2xl">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Settled Balance</span>
+                <div className="flex items-baseline gap-2">
+                  <h4 className="text-2xl font-black text-white tracking-tight">{format(currentProfit).replace('ETH', '').replace('$', '')}</h4>
+                  <span className="text-xs font-bold text-indigo-400">{currency}</span>
                 </div>
-                <input type="range" min="10000" max="500000" step="5000" value={autoThreshold} 
-                  onChange={(e) => { setAutoThreshold(Number(e.target.value)); setHasUnsavedAuto(true); }}
-                  className="w-full h-1 bg-slate-800 rounded-full appearance-none cursor-pointer accent-indigo-500" 
-                />
-                {hasUnsavedAuto && (
-                  <button onClick={saveAutoSettings} className="flex items-center justify-center gap-2 text-[9px] font-black text-white bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl transition-all uppercase tracking-[0.2em] w-full shadow-lg shadow-indigo-600/20">
-                    <Save size={14} /> Save Configuration
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Settlement Address</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={12} />
+                  <input
+                    type="text"
+                    value={withdrawalMode === 'manual' ? manualAddress : autoAddress}
+                    onChange={(e) => {
+                      if (withdrawalMode === 'manual') setManualAddress(e.target.value);
+                      else { setAutoAddress(e.target.value); setHasUnsavedAuto(true); }
+                    }}
+                    placeholder="0x..."
+                    className="w-full bg-slate-900 border border-white/5 rounded-xl py-3 pl-9 pr-4 text-[11px] font-mono text-white focus:outline-none focus:border-indigo-500/50 transition-all"
+                  />
+                </div>
+                <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">
+                  Targeted: {formatAddress(withdrawalMode === 'manual' ? manualAddress : autoAddress)}
+                </p>
+              </div>
+
+              {withdrawalMode === 'auto' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                    <span>Transfer Threshold</span>
+                    <span className="text-indigo-400">{format(autoThreshold)}</span>
+                  </div>
+                  <input type="range" min="10000" max="500000" step="5000" value={autoThreshold}
+                    onChange={(e) => { setAutoThreshold(Number(e.target.value)); setHasUnsavedAuto(true); }}
+                    className="w-full h-1 bg-slate-800 rounded-full appearance-none cursor-pointer accent-indigo-500"
+                  />
+                  {hasUnsavedAuto && (
+                    <button onClick={saveAutoSettings} className="flex items-center justify-center gap-2 text-[9px] font-black text-white bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl transition-all uppercase tracking-[0.2em] w-full shadow-lg shadow-indigo-600/20">
+                      <Save size={14} /> Save Configuration
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">
+                  <span>Recent History</span>
+                  <span className="text-indigo-400 flex items-center gap-1.5"><History size={10} /> Live v4.2</span>
+                </div>
+                {lastWithdrawal ? (
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                    <span className="text-[10px] font-bold text-slate-300">Success at {lastWithdrawal}</span>
+                    <Check size={14} className="text-emerald-400" />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 border border-dashed border-white/5 rounded-xl">
+                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Awaiting First Transfer</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {showConfirm ? (
+                  <div className="flex items-center gap-2 p-1 bg-slate-900 border border-indigo-500 border-opacity-30 rounded-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <button onClick={() => setShowConfirm(false)} className="flex-1 py-3.5 text-[10px] font-black text-slate-500 hover:text-slate-300 uppercase tracking-widest transition-colors">Cancel</button>
+                    <button onClick={triggerTransfer} className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all">Confirm Transfer</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { if (withdrawalMode === 'manual') setShowConfirm(true); }}
+                    disabled={isWithdrawing || (withdrawalMode === 'auto' && hasUnsavedAuto)}
+                    className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 transition-all text-[10px] font-black uppercase tracking-widest ${buttonClass}`}
+                  >
+                    {buttonIcon}
+                    {buttonText}
                   </button>
                 )}
               </div>
-            )}
-          </div>
-
-          <div className="flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">
-                <span>Recent History</span>
-                <span className="text-indigo-400 flex items-center gap-1.5"><History size={10} /> Live v4.2</span>
-              </div>
-              {lastWithdrawal ? (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
-                  <span className="text-[10px] font-bold text-slate-300">Success at {lastWithdrawal}</span>
-                  <Check size={14} className="text-emerald-400" />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-6 border border-dashed border-white/5 rounded-xl">
-                  <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Awaiting First Transfer</p>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              {showConfirm ? (
-                <div className="flex items-center gap-2 p-1 bg-slate-900 border border-indigo-500 border-opacity-30 rounded-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                  <button onClick={() => setShowConfirm(false)} className="flex-1 py-3.5 text-[10px] font-black text-slate-500 hover:text-slate-300 uppercase tracking-widest transition-colors">Cancel</button>
-                  <button onClick={triggerTransfer} className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all">Confirm Transfer</button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => { if (withdrawalMode === 'manual') setShowConfirm(true); }}
-                  disabled={isWithdrawing || (withdrawalMode === 'auto' && hasUnsavedAuto)}
-                  className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 transition-all text-[10px] font-black uppercase tracking-widest ${buttonClass}`}
-                >
-                  {buttonIcon}
-                  {buttonText}
-                </button>
-              )}
             </div>
           </div>
         </div>
-      </div>
-      </div>
       )}
 
       {/* FLASH LOAN METRICS */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] flex items-center gap-2">
-            <Zap size={14} className="text-amber-400" /> Flash Loan Providers
-          </h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <ProviderMetricCard name="Aave v3" capacity="12.4M" utilized="4.2M" percent={33.8} icon={<Landmark size={18} />} tooltip="current flash loan liquidity available via aave v3 smart contracts" />
-          <ProviderMetricCard name="Uniswap" capacity="28.1M" utilized="2.1M" percent={7.4} icon={<RefreshCw size={18} />} tooltip="total v3 pool liquidity accessible for atomic flash-swaps" />
-          <ProviderMetricCard name="Balancer" capacity="18.5M" utilized="5.4M" percent={29.1} icon={<Layers size={18} />} tooltip="vault liquidity reserved for balancer multi-token arbitrage cycles" />
-          <StatCard label="Cluster Health" value="OPTIMAL" subLabel="Network Consensus" icon={<Activity />} colorClass="text-emerald-400" progress={99.8} tooltip="overall connectivity and sync status of the distributed bot cluster" />
-        </div>
-      </div>
+      {
+        activeView === 'flash-loan-providers' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] flex items-center gap-2">
+                <Zap size={14} className="text-amber-400" /> Flash Loan Providers
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <ProviderMetricCard name="Aave v3" capacity="12.4M" utilized="0.0M" percent={0} icon={<Landmark size={18} />} tooltip="current flash loan liquidity available via aave v3 smart contracts" />
+              <ProviderMetricCard name="Uniswap" capacity="28.1M" utilized="0.0M" percent={0} icon={<RefreshCw size={18} />} tooltip="total v3 pool liquidity accessible for atomic flash-swaps" />
+              <ProviderMetricCard name="Balancer" capacity="18.5M" utilized="0.0M" percent={0} icon={<Layers size={18} />} tooltip="vault liquidity reserved for balancer multi-token arbitrage cycles" />
+              <StatCard label="Cluster Health" value="OPTIMAL" subLabel="Network Consensus" icon={<Activity />} colorClass="text-emerald-400" progress={99.8} tooltip="overall connectivity and sync status of the distributed bot cluster" />
+            </div>
+          </div>
+        )
+      }
 
       {/* FOOTER STREAM */}
       <div className="glass-panel rounded-[1.5rem] border border-white/5 flex flex-col h-[200px] overflow-hidden shadow-2xl bg-black/40">
@@ -1078,13 +1081,13 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar font-mono text-[9px]">
-          <div className="text-emerald-500">[PnL] +124.20 USDC Arbitrage settled via L2 Relay</div>
-          <div className="text-indigo-400">[Node] Connected to Pimlico Paymaster (Sponsorship ID: #821)</div>
-          <div className="text-slate-500 opacity-60">Scanning mempool for flash opportunities...</div>
-          <div className="text-slate-500 opacity-60">Initial synchronization with AA logic completed.</div>
+          {realTimeData.txCount === 0 && (
+            <div className="text-slate-500 opacity-60">System Initialized. Waiting for events...</div>
+          )}
+          {/* Real logs would stream here */}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

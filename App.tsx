@@ -32,7 +32,7 @@ type MetricView =
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<MetricView>('core-metrics');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
+
   // Production data service
   const [productionService, setProductionService] = useState<ProductionDataService | null>(null);
   const [realTimeData, setRealTimeData] = useState<RealTimeData>({
@@ -43,7 +43,13 @@ const App: React.FC = () => {
     strategyCount: 0,
     blockNumber: 0,
     gasPrice: '0',
-    validatedTransactions: 0
+    validatedTransactions: 0,
+    mevProtectionRate: 0,
+    attemptsBlocked: 0,
+    lossPrevented: 0,
+    sandwichPreventionRate: 0,
+    frontrunProtectionRate: 0,
+    backrunDefenseRate: 0
   });
 
   const [bots, setBots] = useState<BotState[]>([
@@ -54,7 +60,7 @@ const App: React.FC = () => {
 
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [champions, setChampions] = useState<ChampionWallet[]>([]);
-  
+
   const [wallet] = useState<WalletStats>({
     address: 'Not Connected',
     balance: '0.00 USDC',
@@ -62,7 +68,7 @@ const App: React.FC = () => {
     gasSaved: '0.00 USDC',
     accountType: 'ERC-4337 (Pimlico)'
   });
-  
+
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState<string>('');
   const [isEngineRunning, setIsEngineRunning] = useState(false);
@@ -112,7 +118,7 @@ const App: React.FC = () => {
   const runAlphaForge = useCallback(async () => {
     if (!isEngineRunning) return;
     setIsAIThinking(true);
-    const alpha = await forgeEnterpriseAlpha({ 
+    const alpha = await forgeEnterpriseAlpha({
       aave_liquidity: realTimeData.balance ? parseFloat(realTimeData.balance) : 0,
       active_integrations: ["1Click", "DexTools", "BitQuery", "EtherscanPro"],
       network_load: "Low",
@@ -135,9 +141,9 @@ const App: React.FC = () => {
           setBots(prev => prev.map(bot => ({
             ...bot,
             cpuUsage: bot.status !== BotStatus.IDLE ? Math.min(data.txCount * 2, 95) : 0,
-            status: bot.role === BotRole.SCANNER && data.pairCount > 0 ? BotStatus.SCANNING : 
-                    bot.role === BotRole.ORCHESTRATOR && data.strategyCount > 0 ? BotStatus.FORGING : 
-                    bot.role === BotRole.EXECUTOR && data.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
+            status: bot.role === BotRole.SCANNER && data.pairCount > 0 ? BotStatus.SCANNING :
+              bot.role === BotRole.ORCHESTRATOR && data.strategyCount > 0 ? BotStatus.FORGING :
+                bot.role === BotRole.EXECUTOR && data.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
           })));
         });
       } catch (error) {
@@ -155,9 +161,9 @@ const App: React.FC = () => {
       if (realTimeData.pairCount > 0 || realTimeData.txCount > 0) {
         setBots(prev => prev.map(bot => ({
           ...bot,
-          status: bot.role === BotRole.SCANNER && realTimeData.pairCount > 0 ? BotStatus.SCANNING : 
-                  bot.role === BotRole.ORCHESTRATOR && realTimeData.strategyCount > 0 ? BotStatus.FORGING : 
-                  bot.role === BotRole.EXECUTOR && realTimeData.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
+          status: bot.role === BotRole.SCANNER && realTimeData.pairCount > 0 ? BotStatus.SCANNING :
+            bot.role === BotRole.ORCHESTRATOR && realTimeData.strategyCount > 0 ? BotStatus.FORGING :
+              bot.role === BotRole.EXECUTOR && realTimeData.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
         })));
       }
     }, 5000);
@@ -192,7 +198,7 @@ const App: React.FC = () => {
                   <Sparkles className="fill-current text-indigo-400 shadow-indigo-500/20" size={20} />
                   <h1 className="text-lg font-black tracking-tight text-white uppercase italic">ARBINEXUS</h1>
                 </div>
-                
+
                 {/* Metrics Navigation */}
                 <div className="space-y-6">
                   <div>
@@ -307,7 +313,7 @@ const App: React.FC = () => {
                   <WalletManager onWalletChange={handleWalletChange} />
                 </div>
               )}
-              
+
               {activeView === 'deploy-engine' && (
                 <div className="max-w-2xl mx-auto glass-panel p-8 rounded-2xl border border-white/5">
                   <div className="text-center space-y-4">
@@ -347,12 +353,12 @@ const App: React.FC = () => {
               )}
 
               {!['connect-wallet', 'deploy-engine', 'ai-terminal'].includes(activeView) && (
-                <Dashboard 
-                  wallet={wallet} 
-                  bots={bots} 
-                  strategies={strategies} 
-                  champions={champions} 
-                  aiInsight="" 
+                <Dashboard
+                  wallet={wallet}
+                  bots={bots}
+                  strategies={strategies}
+                  champions={champions}
+                  aiInsight=""
                   realTimeData={realTimeData}
                   activeView={activeView}
                 />
@@ -365,19 +371,18 @@ const App: React.FC = () => {
   );
 };
 
-const MetricButton: React.FC<{ 
-  icon: React.ReactNode; 
-  label: string; 
-  isActive: boolean; 
+const MetricButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
   onClick: () => void;
 }> = ({ icon, label, isActive, onClick }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${
-      isActive 
-        ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/10' 
+    className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${isActive
+        ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/10'
         : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'
-    }`}
+      }`}
   >
     <div className="flex items-center gap-3">
       {icon}

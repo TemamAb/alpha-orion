@@ -152,9 +152,8 @@ async function runImplementationTests() {
 
     const stats = mempoolService.getMempoolStats();
     console.log('✅ Mempool stats:');
-    console.log(`   Transactions: ${stats.totalTransactions}`);
-    console.log(`   DEX Swaps: ${stats.dexSwaps}`);
-    console.log(`   Avg Gas Price: ${stats.averageGasPrice}`);
+    console.log(`   Transactions: ${stats.txCount}`);
+    console.log(`   High Value TXs: ${stats.highValueTxCount}`);
 
     mempoolService.stopMonitoring();
   } catch (error) {
@@ -168,7 +167,7 @@ async function runImplementationTests() {
 
     // Test each strategy (mock execution)
     const strategies = ['l2-flash-arbitrage', 'cross-dex-rebalance', 'mempool-protection',
-                       'stabilizer-alpha', 'l2-sequential', 'delta-neutral', 'shadow-mempool'];
+      'stabilizer-alpha', 'l2-sequential', 'delta-neutral', 'shadow-mempool'];
 
     for (const strategyId of strategies) {
       try {

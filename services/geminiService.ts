@@ -29,7 +29,7 @@ export const forgeEnterpriseAlpha = async (marketContext: any): Promise<{ strate
     console.log('🔮 Initializing Gemini AI for alpha forging...');
 
     const ai = initializeGemini();
-    const model = ai.models.gemini_1_5_pro;
+    const model = (ai as any).getGenerativeModel({ model: "gemini-1.5-pro" });
 
     // Prepare context for AI
     const context = {
@@ -120,7 +120,7 @@ Return ONLY valid JSON with this structure:
     try {
       console.log('🔄 Falling back to Gemini Flash...');
       const ai = initializeGemini();
-      const flashModel = ai.models.gemini_1_5_flash;
+      const flashModel = (ai as any).getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const simplePrompt = `Generate 3 basic arbitrage strategies as JSON with fields: id, name, roi, active, score, liquidityProvider. Return only JSON.`;
 

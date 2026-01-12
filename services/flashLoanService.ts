@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { BlockchainService, CONTRACTS } from './blockchainService';
 import { MEVProtectionService } from './mevProtectionService';
 import { DexService, createDexService } from './dexService';
+import { TelemetryService, createTelemetryService } from './telemetryService';
 
 /**
  * PHASE 1: FLASH LOAN SERVICE
@@ -69,22 +70,24 @@ export interface ArbitrageStrategy {
  * Flash Loan Service Class
  */
 export class FlashLoanService {
-   private blockchainService: BlockchainService;
-   private mevProtectionService: MEVProtectionService;
-   private aavePool: ethers.Contract;
-   private flashLoanReceiverAddress: string | null = null;
+  private blockchainService: BlockchainService;
+  private mevProtectionService: MEVProtectionService;
+  private telemetryService: TelemetryService;
+  private aavePool: ethers.Contract;
+  private flashLoanReceiverAddress: string | null = null;
 
-   constructor(blockchainService: BlockchainService, mevProtectionService?: MEVProtectionService) {
-      this.blockchainService = blockchainService;
-      this.mevProtectionService = mevProtectionService || new MEVProtectionService(blockchainService);
+  constructor(blockchainService: BlockchainService, mevProtectionService?: MEVProtectionService) {
+    this.blockchainService = blockchainService;
+    this.mevProtectionService = mevProtectionService || new MEVProtectionService(blockchainService);
+    this.telemetryService = createTelemetryService();
 
-      const provider = blockchainService.getProvider();
-      this.aavePool = new ethers.Contract(
-         CONTRACTS.AAVE_POOL,
-         AAVE_POOL_ABI,
-         provider
-      );
-   }
+    const provider = blockchainService.getProvider();
+    this.aavePool = new ethers.Contract(
+      CONTRACTS.AAVE_POOL,
+      AAVE_POOL_ABI,
+      provider
+    );
+  }
 
   /**
    * Deploy FlashLoanReceiver contract
@@ -95,43 +98,43 @@ export class FlashLoanService {
     uniswapRouter: string = CONTRACTS.UNISWAP_ROUTER,
     balancerVault: string = '0xBA12222222228d8Ba445958a75a0704d566BF2C8' // Balancer Vault mainnet, adjust for testnet
   ): Promise<string> {
-     try {
-        console.log('🔨 Deploying FlashLoanReceiver contract...');
+    try {
+      console.log('🔨 Deploying FlashLoanReceiver contract...');
 
-        // FlashLoanReceiver ABI (simplified for deployment)
-        const receiverAbi = [
-           'constructor(address _aavePool, address _uniswapRouter, address _balancerVault)',
-           'function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params) external returns (bool)'
-        ];
+      // FlashLoanReceiver ABI (simplified for deployment)
+      const receiverAbi = [
+        'constructor(address _aavePool, address _uniswapRouter, address _balancerVault)',
+        'function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params) external returns (bool)'
+      ];
 
-        const deployment = await this.blockchainService.deployContract(
-           contractBytecode,
-           receiverAbi,
-           [CONTRACTS.AAVE_POOL, uniswapRouter, balancerVault]
-        );
+      const deployment = await this.blockchainService.deployContract(
+        contractBytecode,
+        receiverAbi,
+        [CONTRACTS.AAVE_POOL, uniswapRouter, balancerVault]
+      );
 
-        this.flashLoanReceiverAddress = deployment.address;
-        console.log(`✅ FlashLoanReceiver deployed at: ${this.flashLoanReceiverAddress}`);
+      this.flashLoanReceiverAddress = deployment.address;
+      console.log(`✅ FlashLoanReceiver deployed at: ${this.flashLoanReceiverAddress}`);
 
-        return this.flashLoanReceiverAddress;
-     } catch (error) {
-        console.error('❌ Failed to deploy FlashLoanReceiver:', error);
-        throw error;
-     }
+      return this.flashLoanReceiverAddress;
+    } catch (error) {
+      console.error('❌ Failed to deploy FlashLoanReceiver:', error);
+      throw error;
+    }
   }
 
   /**
    * Set deployed receiver contract address
    */
   setReceiverContractAddress(address: string): void {
-     this.flashLoanReceiverAddress = address;
+    this.flashLoanReceiverAddress = address;
   }
 
   /**
    * Get receiver contract address
    */
   getReceiverContractAddress(): string | null {
-     return this.flashLoanReceiverAddress;
+    return this.flashLoanReceiverAddress;
   }
 
   /**
@@ -139,7 +142,7 @@ export class FlashLoanService {
    * Aave V3 charges 0.09% (9 basis points)
    */
   calculatePremium(amount: bigint): bigint {
-     return (amount * 9n) / 10000n; // 0.09%
+    return (amount * 9n) / 10000n; // 0.09%
   }
 
   /**
@@ -149,17 +152,17 @@ export class FlashLoanService {
     try {
       const reserveData = await this.aavePool.getReserveData(asset);
       const aTokenAddress = reserveData.aTokenAddress;
-      
+
       // Get aToken balance (represents available liquidity)
       const aToken = new ethers.Contract(
         aTokenAddress,
         ERC20_ABI,
         this.blockchainService.getProvider()
       );
-      
+
       const balance = await aToken.balanceOf(CONTRACTS.AAVE_POOL);
       const decimals = await aToken.decimals();
-      
+
       return ethers.formatUnits(balance, decimals);
     } catch (error) {
       console.error('Error getting available liquidity:', error);
@@ -197,24 +200,24 @@ export class FlashLoanService {
         this.blockchainService.getProvider()
       );
       const decimals = await token.decimals();
-      
+
       // Calculate premium
       const amountBigInt = ethers.parseUnits(amount, decimals);
       const premiumBigInt = this.calculatePremium(amountBigInt);
       const premium = ethers.formatUnits(premiumBigInt, decimals);
-      
+
       // Estimate gas (rough estimate for flash loan + arbitrage)
       const estimatedGas = 500000n; // ~500k gas for complex flash loan
       const gasPrice = await this.blockchainService.getGasPrice();
       const gasCost = estimatedGas * gasPrice;
       const gasCostETH = ethers.formatEther(gasCost);
-      
+
       // Estimate total cost in USD (assuming ETH = $2500)
       const ethPriceUSD = 2500;
       const gasCostUSD = parseFloat(gasCostETH) * ethPriceUSD;
       const premiumUSD = parseFloat(premium); // Simplified, assumes 1:1 with USD
       const totalCostUSD = (gasCostUSD + premiumUSD).toFixed(2);
-      
+
       return {
         premium,
         estimatedGas,
@@ -232,18 +235,47 @@ export class FlashLoanService {
    *
    * Requires deployed FlashLoanReceiver contract for actual execution
    */
+  /**
+  * Execute flash loan with provider fallback
+  */
   async executeFlashLoan(params: FlashLoanParams): Promise<FlashLoanResult> {
-     try {
-        // Check if receiver contract is deployed
-        if (!this.flashLoanReceiverAddress) {
-           throw new Error('FlashLoanReceiver contract not deployed. Call deployReceiverContract() first.');
-        }
+    try {
+      this.telemetryService.log('INFO', 'Initiating Flash Loan Execution', { asset: params.asset, amount: params.amount });
 
-        console.log('🔄 Preparing flash loan execution...');
-        console.log('Asset:', params.asset);
-        console.log('Amount:', params.amount);
-        console.log('Receiver:', this.flashLoanReceiverAddress);
-      
+      // 1. Try Aave V3
+      try {
+        return await this.executeAaveFlashLoan(params);
+      } catch (error) {
+        this.telemetryService.log('WARN', 'Aave V3 Flash Loan failed, attempting fallback to Uniswap V3', error);
+      }
+
+      // 2. Try Uniswap V3 Flash Swap (Mocked for now as fallback)
+      try {
+        // Implementation would go here
+        throw new Error('Uniswap V3 fallback not effectively configured');
+      } catch (error) {
+        this.telemetryService.log('WARN', 'Uniswap V3 Flash Loan failed', error);
+      }
+
+      throw new Error('All flash loan providers failed');
+    } catch (error: any) {
+      this.telemetryService.log('ERROR', 'Flash Loan Execution Failed', error);
+      return {
+        success: false,
+        error: error.message || 'Unknown error'
+      };
+    }
+  }
+
+  async executeAaveFlashLoan(params: FlashLoanParams): Promise<FlashLoanResult> {
+    try {
+      // Check if receiver contract is deployed
+      if (!this.flashLoanReceiverAddress) {
+        throw new Error('FlashLoanReceiver contract not deployed. Call deployReceiverContract() first.');
+      }
+
+      this.telemetryService.log('INFO', 'Preparing Aave V3 flash loan execution...');
+
       // Validate parameters
       if (!this.blockchainService.isValidAddress(params.asset)) {
         throw new Error('Invalid asset address');
@@ -251,13 +283,13 @@ export class FlashLoanService {
       if (!this.blockchainService.isValidAddress(this.flashLoanReceiverAddress)) {
         throw new Error('Invalid receiver contract address');
       }
-      
+
       // Check if flash loan is possible
       const canExecute = await this.canExecuteFlashLoan(params.asset, params.amount);
       if (!canExecute) {
         throw new Error('Insufficient liquidity for flash loan');
       }
-      
+
       // Get token decimals
       const token = new ethers.Contract(
         params.asset,
@@ -265,23 +297,23 @@ export class FlashLoanService {
         this.blockchainService.getProvider()
       );
       const decimals = await token.decimals();
-      
+
       // Parse amount
       const amount = ethers.parseUnits(params.amount, decimals);
-      
+
       // Encode params (empty for now)
       const encodedParams = params.params || '0x';
-      
+
       // Get wallet with signer
       const wallet = this.blockchainService.getWallet();
       const aavePoolWithSigner = this.aavePool.connect(wallet) as any;
 
       // Execute flash loan with MEV protection if enabled
-      console.log('📤 Sending flash loan transaction...');
+      this.telemetryService.log('INFO', 'Sending flash loan transaction...');
 
       let tx;
       if (this.mevProtectionService.isProtectionEnabled()) {
-        console.log('🛡️ Using MEV protection via Flashbots relay');
+        this.telemetryService.log('INFO', 'Using MEV protection via Flashbots relay');
 
         // Prepare transaction for Flashbots
         const txRequest = await aavePoolWithSigner.flashLoanSimple.populateTransaction(
@@ -295,7 +327,7 @@ export class FlashLoanService {
         // Execute through Flashbots
         tx = await this.mevProtectionService.executeOnFlashbotsRelay(txRequest);
       } else {
-        console.log('⚠️ MEV protection disabled - executing on public mempool');
+        this.telemetryService.log('WARN', 'MEV protection disabled - executing on public mempool');
         tx = await aavePoolWithSigner.flashLoanSimple(
           this.flashLoanReceiverAddress,
           params.asset,
@@ -305,18 +337,15 @@ export class FlashLoanService {
         );
       }
 
-      console.log('⏳ Waiting for confirmation...');
-      console.log('TX Hash:', tx.hash);
+      this.telemetryService.log('INFO', 'Waiting for confirmation...', { hash: tx.hash });
 
       const receipt = await tx.wait();
-      
+
       if (receipt?.status === 1) {
         const explorerUrl = this.blockchainService.getExplorerUrl(tx.hash);
-        
-        console.log('✅ Flash loan executed successfully!');
-        console.log('Gas used:', receipt.gasUsed.toString());
-        console.log('Explorer:', explorerUrl);
-        
+
+        this.telemetryService.log('SUCCESS', 'Flash loan executed successfully!', { explorerUrl });
+
         return {
           success: true,
           txHash: tx.hash,
@@ -328,11 +357,8 @@ export class FlashLoanService {
         throw new Error('Transaction failed');
       }
     } catch (error: any) {
-      console.error('❌ Flash loan execution failed:', error);
-      return {
-        success: false,
-        error: error.message || 'Unknown error'
-      };
+      this.telemetryService.log('ERROR', 'Aave flash loan execution failed:', error);
+      throw error;
     }
   }
 
@@ -362,21 +388,21 @@ export class FlashLoanService {
         this.blockchainService.getProvider()
       );
       const decimals = await tokenIn.decimals();
-      
+
       // Parse amount
       const amountIn = ethers.parseUnits(strategy.amountIn, decimals);
-      
+
       // Calculate flash loan premium (0.09%)
       const premium = this.calculatePremium(amountIn);
       const premiumFormatted = ethers.formatUnits(premium, decimals);
-      
+
       // Estimate gas cost
       const estimatedGas = 500000n;
       const gasPrice = await this.blockchainService.getGasPrice();
       const gasCost = estimatedGas * gasPrice;
       const gasCostETH = ethers.formatEther(gasCost);
       const gasCostUSD = parseFloat(gasCostETH) * 2500; // Assume ETH = $2500
-      
+
       // Get real DEX prices using dexService
       const dexService = createDexService(this.blockchainService);
 
@@ -387,12 +413,12 @@ export class FlashLoanService {
       // Calculate amounts
       const amountOut = parseFloat(quoteA.amountOut); // tokenOut received from DEX A
       const amountBack = parseFloat(quoteB.amountOut); // tokenIn received from DEX B
-      
+
       // Calculate profit
       const grossProfit = amountBack - parseFloat(strategy.amountIn);
       const netProfit = grossProfit - parseFloat(premiumFormatted) - gasCostUSD;
       const roi = (netProfit / parseFloat(strategy.amountIn)) * 100;
-      
+
       return {
         profitable: netProfit > strategy.minProfitUSD,
         grossProfit: grossProfit.toFixed(6),
@@ -417,7 +443,7 @@ export class FlashLoanService {
   }> {
     try {
       const liquidity = await this.getAvailableLiquidity(asset);
-      
+
       return {
         availableLiquidity: liquidity,
         premiumRate: '0.09%',
