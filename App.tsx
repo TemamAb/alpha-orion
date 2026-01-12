@@ -347,8 +347,16 @@ const App: React.FC = () => {
                 <div className="max-w-2xl mx-auto glass-panel p-8 rounded-2xl border border-white/5">
                   <div className="text-center space-y-4">
                     <Rocket size={48} className="mx-auto text-indigo-400" />
-                    <h3 className="text-xl font-black text-white uppercase">Deploy Engine</h3>
-                    <p className="text-sm text-slate-400">Connect your wallet to deploy the arbitrage engine</p>
+                    <h3 className="text-xl font-black text-white uppercase">
+                      {isEngineRunning ? 'Engine Cluster Active' : connectedWallet ? 'Finalize Deployment' : 'Deploy Engine'}
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      {isEngineRunning
+                        ? 'Institutional execution layer is now live and monitoring.'
+                        : connectedWallet
+                          ? 'Configure the smart execution node for your manager wallet.'
+                          : 'Connect your wallet to deploy the arbitrage engine'}
+                    </p>
                     {!connectedWallet && (
                       <button
                         onClick={() => setActiveView('connect-wallet')}
