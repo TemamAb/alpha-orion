@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Send, Sparkles, TrendingUp, AlertCircle, Cpu, Zap, Shield, Microscope } from 'lucide-react';
+import { Terminal, Send, Sparkles, TrendingUp, AlertCircle, Cpu, Zap, Shield, Microscope, Target } from 'lucide-react';
 import { chatWithAI } from '../services/geminiService';
 
 interface AITerminalProps {
@@ -111,6 +111,20 @@ const AITerminal: React.FC<AITerminalProps> = ({ realTimeData }) => {
               >
                 <TrendingUp size={12} className="text-amber-400" />
                 <span className="text-[9px] font-bold text-slate-400 uppercase">ROI Forge</span>
+              </button>
+              <button
+                onClick={() => analyzeSystem('Champion Discovery & Wallet Forging')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900 border border-slate-800 hover:border-purple-500/50 rounded-lg transition-all"
+              >
+                <Target size={12} className="text-purple-400" />
+                <span className="text-[9px] font-bold text-slate-400 uppercase">Champion Discovery</span>
+              </button>
+              <button
+                onClick={() => analyzeSystem('Wallet Forging & Strategy Synthesis')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 rounded-lg transition-all"
+              >
+                <Cpu size={12} className="text-cyan-400" />
+                <span className="text-[9px] font-bold text-slate-400 uppercase">Wallet Forge</span>
               </button>
             </div>
             <div className="h-8 w-px bg-slate-800 mx-1" />

@@ -135,9 +135,17 @@ router.post('/ai-terminal-chat', geminiLimiter, async (req, res, next) => {
       
       TERMINAL CAPABILITIES:
       - Real-time monitoring of flash loan arbitrage clusters.
+      - DEEP DISCOVERY: Specialized in identifying 'Champion Wallets' (top 0.1% on-chain performers).
+      - STRATEGY FORGING: Synthesizing proprietary alpha from detected champion movements.
+      - WALLET FORGING: Reconstructing the execution architecture of highly profitable whale bots.
       - Deep analysis of MEV protection and front-run defense.
       - Gas optimization and EIP-1559 fee management.
       - Strategy forging and discovery matrix synchronization.
+      
+      DISCOVERY PARAMETERS:
+      - Scan for: High win-rate (>80%) arbitrage frequency.
+      - Monitor for: Private mempool usage (Flashbots/Eden).
+      - Target: Wallets with consistent 'first-in-bundle' positioning.
       
       SYSTEM CONTEXT (LIVE DATA):
       ${JSON.stringify(systemContext)}
