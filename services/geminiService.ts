@@ -33,3 +33,27 @@ export const forgeEnterpriseAlpha = async (marketContext: any): Promise<{ strate
     return DEFAULT_FORGE_DATA as any;
   }
 };
+
+export const chatWithAI = async (query: string, systemContext: any): Promise<string> => {
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+    const response = await fetch(`${apiUrl}/api/ai-terminal-chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, systemContext }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`AI Terminal API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.response;
+  } catch (error: any) {
+    console.error('❌ AI Terminal communication failed:', error.message);
+    return "I apologize, but I am currently experiencing an interruption in my core intelligence uplink. Please verify backend connectivity.";
+  }
+};

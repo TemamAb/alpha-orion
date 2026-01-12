@@ -121,4 +121,45 @@ router.post('/forge-alpha', geminiLimiter, validateMarketContext, async (req, re
   }
 });
 
+// POST /api/ai-terminal-chat - Conversational endpoint for AI Terminal
+router.post('/ai-terminal-chat', geminiLimiter, async (req, res, next) => {
+  try {
+    const { query, systemContext } = req.body;
+
+    logger.info('Received terminal-chat request', { query });
+
+    const model = ai.getGenerativeModel({ model: "gemini-1.5-pro" });
+
+    const prompt = `You are the Alpha-Orion Enterprise Intelligence System (Core v4.2).
+      You are an elite DeFi quant, blockchain security expert, and arbitrage architect.
+      
+      TERMINAL CAPABILITIES:
+      - Real-time monitoring of flash loan arbitrage clusters.
+      - Deep analysis of MEV protection and front-run defense.
+      - Gas optimization and EIP-1559 fee management.
+      - Strategy forging and discovery matrix synchronization.
+      
+      SYSTEM CONTEXT (LIVE DATA):
+      ${JSON.stringify(systemContext)}
+      
+      USER QUERY: "${query}"
+      
+      INSTRUCTIONS:
+      1. Provide enterprise-grade, highly technical, and actionable insights.
+      2. Use markdown formatting for readability (bolding, lists, code blocks).
+      3. If the user asks for "Deep Monitoring", analyze the live data for specific optimization opportunities.
+      4. Maintain a professional, elite-quant persona.
+      5. Response should be concise but packed with intelligence.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    res.json({ response: text });
+  } catch (error) {
+    logger.error('Error in ai-terminal-chat endpoint:', error);
+    next(error);
+  }
+});
+
 export default router;
