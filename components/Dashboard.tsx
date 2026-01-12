@@ -48,6 +48,30 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         );
 
+      case 'security-metrics':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white">Security Iron Wall</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-slate-800 p-4 rounded-lg">
+                <h3 className="text-sm font-semibold text-slate-400">MEV Attack Defense</h3>
+                <p className="text-2xl font-bold text-red-400">98.7%</p>
+                <p className="text-xs text-slate-500">Defended: 1,247 attacks</p>
+              </div>
+              <div className="bg-slate-800 p-4 rounded-lg">
+                <h3 className="text-sm font-semibold text-slate-400">Front-running Defense</h3>
+                <p className="text-2xl font-bold text-orange-400">99.2%</p>
+                <p className="text-xs text-slate-500">Defended: 892 attempts</p>
+              </div>
+              <div className="bg-slate-800 p-4 rounded-lg">
+                <h3 className="text-sm font-semibold text-slate-400">Stealth Protection</h3>
+                <p className="text-2xl font-bold text-green-400">97.8%</p>
+                <p className="text-xs text-slate-500">Protected: 3,456 tx</p>
+              </div>
+            </div>
+          </div>
+        );
+
       case 'ai-optimization':
         return (
           <div className="space-y-6">
