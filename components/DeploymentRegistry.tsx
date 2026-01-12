@@ -20,54 +20,15 @@ interface DeploymentRegistryProps {
 
 const DeploymentRegistry: React.FC<DeploymentRegistryProps> = ({ connectedWallet }) => {
   const [deployments, setDeployments] = useState<Deployment[]>([]);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Deployment; direction: 'asc' | 'desc' }>({ 
-    key: 'timestamp', 
-    direction: 'desc' 
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Deployment; direction: 'asc' | 'desc' }>({
+    key: 'timestamp',
+    direction: 'desc'
   });
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
-  // Initialize with sample deployments (in production, fetch from blockchain/backend)
+  // Initialize with empty deployments (in production, fetch from blockchain/backend)
   useEffect(() => {
-    const sampleDeployments: Deployment[] = [
-      {
-        id: '1',
-        deploymentCode: 'DEPLOY-2025-001',
-        date: '2025-01-11 14:32:15',
-        timestamp: Date.now(),
-        smartWalletAddress: connectedWallet || '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
-        contractNumber: 'ARB-001',
-        status: 'active',
-        network: 'Arbitrum Sepolia',
-        gasUsed: '0.0024 ETH',
-        transactionHash: '0x8f3d2e1c9b7a6f5e4d3c2b1a0987654321fedcba'
-      },
-      {
-        id: '2',
-        deploymentCode: 'DEPLOY-2025-002',
-        date: '2025-01-10 09:15:42',
-        timestamp: Date.now() - 86400000,
-        smartWalletAddress: '0x8f3d2e1c9b7a6f5e4d3c2b1a0987654321fedcba',
-        contractNumber: 'ARB-002',
-        status: 'inactive',
-        network: 'Arbitrum Sepolia',
-        gasUsed: '0.0019 ETH',
-        transactionHash: '0x1a2b3c4d5e6f7890abcdef1234567890abcdef12'
-      },
-      {
-        id: '3',
-        deploymentCode: 'DEPLOY-2025-003',
-        date: '2025-01-09 16:48:33',
-        timestamp: Date.now() - 172800000,
-        smartWalletAddress: '0x1a2b3c4d5e6f7890abcdef1234567890abcdef12',
-        contractNumber: 'ARB-003',
-        status: 'inactive',
-        network: 'Arbitrum Sepolia',
-        gasUsed: '0.0021 ETH',
-        transactionHash: '0xabcdef1234567890abcdef1234567890abcdef12'
-      }
-    ];
-
-    setDeployments(sampleDeployments);
+    setDeployments([]);
   }, [connectedWallet]);
 
   const sortedDeployments = React.useMemo(() => {
@@ -75,7 +36,7 @@ const DeploymentRegistry: React.FC<DeploymentRegistryProps> = ({ connectedWallet
     sortable.sort((a, b) => {
       const aVal = a[sortConfig.key];
       const bVal = b[sortConfig.key];
-      
+
       if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
@@ -134,44 +95,44 @@ const DeploymentRegistry: React.FC<DeploymentRegistryProps> = ({ connectedWallet
           <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead className="bg-slate-900/40 border-b border-white/5 sticky top-0 z-10">
               <tr>
-                <th 
-                  onClick={() => toggleSort('status')} 
+                <th
+                  onClick={() => toggleSort('status')}
                   className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors min-w-[100px]"
                 >
                   Status <SortIcon col="status" />
                 </th>
-                <th 
-                  onClick={() => toggleSort('deploymentCode')} 
+                <th
+                  onClick={() => toggleSort('deploymentCode')}
                   className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors min-w-[150px]"
                 >
                   Deployment Code <SortIcon col="deploymentCode" />
                 </th>
-                <th 
-                  onClick={() => toggleSort('date')} 
+                <th
+                  onClick={() => toggleSort('date')}
                   className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors min-w-[180px]"
                 >
                   Date & Time <SortIcon col="date" />
                 </th>
-                <th 
-                  onClick={() => toggleSort('smartWalletAddress')} 
+                <th
+                  onClick={() => toggleSort('smartWalletAddress')}
                   className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors min-w-[200px]"
                 >
                   Smart Wallet <SortIcon col="smartWalletAddress" />
                 </th>
-                <th 
-                  onClick={() => toggleSort('contractNumber')} 
+                <th
+                  onClick={() => toggleSort('contractNumber')}
                   className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors min-w-[120px]"
                 >
                   Contract # <SortIcon col="contractNumber" />
                 </th>
-                <th 
-                  onClick={() => toggleSort('network')} 
+                <th
+                  onClick={() => toggleSort('network')}
                   className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors min-w-[150px]"
                 >
                   Network <SortIcon col="network" />
                 </th>
-                <th 
-                  onClick={() => toggleSort('gasUsed')} 
+                <th
+                  onClick={() => toggleSort('gasUsed')}
                   className="px-4 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors text-right min-w-[120px]"
                 >
                   Gas Used <SortIcon col="gasUsed" />
@@ -198,8 +159,8 @@ const DeploymentRegistry: React.FC<DeploymentRegistryProps> = ({ connectedWallet
                 </tr>
               ) : (
                 sortedDeployments.map((deployment) => (
-                  <tr 
-                    key={deployment.id} 
+                  <tr
+                    key={deployment.id}
                     className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-all group"
                   >
                     <td className="px-6 py-4">
@@ -233,7 +194,7 @@ const DeploymentRegistry: React.FC<DeploymentRegistryProps> = ({ connectedWallet
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        <span 
+                        <span
                           className="text-[10px] font-mono text-slate-400 group-hover:text-slate-200 transition-colors cursor-pointer"
                           title={deployment.smartWalletAddress}
                         >
@@ -287,7 +248,7 @@ const DeploymentRegistry: React.FC<DeploymentRegistryProps> = ({ connectedWallet
             </tbody>
           </table>
         </div>
-        
+
         {sortedDeployments.length > 0 && (
           <div className="px-4 py-3 bg-slate-900/20 border-t border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2">

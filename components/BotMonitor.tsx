@@ -32,14 +32,8 @@ const BotMonitor: React.FC<BotMonitorProps> = ({ bots }) => {
           <Terminal size={18} className="text-emerald-500" />
           <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Live Execution Logs (Aggregated)</span>
         </div>
-        <div className="p-6 h-64 overflow-y-auto bg-black/40 font-mono text-xs space-y-2 custom-scrollbar">
-          <LogLine time="14:20:01" bot="SCANNER" msg="Detected 0.4% price disparity on BAL/WETH Aave-Uniswap" />
-          <LogLine time="14:20:03" bot="ORCHESTRATOR" msg="Forging flash loan request for $2,000,000 USDC" />
-          <LogLine time="14:20:04" bot="EXECUTOR" msg="Submitting bundle to Flashbots relay..." color="text-indigo-400" />
-          <LogLine time="14:20:06" bot="EXECUTOR" msg="Bundle included in block 19283746. Net Profit: +1,240 USDC" color="text-emerald-400" />
-          <LogLine time="14:20:07" bot="ORCHESTRATOR" msg="Settling gasless via Pimlico Paymaster (Sponsorship ID: #P01)" />
-          <LogLine time="14:21:10" bot="SCANNER" msg="Monitoring 128 pairs across 3 providers..." />
-          <LogLine time="14:21:12" bot="AI" msg="Adjusting scanner sensitivity based on current volatility" color="text-purple-400" />
+        <div className="p-6 h-64 overflow-y-auto bg-black/40 font-mono text-xs space-y-2 custom-scrollbar flex items-center justify-center">
+          <p className="text-slate-600 uppercase tracking-widest font-bold">Execution Stream Initialized. Awaiting Events...</p>
         </div>
       </div>
     </div>
@@ -49,18 +43,16 @@ const BotMonitor: React.FC<BotMonitorProps> = ({ bots }) => {
 const BotCard: React.FC<{ bot: BotState }> = ({ bot }) => (
   <div className="glass-panel p-6 rounded-2xl border-t-4 border-slate-800 hover:border-indigo-500/50 transition-all duration-300">
     <div className="flex justify-between items-start mb-6">
-      <div className={`p-3 rounded-xl ${
-        bot.role === BotRole.ORCHESTRATOR ? 'bg-indigo-500/10 text-indigo-400' :
-        bot.role === BotRole.SCANNER ? 'bg-emerald-500/10 text-emerald-400' :
-        'bg-purple-500/10 text-purple-400'
-      }`}>
+      <div className={`p-3 rounded-xl ${bot.role === BotRole.ORCHESTRATOR ? 'bg-indigo-500/10 text-indigo-400' :
+          bot.role === BotRole.SCANNER ? 'bg-emerald-500/10 text-emerald-400' :
+            'bg-purple-500/10 text-purple-400'
+        }`}>
         <Activity size={24} />
       </div>
-      <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter ${
-        bot.status === BotStatus.EXECUTING ? 'bg-emerald-500/20 text-emerald-400' :
-        bot.status === BotStatus.SCANNING ? 'bg-indigo-500/20 text-indigo-400' :
-        'bg-slate-800 text-slate-400'
-      }`}>
+      <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter ${bot.status === BotStatus.EXECUTING ? 'bg-emerald-500/20 text-emerald-400' :
+          bot.status === BotStatus.SCANNING ? 'bg-indigo-500/20 text-indigo-400' :
+            'bg-slate-800 text-slate-400'
+        }`}>
         {bot.status}
       </span>
     </div>
