@@ -26,9 +26,21 @@ const DeploymentRegistry: React.FC<DeploymentRegistryProps> = ({ connectedWallet
   });
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
-  // Initialize with empty deployments (in production, fetch from blockchain/backend)
+  // Load deployments from localStorage (persisted between sessions)
   useEffect(() => {
-    setDeployments([]);
+    const loadDeployments = () => {
+      const stored = localStorage.getItem('alpha_deployments');
+      if (stored) {
+        setDeployments(JSON.parse(stored));
+      } else {
+        setDeployments([]);
+      }
+    };
+
+    loadDeployments();
+    // Add event listener to handle updates from other components
+    window.addEventListener('storage', loadDeployments);
+    return () => window.removeEventListener('storage', loadDeployments);
   }, [connectedWallet]);
 
   const sortedDeployments = React.useMemo(() => {

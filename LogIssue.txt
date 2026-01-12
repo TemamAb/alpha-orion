@@ -1,28 +1,42 @@
-Uploading build...
-==> Uploaded in 3.9s. Compression took 2.2s
-==> Build successful 🎉
-==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
-==> Deploying...
-==> Running 'npm run start'
-npm error Missing script: "start"
-npm error
-npm error Did you mean one of these?
-npm error   npm star # Mark your favorite packages
-npm error   npm stars # View packages marked as favorites
-npm error
-npm error To see a list of scripts, run:
-npm error   npm run
-npm error A complete log of this run can be found in: /opt/render/.cache/_logs/2026-01-11T16_04_20_510Z-debug-0.log
-==> No open ports detected, continuing to scan...
-==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
-==> Exited with status 1
-==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
-==> Running 'npm run start'
-npm error Missing script: "start"
-npm error
-npm error Did you mean one of these?
-npm error   npm star # Mark your favorite packages
-npm error   npm stars # View packages marked as favorites
-npm error
-npm error To see a list of scripts, run:
-npm error   npm run
+System Command
+Mainnet Synchronized
+USD
+ETH
+Core Metrics
+
+Refresh: 5s
+Earnings Speed
+
+0.000 ETH
+USD / Hour
+
+Daily Goal
+
+0.0%
+0.000 ETH Target
+
+AI Precision
+
+0.0%
+Match Rate
+
+Active Units
+
+0
+Connected Nodes
+
+Deployment Registry
+Total Deployments
+0
+Active
+0
+Status 	Deployment Code 	Date & Time 	Smart Wallet 	Contract # 	Network 	Gas Used 	Actions
+No deployments registered yet
+
+Deploy your first contract to see it here
+
+Active Deployment
+Previous Deployment
+View on Arbiscan
+Execution Stream
+System Initialized. Waiting for events...

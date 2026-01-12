@@ -90,7 +90,7 @@ const ChampionDiscoveryMatrix: React.FC<{ strategies: Strategy[]; totalDiscovery
           <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] flex items-center gap-2">
             <Target size={14} className="text-indigo-400" /> Champion Discovery Matrix
           </h3>
-          <MetricTooltip text="synchronized alpha engine: maps detected champion wallets to forged strategies, defining the total cluster profit target." />
+          <MetricTooltip text="Champion Discovery System: Identifies high-performing alpha strategies on-chain. These strategies are fed directly to the Scanner Bots to monitor for matching entry signals." wide />
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
@@ -585,7 +585,7 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
               metricLabel="Pairs Monitored"
               icon={<SearchIcon size={18} />}
               color="bg-emerald-500"
-              tooltip="monitors DEX pairs across multiple protocols to detect arbitrage opportunities in real-time - LIVE DATA"
+              tooltip="Scanner Bots: Monitor DEX pairs for entry signals matching the profiles identified by the Champion Discovery System - LIVE DATA FEED"
             />
             <BotPerformanceCard
               bot={orchestrator}
@@ -594,7 +594,7 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
               metricLabel="Strategies Active"
               icon={<Workflow size={18} />}
               color="bg-indigo-500"
-              tooltip="coordinates strategy execution and optimizes capital allocation across discovered opportunities - LIVE DATA"
+              tooltip="Orchestrator Bots: Receive signals from Scanners and coordinate the forging of flash loan bundles for the Executor - LIVE PROCESS"
             />
             <BotPerformanceCard
               bot={executor}

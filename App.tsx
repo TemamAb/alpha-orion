@@ -137,13 +137,14 @@ const App: React.FC = () => {
     const setupMonitoring = async () => {
       try {
         cleanup = await productionService.monitorWallet(connectedWallet, (data) => {
-          setRealTimeData(data);
+          const augmentedData = { ...data, strategyCount: strategies.length };
+          setRealTimeData(augmentedData);
           setBots(prev => prev.map(bot => ({
             ...bot,
             cpuUsage: bot.status !== BotStatus.IDLE ? Math.min(data.txCount * 2, 95) : 0,
-            status: bot.role === BotRole.SCANNER && data.pairCount > 0 ? BotStatus.SCANNING :
-              bot.role === BotRole.ORCHESTRATOR && data.strategyCount > 0 ? BotStatus.FORGING :
-                bot.role === BotRole.EXECUTOR && data.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
+            status: bot.role === BotRole.SCANNER && augmentedData.pairCount > 0 ? BotStatus.SCANNING :
+              bot.role === BotRole.ORCHESTRATOR && augmentedData.strategyCount > 0 ? BotStatus.FORGING :
+                bot.role === BotRole.EXECUTOR && augmentedData.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
           })));
         });
       } catch (error) {
@@ -158,11 +159,12 @@ const App: React.FC = () => {
     if (!isEngineRunning) return;
     runAlphaForge();
     const botInterval = setInterval(() => {
-      if (realTimeData.pairCount > 0 || realTimeData.txCount > 0) {
+      const currentStrategyCount = strategies.length;
+      if (realTimeData.pairCount > 0 || realTimeData.txCount > 0 || currentStrategyCount > 0) {
         setBots(prev => prev.map(bot => ({
           ...bot,
           status: bot.role === BotRole.SCANNER && realTimeData.pairCount > 0 ? BotStatus.SCANNING :
-            bot.role === BotRole.ORCHESTRATOR && realTimeData.strategyCount > 0 ? BotStatus.FORGING :
+            bot.role === BotRole.ORCHESTRATOR && currentStrategyCount > 0 ? BotStatus.FORGING :
               bot.role === BotRole.EXECUTOR && realTimeData.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
         })));
       }
@@ -380,8 +382,8 @@ const MetricButton: React.FC<{
   <button
     onClick={onClick}
     className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${isActive
-        ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/10'
-        : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'
+      ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/10'
+      : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'
       }`}
   >
     <div className="flex items-center gap-3">

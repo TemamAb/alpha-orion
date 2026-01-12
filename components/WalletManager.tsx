@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Wallet, Check, AlertCircle, Edit3, X, Copy, 
-  Shield, Activity, Zap, ChevronRight, CheckCircle
+import {
+  Wallet, Check, AlertCircle, Edit3, X, Copy,
+  Shield, Activity, Zap, ChevronRight, CheckCircle, LogOut, RotateCcw
 } from 'lucide-react';
 
 interface WalletManagerProps {
@@ -45,7 +45,7 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
 
   const handleSave = () => {
     const trimmedAddress = inputAddress.trim();
-    
+
     if (!trimmedAddress) {
       setError('Wallet address cannot be empty');
       return;
@@ -72,6 +72,24 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
     setError(null);
     // Simulate deployment (3 seconds)
     await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // PERSIST DEPLOYMENT
+    const newDeployment = {
+      id: Date.now().toString(),
+      deploymentCode: `DEPLOY-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+      date: new Date().toLocaleString(),
+      timestamp: Date.now(),
+      smartWalletAddress: walletAddress,
+      contractNumber: `ARB-${Math.floor(Math.random() * 100).toString().padStart(3, '0')}`,
+      status: 'active',
+      network: 'Ethereum Mainnet',
+      gasUsed: '0.0024 ETH',
+      transactionHash: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+    };
+
+    const existing = JSON.parse(localStorage.getItem('alpha_deployments') || '[]');
+    localStorage.setItem('alpha_deployments', JSON.stringify([newDeployment, ...existing]));
+
     setIsDeployed(true);
   };
 
@@ -199,15 +217,42 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
               </p>
             </div>
           </div>
-          {!isDeployed && (
+          <div className="flex items-center gap-2">
+            {isDeployed && (
+              <button
+                onClick={() => {
+                  setIsDeployed(false);
+                  localStorage.removeItem('alpha_deployments');
+                  window.dispatchEvent(new Event('storage'));
+                }}
+                className="p-2 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg transition-all group"
+                title="Disconnect & Clear Engine"
+              >
+                <RotateCcw size={14} className="text-rose-400 group-hover:rotate-180 transition-transform duration-500" />
+              </button>
+            )}
             <button
-              onClick={handleEditClick}
-              className="p-2 hover:bg-white/5 rounded-lg transition-all group"
-              title="Change Address"
+              onClick={() => {
+                setWalletAddress('');
+                onWalletChange('');
+                setIsDeployed(false);
+                setIsEditing(false);
+              }}
+              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-all group"
+              title="Disconnect Wallet"
             >
-              <Edit3 size={14} className="text-slate-500 group-hover:text-indigo-400 transition-colors" />
+              <LogOut size={14} className="text-slate-400 group-hover:text-rose-400 transition-colors" />
             </button>
-          )}
+            {!isDeployed && (
+              <button
+                onClick={handleEditClick}
+                className="p-2 hover:bg-white/5 rounded-lg transition-all group"
+                title="Change Address"
+              >
+                <Edit3 size={14} className="text-slate-500 group-hover:text-indigo-400 transition-colors" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="space-y-3">
