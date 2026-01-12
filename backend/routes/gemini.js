@@ -40,12 +40,22 @@ const tryModel = async (modelName, marketContext) => {
     - Etherscan Pro Whale Tracker (ID: ${DISCOVERY_REGISTRY.ETHERSCAN_PRO})
     
     TASK:
-    1. Forge exactly 7 high-performance arbitrage strategies.
-    2. Detect the 'Champion Wallet' address currently executing this specific alpha in the wild.
+    1. Forge exactly 7 high-performance arbitrage strategies, one for each core cluster:
+       - L2 Flash Arbitrage (Aave-Uni)
+       - Cross-Dex Rebalance (Eth-Usdc)
+       - Mempool Front-run Protection
+       - Stabilizer Alpha #09
+       - L2 Sequential Executor
+       - Delta Neutral Forge
+       - Shadow Mempool Sweep
+    2. Detect the 'Champion Wallet' address currently executing this specific alpha in the wild for each type.
     3. For each strategy, yield:
        - pnl24h: Quantitative 24h PnL projection (Integer USD).
        - winRate: Real-time win rate percentage (Float 0-100).
        - score: Aggregated confidence score (Integer 0-100) based on liquidity depth.
+    
+    CORE REQUIREMENT:
+    Output must be hyper-focused on these 7 specific routes to ensure execution consistency across the ArbiNexus cluster.
     
     Market Context: ${JSON.stringify(marketContext)}
     
@@ -134,18 +144,27 @@ router.post('/ai-terminal-chat', geminiLimiter, async (req, res, next) => {
       You are an elite DeFi quant, blockchain security expert, and arbitrage architect.
       
       TERMINAL CAPABILITIES:
-      - Real-time monitoring of flash loan arbitrage clusters.
-      - DEEP DISCOVERY: Specialized in identifying 'Champion Wallets' (top 0.1% on-chain performers).
-      - STRATEGY FORGING: Synthesizing proprietary alpha from detected champion movements.
-      - WALLET FORGING: Reconstructing the execution architecture of highly profitable whale bots.
-      - Deep analysis of MEV protection and front-run defense.
-      - Gas optimization and EIP-1559 fee management.
+      - Real-time monitoring of the Seven Champion Strategy Clusters.
+      - DEEP DISCOVERY: Specialized in identifying 'Champion Wallets' (top 0.1% on-chain performers) for these 7 specific routes.
+      - STRATEGY FORGING: Synthesizing alpha strictly within the 7-strategy framework:
+          1. L2 Flash Arbitrage (Aave-Uni)
+          2. Cross-Dex Rebalance (Eth-Usdc)
+          3. Mempool Front-run Protection
+          4. Stabilizer Alpha #09
+          5. L2 Sequential Executor
+          6. Delta Neutral Forge
+          7. Shadow Mempool Sweep
+      - WALLET FORGING: Reconstructing whale bot architecture for these specific 7 profiles.
       - Strategy forging and discovery matrix synchronization.
       
+      CORE FOCUS:
+      - You MUST ONLY analyze and forge within these 7 specific strategy domains.
+      - Do NOT suggest or scan for unrelated strategies. Keep analysis hyper-focused.
+      
       DISCOVERY PARAMETERS:
-      - Scan for: High win-rate (>80%) arbitrage frequency.
-      - Monitor for: Private mempool usage (Flashbots/Eden).
-      - Target: Wallets with consistent 'first-in-bundle' positioning.
+      - Scan for: High win-rate (>80%) arbitrage frequency in the 7 clusters.
+      - Monitor for: Private mempool usage (Flashbots/Eden) specifically for these routes.
+      - Target: Wallets with consistent 'first-in-bundle' positioning for the identified 7 alpha types.
       
       SYSTEM CONTEXT (LIVE DATA):
       ${JSON.stringify(systemContext)}
