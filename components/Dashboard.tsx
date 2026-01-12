@@ -31,7 +31,7 @@ const ETH_PRICE = 2642.50;
 const MetricTooltip: React.FC<{ text: string; wide?: boolean }> = ({ text, wide }) => (
   <div className="group relative inline-block ml-1.5 align-middle translate-y-[-1px]">
     <HelpCircle size={10} className="text-slate-600 hover:text-indigo-400 cursor-help transition-colors" />
-    <div className={'absolute top-full mt-2 hidden group-hover:block ' + (wide ? 'w-80' : 'w-48') + ' p-3 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-[9999] pointer-events-none'} style={{ left: '50%', transform: 'translateX(-50%)' }}>
+    <div className={`absolute top-full mt-2 hidden group-hover:block ${wide ? 'w-80' : 'w-48'} p-3 bg-slate-900 border border-white border-opacity-10 rounded-lg shadow-2xl z-[9999] pointer-events-none`} style={{ left: '50%', transform: 'translateX(-50%)' }}>
       <p className="text-[10px] leading-relaxed text-slate-300 font-medium lowercase">
         {text}
       </p>
@@ -101,10 +101,10 @@ const ChampionDiscoveryMatrix: React.FC<{ strategies: Strategy[]; totalDiscovery
       </div>
       
       {/* FIXED: Added horizontal scroll with better mobile support */}
-      <div className="glass-panel rounded-[1.5rem] border border-white/5 overflow-hidden">
+      <div className="glass-panel rounded-[1.5rem] border border-white border-opacity-5 overflow-hidden">
         <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
           <table className="w-full text-left border-collapse min-w-[900px]">
-            <thead className="bg-slate-900/40 border-b border-white/5 sticky top-0 z-10">
+            <thead className="bg-slate-900 bg-opacity-40 border-b border-white border-opacity-5 sticky top-0 z-10">
               <tr>
                 <th onClick={() => toggleSort('name')} className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors min-w-[200px]">
                   Alpha Strategy <SortIcon col="name" />
@@ -143,7 +143,7 @@ const ChampionDiscoveryMatrix: React.FC<{ strategies: Strategy[]; totalDiscovery
                 </tr>
               ) : (
                 sortedData.map((row) => (
-                  <tr key={row.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-all group">
+                  <tr key={row.id} className="border-b border-white/[0.02] hover:bg-white hover:bg-opacity-[0.01] transition-all group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 group-hover:animate-pulse flex-shrink-0" />
@@ -213,9 +213,9 @@ const StatCard: React.FC<{
   progress?: number;
   tooltip: string;
 }> = ({ label, value, subLabel, icon, colorClass, progress, tooltip }) => (
-  <div className="glass-panel p-5 rounded-2xl border border-white/5 hover:border-indigo-500/20 transition-all duration-300 group flex flex-col justify-between relative overflow-hidden h-full min-h-[140px]">
+  <div className="glass-panel p-5 rounded-2xl border border-white border-opacity-5 hover:border-indigo-500 hover:border-opacity-20 transition-all duration-300 group flex flex-col justify-between relative overflow-hidden h-full min-h-[140px]">
     <div className="flex justify-between items-start mb-2">
-      <div className={`p-2 rounded-xl bg-white/[0.02] ${colorClass} border border-white/5 shadow-inner`}>
+      <div className={`p-2 rounded-xl bg-white bg-opacity-\[0.02\] ${colorClass} border border-white/5 shadow-inner`}>
         {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<{ size?: number }>, { size: 16 }) : icon}
       </div>
     </div>
@@ -248,7 +248,7 @@ const ProviderMetricCard: React.FC<{
   icon: React.ReactNode;
   tooltip: string;
 }> = ({ name, capacity, utilized, percent, icon, tooltip }) => (
-  <div className="glass-panel p-4 rounded-xl border border-white/5 hover:border-white/10 transition-all bg-white/[0.01]">
+  <div className="glass-panel p-4 rounded-xl border border-white/5 hover:border-white border-opacity-10 transition-all bg-white bg-opacity-[0.01]">
     <div className="flex items-center gap-3 mb-4">
       <div className="p-2 bg-slate-800/50 rounded-lg text-slate-400 border border-white/5">
         {icon}
@@ -292,7 +292,7 @@ const BotPerformanceCard: React.FC<{
   color: string;
   tooltip: string;
 }> = ({ bot, title, metric, metricLabel, icon, color, tooltip }) => (
-  <div className="glass-panel p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all group relative overflow-hidden">
+  <div className="glass-panel p-5 rounded-2xl border border-white/5 hover:border-white border-opacity-10 transition-all group relative overflow-hidden">
     <div className="flex justify-between items-start mb-4">
       <div className={`p-2.5 rounded-xl bg-white/[0.03] ${color.replace('bg-', 'text-')} border border-white/5 shadow-inner`}>
         {icon}
@@ -460,7 +460,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
         <div className="relative">
           <button
             onClick={() => setShowRefreshDropdown(!showRefreshDropdown)}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-white/5 rounded-xl hover:border-indigo-500/30 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-white/5 rounded-xl hover:border-indigo-500 border-opacity-30 transition-all"
           >
             <RefreshCw size={12} className="text-indigo-400" />
             <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">
@@ -470,7 +470,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
           </button>
           
           {showRefreshDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+            <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-white border-opacity-10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
               {[5, 10, 15, 30, 60].map((interval) => (
                 <button
                   key={interval}
@@ -518,7 +518,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
               </h3>
               <MetricTooltip text="autonomous optimization system running 24/7, analyzing and adjusting strategies every 15 minutes for maximum efficiency" wide />
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500 border-opacity-20 rounded-lg">
               <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
               <span className="text-[8px] font-black text-purple-400 uppercase tracking-widest">Live {optimizationUptime}</span>
             </div>
@@ -871,7 +871,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl">
+                <div className="p-4 bg-white bg-opacity-[0.01] border border-white/5 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
                     <ArrowDownCircle size={12} className="text-indigo-400" />
                     <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Withdrawal</span>
@@ -879,7 +879,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
                   <div className="text-lg font-black text-white tracking-tight">{100 - reinvestmentPercent}%</div>
                   <p className="text-[8px] text-slate-600 font-bold mt-1">To Wallet</p>
                 </div>
-                <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl">
+                <div className="p-4 bg-white bg-opacity-[0.01] border border-white/5 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
                     <RefreshCw size={12} className="text-emerald-400" />
                     <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Reinvestment</span>
@@ -904,7 +904,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
                 </div>
               </div>
 
-              <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-3">
+              <div className="p-4 bg-white bg-opacity-[0.01] border border-white/5 rounded-xl space-y-3">
                 <div className="flex justify-between text-[8px] font-bold uppercase tracking-widest">
                   <span className="text-slate-500">Est. Daily Reinvest</span>
                   <span className="text-emerald-400">${((totalDailyProfit * reinvestmentPercent) / 100).toFixed(2)}</span>
@@ -968,7 +968,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl">
+            <div className="p-5 bg-white bg-opacity-[0.01] border border-white/5 rounded-2xl">
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Settled Balance</span>
               <div className="flex items-baseline gap-2">
                 <h4 className="text-2xl font-black text-white tracking-tight">{format(currentProfit).replace('ETH', '').replace('$', '')}</h4>
@@ -1035,7 +1035,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
 
             <div className="space-y-3">
               {showConfirm ? (
-                <div className="flex items-center gap-2 p-1 bg-slate-900 border border-indigo-500/30 rounded-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center gap-2 p-1 bg-slate-900 border border-indigo-500 border-opacity-30 rounded-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                   <button onClick={() => setShowConfirm(false)} className="flex-1 py-3.5 text-[10px] font-black text-slate-500 hover:text-slate-300 uppercase tracking-widest transition-colors">Cancel</button>
                   <button onClick={triggerTransfer} className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all">Confirm Transfer</button>
                 </div>
@@ -1073,7 +1073,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
 
       {/* FOOTER STREAM */}
       <div className="glass-panel rounded-[1.5rem] border border-white/5 flex flex-col h-[200px] overflow-hidden shadow-2xl bg-black/40">
-        <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+        <div className="p-4 border-b border-white/5 bg-white bg-opacity-\[0.02\] flex items-center justify-between">
           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Terminal size={14} className="text-emerald-500" /> Execution Stream</span>
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
         </div>
