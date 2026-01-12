@@ -36,7 +36,18 @@ export const forgeEnterpriseAlpha = async (marketContext: any): Promise<{ strate
 
 export const chatWithAI = async (query: string, systemContext: any): Promise<string> => {
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    let apiUrl = 'http://localhost:3001';
+
+    // Intelligent Backend Discovery
+    if (import.meta.env.VITE_API_URL) {
+      apiUrl = import.meta.env.VITE_API_URL;
+    } else if (typeof window !== 'undefined') {
+      const { hostname, protocol, port } = window.location;
+      // In production (not localhost), assume backend is relative or on the same domain
+      if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        apiUrl = ''; // Use relative path for production (monolithic serving)
+      }
+    }
 
     const response = await fetch(`${apiUrl}/api/ai-terminal-chat`, {
       method: 'POST',
