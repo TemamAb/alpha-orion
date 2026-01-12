@@ -41,7 +41,7 @@ const MetricTooltip: React.FC<{ text: string; wide?: boolean }> = ({ text, wide 
 );
 
 const STRATEGY_INTEL: Record<string, string> = {
-  'L2 Flash Arbitrage (Aave-Uni)': 'how: executes atomic cycles by borrowing usdc via aave v3 and swapping across uniswap l2 pools. why: selected for high-speed arb opportunities where slippage is < 0.01%. significance: accounts for 14.2% of l2 arbitrage volume; captures ~$1.2m in daily inefficient spreads.',
+  'L2 Flash Arbitrage (Aave-Uni)': 'how: executes atomic cycles by borrowing usdc via aave v3 and swapping across uniswap l2 pools. why: selected for high-speed arb opportunities where slippage is less than 0.01%. significance: accounts for 14.2% of l2 arbitrage volume; captures ~$1.2m in daily inefficient spreads.',
   'Cross-Dex Rebalance (Eth-Usdc)': 'how: simultaneous multi-dex price equalization. why: chosen to exploit liquidity fragmentation across sushiswap and balancer. significance: essential for defi price discovery; yields average net profit of 82bps per successful rebalance event.',
   'Mempool Front-run Protection': 'how: bundles useroperations through flashbots private relays. why: eliminates public exposure to toxic sandwich bots. significance: saves institutional users 15-40bps in mev leakage; vital for maintaining execution integrity on large swaps.',
   'Stabilizer Alpha #09': 'how: algorithmic smoothing of volatile pairs using jit liquidity. why: high-resilience alpha during peak network congestion. significance: generates consistent 12% apr by capturing micro-volatility noise that manual traders miss.',
@@ -373,7 +373,10 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
     return `${addr.substring(0, 5)}...${addr.substring(addr.length - 5)}`;
   };
 
-  const totalDailyProfit = useMemo(() => champions.reduce((sum, champ) => sum + parseFloat(champ.profitPerDay.replace(/[^0-9.-]+/g, "")), 0), [champions]);
+  const totalDailyProfit = useMemo(() => champions.reduce((sum, champ) => {
+    const cleaned = champ.profitPerDay.replace(/\$/g, '').replace(/USDC/g, '').replace(/ETH/g, '');
+    return sum + parseFloat(cleaned);
+  }, 0), [champions]);
   const activeUnits = useMemo(() => champions.filter(c => c.forgedStatus === 'Optimized').length, [champions]);
   const hourlyVelocity = useMemo(() => totalDailyProfit / 24, [totalDailyProfit]);
 
@@ -413,8 +416,17 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
     setHasUnsavedAuto(false);
   };
 
-  const buttonClass = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50' : 'bg-slate-800 text-indigo-400 border border-indigo-500/20 cursor-default') : (isWithdrawing ? 'bg-amber-500 text-white animate-pulse' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-95');
-  const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' : 'Auto Pilot Active') : (isWithdrawing ? 'Processing...' : `Transfer Yield (${currency})`);
+  let buttonClass = 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-95';
+  if (withdrawalMode === 'auto') {
+    if (hasUnsavedAuto) {
+      buttonClass = 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50';
+    } else {
+      buttonClass = 'bg-slate-800 text-indigo-400 border border-indigo-500/20 cursor-default';
+    }
+  } else if (isWithdrawing) {
+    buttonClass = 'bg-amber-500 text-white animate-pulse';
+  }
+const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' : 'Auto Pilot Active') : (isWithdrawing ? 'Processing...' : 'Transfer Yield (' + currency + ')');
   const buttonIcon = isWithdrawing ? <RefreshCw size={14} className="animate-spin" /> : withdrawalMode === 'auto' ? <ShieldCheck size={14} /> : <ArrowDownCircle size={14} />;
 
   return (
@@ -639,10 +651,7 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
             />
             <StatCard
               label="Total Pipeline"
-              value={`${(realTimeData.pairCount > 0 || realTimeData.strategyCount > 0 || realTimeData.txCount > 0 ?
-                (12 + (realTimeData.pairCount * 0.1)) +
-                (8 + (realTimeData.strategyCount * 0.5)) +
-                (45 + (realTimeData.txCount * 0.2)) : 0).toFixed(1)}ms`}
+              value="0.0ms"
               subLabel="End-to-End Latency"
               icon={<Activity />}
               colorClass="text-cyan-400"
@@ -839,19 +848,19 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
               </div>
               
               <div className="relative">
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  step="5" 
-                  value={reinvestmentPercent} 
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={reinvestmentPercent}
                   onChange={(e) => {
                     setReinvestmentPercent(Number(e.target.value));
                     setHasUnsavedReinvestment(true);
                   }}
-                  className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500 slider-thumb" 
+                  className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500 slider-thumb"
                   style={{
-                    background: `linear-gradient(to right, rgb(16 185 129) 0%, rgb(16 185 129) ${reinvestmentPercent}%, rgb(30 41 59) ${reinvestmentPercent}%, rgb(30 41 59) 100%)`
+                    background: `linear-gradient(to right, rgb(16, 185, 129) 0%, rgb(16, 185, 129) ${reinvestmentPercent}%, rgb(30, 41, 59) ${reinvestmentPercent}%, rgb(30, 41, 59) 100%)`
                   }}
                 />
                 <div className="flex justify-between mt-2 text-[8px] font-bold text-slate-600 uppercase tracking-widest">
@@ -1044,6 +1053,8 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, bots, strategies, champio
           </div>
         </div>
       </div>
+      </div>
+      )}
 
       {/* FLASH LOAN METRICS */}
       <div className="space-y-4">
