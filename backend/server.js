@@ -37,14 +37,20 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Security middleware
-// Security middleware
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
   crossOriginEmbedderPolicy: false,
 }));
 
 // CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',')
   : ['http://localhost:3000', 'http://localhost:5173'];
 
@@ -52,7 +58,7 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-
+    
     if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
@@ -78,22 +84,12 @@ app.use(validateRequestSize);
 // Rate limiting for all API routes
 app.use('/api', apiLimiter);
 
-// Serve static files from the frontend build
-const distPath = join(__dirname, '../dist');
-if (existsSync(distPath)) {
-  // Serve assets specifically to ensure correct MIME types
-  app.use('/assets', express.static(join(distPath, 'assets')));
-  // Serve the rest of dist
-  app.use(express.static(distPath));
-  logger.info(`Serving static files from: ${distPath}`);
-}
-
 // Routes
 app.use('/', healthRoutes);
 app.use('/api', geminiRoutes);
 
-// Root/Landing redirect for API info (only if not serving frontend)
-app.get('/api-info', (req, res) => {
+// Root endpoint
+app.get('/', (req, res) => {
   res.json({
     name: 'ArbiNexus Enterprise Backend API',
     version: '4.2.0',
@@ -107,15 +103,6 @@ app.get('/api-info', (req, res) => {
     documentation: 'https://github.com/TemamAb/alpha-orion'
   });
 });
-
-// Catch-all to serve index.html for React Router
-if (existsSync(distPath)) {
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-      res.sendFile(join(distPath, 'index.html'));
-    }
-  });
-}
 
 // 404 handler
 app.use(notFoundHandler);
@@ -135,7 +122,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 // Graceful shutdown
 const gracefulShutdown = (signal) => {
   logger.info(`${signal} received. Starting graceful shutdown...`);
-
+  
   server.close(() => {
     logger.info('HTTP server closed');
     process.exit(0);

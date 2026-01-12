@@ -1,7 +1,9 @@
-You are required to analyze the alpha-orion.onrender.com app 
-running on live mode deployed on render ! 
-The app is designed to generate profit from arbitrage 
-opportunities by discovering and forging top performing 
-strategies and wallets ! Go and review ; make your deep dive analysis ! 
-and propose solutions for fixing the issue and transform the system 
-to profit generating system :
+Deploy Engine
+Connect your wallet to deploy the arbitrage engine
+
+Engine Running
+Generated Execution Node
+
+0x748A...2751
+
+The system has automatically generated this Smart Account for high-frequency execution. No manual input required
