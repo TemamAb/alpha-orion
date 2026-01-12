@@ -14,7 +14,7 @@ const Dashboard = () => {
           in your original codebase typically indicates a JSX syntax issue.
         </p>
         <p className="text-gray-600 mb-4">
-          This often happens when there's an extra closing <code>{`</div>`}</code> tag,
+          This often happens when there's an extra closing <code>{"</div>"}</code> tag,
           or a missing opening tag, leading to an unbalanced JSX structure.
         </p>
         <p className="text-gray-600">
@@ -22,13 +22,14 @@ const Dashboard = () => {
           The snippet from your error log was:
         </p>
         <pre className="bg-gray-100 p-3 rounded-md text-sm mt-2 overflow-x-auto">
-{`1054|          </div>
+          <code>
+            {`1054|          </div>
 1055|        </div>
-1056|        </div> <-- This line was likely the culprit
-1057|        )`}
+1056|        </div>`}
+          </code>
         </pre>
         <p className="text-gray-600 mt-4">
-          To fix this, you would typically remove the extra closing <code>{`</div>`}</code> tag
+          To fix this, you would typically remove the extra closing <code>{"</div>"}</code> tag
           that is causing the imbalance.
         </p>
       </div>
