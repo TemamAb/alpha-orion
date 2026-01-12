@@ -16,12 +16,21 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
   const [copied, setCopied] = useState(false);
   const [isDeployed, setIsDeployed] = useState(false);
 
-  // Load default wallet address from .env on mount
+  // Load default wallet address and deployment status from storage on mount
   useEffect(() => {
     const defaultAddress = process.env.DEFAULT_WALLET_ADDRESS || '';
     if (defaultAddress && isValidAddress(defaultAddress)) {
       setWalletAddress(defaultAddress);
       onWalletChange(defaultAddress);
+    }
+
+    // Check for existing deployments
+    const stored = localStorage.getItem('alpha_deployments');
+    if (stored) {
+      const deployments = JSON.parse(stored);
+      if (deployments.length > 0) {
+        setIsDeployed(true);
+      }
     }
   }, []);
 

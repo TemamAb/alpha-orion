@@ -155,9 +155,19 @@ const App: React.FC = () => {
     return () => { if (cleanup) cleanup(); };
   }, [connectedWallet, productionService, isEngineRunning]);
 
+  // Initial Forge and Bot Update Interval
   useEffect(() => {
     if (!isEngineRunning) return;
+
+    // Initial forge on startup
     runAlphaForge();
+
+    // Set up a 15-minute interval for AI Re-Forging (Enterprise Standard)
+    const forgeInterval = setInterval(() => {
+      runAlphaForge();
+    }, 15 * 60 * 1000);
+
+    // Set up a 5-second interval for Bot Status Updates (High Frequency)
     const botInterval = setInterval(() => {
       const currentStrategyCount = strategies.length;
       if (realTimeData.pairCount > 0 || realTimeData.txCount > 0 || currentStrategyCount > 0) {
@@ -169,8 +179,25 @@ const App: React.FC = () => {
         })));
       }
     }, 5000);
-    return () => clearInterval(botInterval);
-  }, [runAlphaForge, isEngineRunning, realTimeData]);
+
+    return () => {
+      clearInterval(forgeInterval);
+      clearInterval(botInterval);
+    };
+  }, [runAlphaForge, isEngineRunning]); // Decoupled from realTimeData to prevent jitter
+
+  // Separate effect to handle bot status updates when realTimeData changes
+  useEffect(() => {
+    if (!isEngineRunning) return;
+
+    const currentStrategyCount = strategies.length;
+    setBots(prev => prev.map(bot => ({
+      ...bot,
+      status: bot.role === BotRole.SCANNER && realTimeData.pairCount > 0 ? BotStatus.SCANNING :
+        bot.role === BotRole.ORCHESTRATOR && currentStrategyCount > 0 ? BotStatus.FORGING :
+          bot.role === BotRole.EXECUTOR && realTimeData.txCount > 0 ? BotStatus.EXECUTING : BotStatus.IDLE
+    })));
+  }, [realTimeData.pairCount, realTimeData.txCount, strategies.length, isEngineRunning]);
 
   const metricButtons = [
     { id: 'core-metrics', label: 'Core Metrics', icon: <LayoutDashboard size={14} /> },
