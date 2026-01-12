@@ -1,16 +1,6 @@
 import React from 'react';
 import { BotRole, BotStatus, BotState, Strategy, WalletStats, ChampionWallet } from '../../types';
-
-interface RealTimeData {
-  balance: string;
-  profits: number;
-  txCount: number;
-  pairCount: number;
-  strategyCount: number;
-  blockNumber: number;
-  gasPrice: string;
-  validatedTransactions: number;
-}
+import { RealTimeData } from '../../services/productionDataService';
 
 interface DashboardProps {
   wallet: WalletStats;
