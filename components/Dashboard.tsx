@@ -31,7 +31,7 @@ const ETH_PRICE = 2642.50;
 const MetricTooltip: React.FC<{ text: string; wide?: boolean }> = ({ text, wide }) => (
   <div className="group relative inline-block ml-1.5 align-middle translate-y-[-1px]">
     <HelpCircle size={10} className="text-slate-600 hover:text-indigo-400 cursor-help transition-colors" />
-    <div className={'absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block ' + (wide ? 'w-80' : 'w-48') + ' p-3 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-[9999] pointer-events-none ring-1 ring-white/5'}>
+    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block ${wide ? 'w-80' : 'w-48'} p-3 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-[9999] pointer-events-none ring-1 ring-white/5`}>
       <p className="text-[10px] leading-relaxed text-slate-300 font-medium lowercase">
         {text}
       </p>
