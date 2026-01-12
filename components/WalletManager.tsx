@@ -150,7 +150,7 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
             </div>
             <div>
               <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                Update Wallet Address
+                Set Owner Wallet (Metamask)
               </h3>
               <p className="text-[8px] text-slate-500 uppercase tracking-widest mt-0.5">
                 Paste Ethereum Address
@@ -169,13 +169,13 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
         <div className="space-y-4">
           <div>
             <label className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">
-              Ethereum Address
+              Owner/Manager Address (Metamask)
             </label>
             <input
               type="text"
               value={inputAddress}
               onChange={(e) => setInputAddress(e.target.value)}
-              placeholder="0x..."
+              placeholder="Enter your public address (0x...)"
               className="w-full px-4 py-3 bg-white/[0.02] border border-white/10 rounded-xl text-[11px] font-mono text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-all"
             />
             <p className="text-[8px] text-slate-600 mt-2">
@@ -218,11 +218,11 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
             </div>
             <div>
               <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                {isDeployed ? 'Engine Running' : 'Wallet Configured'}
+                {isDeployed ? 'Smart Engine Active' : 'Manager Connected'}
               </h3>
               <p className={`text-[8px] uppercase tracking-widest mt-0.5 flex items-center gap-1 ${isDeployed ? 'text-emerald-400' : 'text-slate-500'}`}>
                 {isDeployed && <Activity size={8} className="animate-pulse" />}
-                {isDeployed ? 'Deployed on Mainnet' : 'Ready to Deploy'}
+                {isDeployed ? 'Smart Portfolio (ERC-4337) Live' : 'Awaiting Smart Account Deployment'}
               </p>
             </div>
           </div>
@@ -266,7 +266,7 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
 
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/5 rounded-xl">
-            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Address</span>
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Manager Address</span>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono text-white">{formatAddress(walletAddress)}</span>
               <button
