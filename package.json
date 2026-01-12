@@ -15,6 +15,7 @@
     "install:deps": "npm install --include=dev"
   },
   "dependencies": {
+    "@flashbots/ethers-provider-bundle": "^1.0.0",
     "@google/genai": "^1.35.0",
     "@vitejs/plugin-react": "^5.0.0",
     "ethers": "^6.16.0",

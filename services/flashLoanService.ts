@@ -72,25 +72,74 @@ export class FlashLoanService {
    private blockchainService: BlockchainService;
    private mevProtectionService: MEVProtectionService;
    private aavePool: ethers.Contract;
+   private flashLoanReceiverAddress: string | null = null;
 
    constructor(blockchainService: BlockchainService, mevProtectionService?: MEVProtectionService) {
-     this.blockchainService = blockchainService;
-     this.mevProtectionService = mevProtectionService || new MEVProtectionService(blockchainService);
+      this.blockchainService = blockchainService;
+      this.mevProtectionService = mevProtectionService || new MEVProtectionService(blockchainService);
 
-     const provider = blockchainService.getProvider();
-     this.aavePool = new ethers.Contract(
-       CONTRACTS.AAVE_POOL,
-       AAVE_POOL_ABI,
-       provider
-     );
+      const provider = blockchainService.getProvider();
+      this.aavePool = new ethers.Contract(
+         CONTRACTS.AAVE_POOL,
+         AAVE_POOL_ABI,
+         provider
+      );
    }
+
+  /**
+   * Deploy FlashLoanReceiver contract
+   * This contract handles the arbitrage logic during flash loan execution
+   */
+  async deployReceiverContract(
+    contractBytecode: string,
+    uniswapRouter: string = CONTRACTS.UNISWAP_ROUTER,
+    balancerVault: string = '0xBA12222222228d8Ba445958a75a0704d566BF2C8' // Balancer Vault mainnet, adjust for testnet
+  ): Promise<string> {
+     try {
+        console.log('🔨 Deploying FlashLoanReceiver contract...');
+
+        // FlashLoanReceiver ABI (simplified for deployment)
+        const receiverAbi = [
+           'constructor(address _aavePool, address _uniswapRouter, address _balancerVault)',
+           'function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params) external returns (bool)'
+        ];
+
+        const deployment = await this.blockchainService.deployContract(
+           contractBytecode,
+           receiverAbi,
+           [CONTRACTS.AAVE_POOL, uniswapRouter, balancerVault]
+        );
+
+        this.flashLoanReceiverAddress = deployment.address;
+        console.log(`✅ FlashLoanReceiver deployed at: ${this.flashLoanReceiverAddress}`);
+
+        return this.flashLoanReceiverAddress;
+     } catch (error) {
+        console.error('❌ Failed to deploy FlashLoanReceiver:', error);
+        throw error;
+     }
+  }
+
+  /**
+   * Set deployed receiver contract address
+   */
+  setReceiverContractAddress(address: string): void {
+     this.flashLoanReceiverAddress = address;
+  }
+
+  /**
+   * Get receiver contract address
+   */
+  getReceiverContractAddress(): string | null {
+     return this.flashLoanReceiverAddress;
+  }
 
   /**
    * Calculate flash loan premium (fee)
    * Aave V3 charges 0.09% (9 basis points)
    */
   calculatePremium(amount: bigint): bigint {
-    return (amount * 9n) / 10000n; // 0.09%
+     return (amount * 9n) / 10000n; // 0.09%
   }
 
   /**
@@ -179,26 +228,28 @@ export class FlashLoanService {
   }
 
   /**
-   * Execute flash loan (requires deployed receiver contract)
-   * 
-   * NOTE: This is a SIMULATION. In production, you need:
-   * 1. Deploy a FlashLoanReceiver contract
-   * 2. Implement executeOperation() with arbitrage logic
-   * 3. Approve Aave Pool to pull back loan + premium
+   * Execute flash loan with real arbitrage
+   *
+   * Requires deployed FlashLoanReceiver contract for actual execution
    */
   async executeFlashLoan(params: FlashLoanParams): Promise<FlashLoanResult> {
-    try {
-      console.log('🔄 Preparing flash loan execution...');
-      console.log('Asset:', params.asset);
-      console.log('Amount:', params.amount);
-      console.log('Receiver:', params.receiverAddress);
+     try {
+        // Check if receiver contract is deployed
+        if (!this.flashLoanReceiverAddress) {
+           throw new Error('FlashLoanReceiver contract not deployed. Call deployReceiverContract() first.');
+        }
+
+        console.log('🔄 Preparing flash loan execution...');
+        console.log('Asset:', params.asset);
+        console.log('Amount:', params.amount);
+        console.log('Receiver:', this.flashLoanReceiverAddress);
       
       // Validate parameters
       if (!this.blockchainService.isValidAddress(params.asset)) {
         throw new Error('Invalid asset address');
       }
-      if (!this.blockchainService.isValidAddress(params.receiverAddress)) {
-        throw new Error('Invalid receiver address');
+      if (!this.blockchainService.isValidAddress(this.flashLoanReceiverAddress)) {
+        throw new Error('Invalid receiver contract address');
       }
       
       // Check if flash loan is possible
@@ -234,7 +285,7 @@ export class FlashLoanService {
 
         // Prepare transaction for Flashbots
         const txRequest = await aavePoolWithSigner.flashLoanSimple.populateTransaction(
-          params.receiverAddress,
+          this.flashLoanReceiverAddress,
           params.asset,
           amount,
           encodedParams,
@@ -246,7 +297,7 @@ export class FlashLoanService {
       } else {
         console.log('⚠️ MEV protection disabled - executing on public mempool');
         tx = await aavePoolWithSigner.flashLoanSimple(
-          params.receiverAddress,
+          this.flashLoanReceiverAddress,
           params.asset,
           amount,
           encodedParams,

@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { FlashbotsBundleProvider } from '@flashbots/ethers-provider-bundle';
 import { BlockchainService } from './blockchainService';
 
 /**

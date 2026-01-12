@@ -217,6 +217,61 @@ export class BlockchainService {
   getAddressExplorerUrl(address: string): string {
     return `${this.network.explorer}/address/${address}`;
   }
+
+  /**
+   * Deploy a smart contract
+   */
+  async deployContract(
+    contractBytecode: string,
+    abi: any[],
+    constructorArgs: any[] = [],
+    gasLimit?: bigint
+  ): Promise<{
+    contract: ethers.Contract;
+    deploymentTx: ethers.TransactionResponse;
+    address: string;
+  }> {
+    const wallet = this.getWallet();
+
+    // Create contract factory
+    const factory = new ethers.ContractFactory(abi, contractBytecode, wallet);
+
+    // Deploy contract
+    const contract = await factory.deploy(...constructorArgs, {
+      gasLimit: gasLimit || 5000000n
+    });
+
+    console.log(`📝 Deploying contract...`);
+    console.log(`Transaction hash: ${contract.deploymentTransaction()?.hash}`);
+
+    // Wait for deployment
+    await contract.waitForDeployment();
+
+    const address = await contract.getAddress();
+    console.log(`✅ Contract deployed at: ${address}`);
+
+    return {
+      contract: contract as ethers.Contract,
+      deploymentTx: contract.deploymentTransaction()!,
+      address
+    };
+  }
+
+  /**
+   * Get contract instance
+   */
+  getContract(address: string, abi: any[]): ethers.Contract {
+    const provider = this.getProvider();
+    return new ethers.Contract(address, abi, provider);
+  }
+
+  /**
+   * Get contract instance with signer
+   */
+  getContractWithSigner(address: string, abi: any[]): ethers.Contract {
+    const wallet = this.getWallet();
+    return new ethers.Contract(address, abi, wallet);
+  }
 }
 
 // Singleton instance

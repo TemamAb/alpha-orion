@@ -4,12 +4,12 @@ import { BlockchainService } from './blockchainService';
 /**
  * MEMPOOL MONITORING SERVICE
  *
- * Monitors pending transactions for arbitrage opportunities.
- * Focuses on pattern analysis rather than frontrunning.
- * LEGAL NOTE: This service does not frontrun transactions.
+ * Monitors pending transactions to predict price shifts.
+ * Used for Shadow Mempool Sweep strategy.
+ * NOTE: This is for analysis only - no frontrunning implemented.
  */
 
-export interface MempoolTransaction {
+export interface PendingTransaction {
   hash: string;
   from: string;
   to: string;
@@ -20,12 +20,12 @@ export interface MempoolTransaction {
   timestamp: number;
 }
 
-export interface ArbitrageSignal {
-  type: 'PRICE_DISPARITY' | 'LIQUIDITY_MOVEMENT' | 'WHALE_ACTIVITY';
-  confidence: number;
-  tokenPair: string;
-  expectedProfit: string;
-  risk: 'LOW' | 'MEDIUM' | 'HIGH';
+export interface PricePrediction {
+  token: string;
+  predictedPrice: number;
+  confidence: number; // 0-100
+  timeHorizon: number; // seconds
+  basedOnTxCount: number;
   timestamp: number;
 }
 
@@ -34,189 +34,133 @@ export interface ArbitrageSignal {
  */
 export class MempoolService {
   private blockchainService: BlockchainService;
-  private isMonitoring: boolean;
-  private monitoringInterval: NodeJS.Timeout | null;
-  private recentTransactions: MempoolTransaction[];
-  private arbitrageSignals: ArbitrageSignal[];
+  private monitoredTransactions: PendingTransaction[] = [];
+  private pricePredictions: Map<string, PricePrediction> = new Map();
 
   constructor(blockchainService: BlockchainService) {
     this.blockchainService = blockchainService;
-    this.isMonitoring = false;
-    this.monitoringInterval = null;
-    this.recentTransactions = [];
-    this.arbitrageSignals = [];
   }
 
   /**
-   * Start monitoring pending transactions
+   * Monitor pending transactions
    */
-  startMonitoring(intervalMs: number = 5000): void {
-    if (this.isMonitoring) {
-      console.log('📊 Mempool monitoring already active');
-      return;
-    }
-
-    console.log('📊 Starting mempool monitoring...');
-    this.isMonitoring = true;
-
-    this.monitoringInterval = setInterval(async () => {
-      try {
-        await this.scanMempool();
-        await this.analyzePatterns();
-      } catch (error) {
-        console.error('❌ Mempool monitoring error:', error);
-      }
-    }, intervalMs);
-  }
-
-  /**
-   * Stop monitoring
-   */
-  stopMonitoring(): void {
-    if (this.monitoringInterval) {
-      clearInterval(this.monitoringInterval);
-      this.monitoringInterval = null;
-    }
-    this.isMonitoring = false;
-    console.log('📊 Mempool monitoring stopped');
-  }
-
-  /**
-   * Scan pending transactions in mempool
-   */
-  private async scanMempool(): Promise<void> {
+  async monitorMempool(): Promise<PendingTransaction[]> {
     try {
       const provider = this.blockchainService.getProvider();
 
-      // Get pending block (this is a simplified approach)
-      // Note: On L2s, direct mempool access is limited
-      const blockNumber = await provider.getBlockNumber();
-      const block = await provider.getBlock(blockNumber, true);
+      // Get pending transactions (limited by provider capabilities)
+      // Note: Most providers don't expose full mempool
+      const block = await provider.getBlock('pending', true);
 
-      if (!block || !block.transactions) return;
-
-      // Process recent transactions
-      for (const txHash of block.transactions.slice(-10)) { // Last 10 txs
-        const tx = await provider.getTransaction(txHash);
-        if (tx && tx.blockNumber === null) { // Pending transaction
-          const mempoolTx: MempoolTransaction = {
-            hash: tx.hash,
-            from: tx.from,
-            to: tx.to || '',
-            value: ethers.formatEther(tx.value),
-            gasPrice: ethers.formatUnits(tx.gasPrice || 0n, 'gwei'),
-            gasLimit: tx.gasLimit.toString(),
-            data: tx.data,
-            timestamp: Date.now()
-          };
-
-          // Add to recent transactions (keep last 100)
-          this.recentTransactions.unshift(mempoolTx);
-          if (this.recentTransactions.length > 100) {
-            this.recentTransactions = this.recentTransactions.slice(0, 100);
-          }
-        }
+      if (!block || !block.transactions) {
+        return [];
       }
+
+      const transactions: PendingTransaction[] = [];
+
+      for (const tx of block.transactions) {
+        if (typeof tx === 'string') continue;
+
+        const txResp = tx as ethers.TransactionResponse;
+        transactions.push({
+          hash: txResp.hash,
+          from: txResp.from,
+          to: txResp.to || '',
+          value: ethers.formatEther(txResp.value),
+          gasPrice: ethers.formatUnits(txResp.gasPrice, 'gwei'),
+          gasLimit: txResp.gasLimit.toString(),
+          data: txResp.data,
+          timestamp: Date.now()
+        });
+      }
+
+      this.monitoredTransactions = transactions;
+      return transactions;
     } catch (error) {
-      // Silently handle errors (mempool access can be unreliable)
+      console.error('Mempool monitoring failed:', error);
+      return [];
     }
   }
 
   /**
-   * Analyze transaction patterns for arbitrage signals
+   * Analyze large transactions that might affect prices
    */
-  private async analyzePatterns(): Promise<void> {
-    if (this.recentTransactions.length < 5) return;
-
-    // Analyze DEX swap patterns
-    const dexSwaps = this.recentTransactions.filter(tx =>
-      tx.to && this.isDexContract(tx.to) && tx.data.length > 100 // Likely a swap
+  analyzeLargeTransactions(threshold: number = 10): PendingTransaction[] {
+    return this.monitoredTransactions.filter(tx =>
+      parseFloat(tx.value) >= threshold
     );
+  }
 
-    if (dexSwaps.length > 0) {
-      // Detect potential price movements
-      const signal: ArbitrageSignal = {
-        type: 'PRICE_DISPARITY',
-        confidence: Math.min(dexSwaps.length * 10, 80), // Up to 80% confidence
-        tokenPair: 'USDC/WETH', // Simplified
-        expectedProfit: (dexSwaps.length * 0.001).toFixed(4), // Mock profit
-        risk: dexSwaps.length > 3 ? 'MEDIUM' : 'LOW',
+  /**
+   * Predict price shifts based on pending transactions
+   */
+  predictPriceShift(token: string): PricePrediction | null {
+    try {
+      // Analyze pending DEX swaps involving the token
+      const relevantTxs = this.monitoredTransactions.filter(tx =>
+        tx.data.includes(token.slice(2).toLowerCase()) // Simple check
+      );
+
+      if (relevantTxs.length === 0) {
+        return null;
+      }
+
+      // Simple prediction based on transaction volume
+      const totalVolume = relevantTxs.reduce((sum, tx) => sum + parseFloat(tx.value), 0);
+      const prediction = totalVolume > 100 ? 1.02 : 0.98; // 2% up or down
+      const confidence = Math.min(relevantTxs.length * 10, 100);
+
+      const predictionObj: PricePrediction = {
+        token,
+        predictedPrice: prediction,
+        confidence,
+        timeHorizon: 60, // 1 minute
+        basedOnTxCount: relevantTxs.length,
         timestamp: Date.now()
       };
 
-      this.arbitrageSignals.unshift(signal);
-      if (this.arbitrageSignals.length > 50) {
-        this.arbitrageSignals = this.arbitrageSignals.slice(0, 50);
-      }
-
-      console.log(`🎯 Arbitrage signal detected: ${signal.type} (${signal.confidence}% confidence)`);
+      this.pricePredictions.set(token, predictionObj);
+      return predictionObj;
+    } catch (error) {
+      console.error('Price prediction failed:', error);
+      return null;
     }
   }
 
   /**
-   * Check if address is a DEX contract
+   * Get current price predictions
    */
-  private isDexContract(address: string): boolean {
-    const dexContracts = [
-      '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506', // SushiSwap Router (Arbitrum)
-      '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Uniswap V3 Router (Arbitrum)
-      // Add more DEX contracts as needed
-    ];
-
-    return dexContracts.some(dex => dex.toLowerCase() === address.toLowerCase());
+  getPricePredictions(): PricePrediction[] {
+    return Array.from(this.pricePredictions.values());
   }
 
   /**
-   * Get recent arbitrage signals
+   * Clear old data
    */
-  getRecentSignals(limit: number = 10): ArbitrageSignal[] {
-    return this.arbitrageSignals.slice(0, limit);
+  clearOldData(maxAge: number = 300000): void { // 5 minutes
+    const cutoff = Date.now() - maxAge;
+    this.monitoredTransactions = this.monitoredTransactions.filter(tx =>
+      tx.timestamp > cutoff
+    );
+
+    for (const [token, prediction] of this.pricePredictions) {
+      if (Date.now() > prediction.timestamp + prediction.timeHorizon * 1000) {
+        this.pricePredictions.delete(token);
+      }
+    }
   }
 
   /**
-   * Get recent mempool transactions
+   * Start monitoring loop
    */
-  getRecentTransactions(limit: number = 20): MempoolTransaction[] {
-    return this.recentTransactions.slice(0, limit);
-  }
-
-  /**
-   * Get mempool statistics
-   */
-  getMempoolStats(): {
-    totalTransactions: number;
-    dexSwaps: number;
-    averageGasPrice: string;
-    signalsDetected: number;
-  } {
-    const dexSwaps = this.recentTransactions.filter(tx =>
-      tx.to && this.isDexContract(tx.to)
-    ).length;
-
-    const avgGasPrice = this.recentTransactions.length > 0
-      ? this.recentTransactions.reduce((sum, tx) => sum + parseFloat(tx.gasPrice), 0) / this.recentTransactions.length
-      : 0;
-
-    return {
-      totalTransactions: this.recentTransactions.length,
-      dexSwaps,
-      averageGasPrice: avgGasPrice.toFixed(2) + ' gwei',
-      signalsDetected: this.arbitrageSignals.length
-    };
-  }
-
-  /**
-   * Check if monitoring is active
-   */
-  isActive(): boolean {
-    return this.isMonitoring;
+  startMonitoring(interval: number = 10000): void { // 10 seconds
+    setInterval(async () => {
+      await this.monitorMempool();
+      this.clearOldData();
+    }, interval);
   }
 }
 
-/**
- * Create mempool service instance
- */
 export function createMempoolService(blockchainService: BlockchainService): MempoolService {
   return new MempoolService(blockchainService);
 }
-f
