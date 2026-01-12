@@ -15,6 +15,7 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isDeployed, setIsDeployed] = useState(false);
+  const [smartAccount, setSmartAccount] = useState<string>('');
 
   // Load default wallet address and deployment status from storage on mount
   useEffect(() => {
@@ -30,6 +31,7 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
       const deployments = JSON.parse(stored);
       if (deployments.length > 0) {
         setIsDeployed(true);
+        setSmartAccount(deployments[0].smartWalletAddress);
       }
     }
   }, []);
@@ -82,13 +84,15 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
     // Simulate deployment (3 seconds)
     await new Promise(resolve => setTimeout(resolve, 3000));
 
+    const generatedSmartWallet = '0x748A' + Array.from({ length: 36 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
     // PERSIST DEPLOYMENT
     const newDeployment = {
       id: Date.now().toString(),
       deploymentCode: `DEPLOY-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
       date: new Date().toLocaleString(),
       timestamp: Date.now(),
-      smartWalletAddress: walletAddress,
+      smartWalletAddress: generatedSmartWallet,
       contractNumber: `ARB-${Math.floor(Math.random() * 100).toString().padStart(3, '0')}`,
       status: 'active',
       network: 'Ethereum Mainnet',
@@ -99,6 +103,7 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
     const existing = JSON.parse(localStorage.getItem('alpha_deployments') || '[]');
     localStorage.setItem('alpha_deployments', JSON.stringify([newDeployment, ...existing]));
 
+    setSmartAccount(generatedSmartWallet);
     setIsDeployed(true);
   };
 
@@ -281,6 +286,25 @@ const WalletManager: React.FC<WalletManagerProps> = ({ onWalletChange }) => {
               </button>
             </div>
           </div>
+
+          {isDeployed && smartAccount && (
+            <div className="flex items-center justify-between p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+              <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Smart Execution Node</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-white" title={smartAccount}>{smartAccount.substring(0, 6)}...{smartAccount.substring(smartAccount.length - 4)}</span>
+                <button
+                  onClick={() => copyToClipboard(smartAccount)}
+                  className="p-1 hover:bg-white/10 rounded transition-all"
+                >
+                  {copied ? (
+                    <Check size={12} className="text-emerald-400" />
+                  ) : (
+                    <Copy size={12} className="text-indigo-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/5 rounded-xl">
             <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Source</span>

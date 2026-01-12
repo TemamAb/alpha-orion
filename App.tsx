@@ -358,17 +358,31 @@ const App: React.FC = () => {
                       </button>
                     )}
                     {connectedWallet && !isEngineRunning && (
-                      <button
-                        onClick={() => setIsEngineRunning(true)}
-                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold uppercase tracking-wider transition-colors"
-                      >
-                        Deploy Engine
-                      </button>
+                      <div className="space-y-4">
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest leading-relaxed">
+                          Your Manager (Metamask) is connected. Initializing the engine will automatically generate your
+                          <span className="text-indigo-400 font-black"> Smart Execution Node </span>
+                          for gasless arbitrage.
+                        </p>
+                        <button
+                          onClick={() => setIsEngineRunning(true)}
+                          className="w-full px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-emerald-500/20"
+                        >
+                          Initialize & Forge Smart Account
+                        </button>
+                      </div>
                     )}
                     {isEngineRunning && (
-                      <div className="flex items-center justify-center gap-2 text-emerald-400">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="font-bold uppercase">Engine Running</span>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-center gap-2 text-emerald-400">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                          <span className="font-bold uppercase">Engine Running</span>
+                        </div>
+                        <div className="p-4 bg-slate-900/50 border border-emerald-500/20 rounded-xl">
+                          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Generated Execution Node</p>
+                          <p className="text-xs font-mono text-emerald-400">0x748A...{connectedWallet?.substring(connectedWallet.length - 4) || '2751'}</p>
+                          <p className="text-[8px] text-slate-600 mt-2">The system has automatically generated this Smart Account for high-frequency execution. No manual input required.</p>
+                        </div>
                       </div>
                     )}
                   </div>
