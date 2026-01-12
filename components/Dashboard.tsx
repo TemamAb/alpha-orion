@@ -31,7 +31,7 @@ const ETH_PRICE = 2642.50;
 const MetricTooltip: React.FC<{ text: string; wide?: boolean }> = ({ text, wide }) => (
   <div className="group relative inline-block ml-1.5 align-middle translate-y-[-1px]">
     <HelpCircle size={10} className="text-slate-600 hover:text-indigo-400 cursor-help transition-colors" />
-    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block ${wide ? 'w-80' : 'w-48'} p-3 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-[9999] pointer-events-none ring-1 ring-white/5`}>
+    <div className={'absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block ' + (wide ? 'w-80' : 'w-48') + ' p-3 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-[9999] pointer-events-none ring-1 ring-white/5'}>
       <p className="text-[10px] leading-relaxed text-slate-300 font-medium lowercase">
         {text}
       </p>
@@ -41,7 +41,7 @@ const MetricTooltip: React.FC<{ text: string; wide?: boolean }> = ({ text, wide 
 );
 
 const STRATEGY_INTEL: Record<string, string> = {
-  'L2 Flash Arbitrage (Aave-Uni)': 'how: executes atomic cycles by borrowing usdc via aave v3 and swapping across uniswap l2 pools. why: selected for high-speed arb opportunities where slippage is less than 0.01%. significance: accounts for 14.2% of l2 arbitrage volume; captures ~$1.2m in daily inefficient spreads.',
+  'L2 Flash Arbitrage (Aave-Uni)': 'how: executes atomic cycles by borrowing usdc via aave v3 and swapping across uniswap l2 pools. why: selected for high-speed arb opportunities where slippage is below 0.01%. significance: accounts for 14.2% of l2 arbitrage volume; captures ~$1.2m in daily inefficient spreads.',
   'Cross-Dex Rebalance (Eth-Usdc)': 'how: simultaneous multi-dex price equalization. why: chosen to exploit liquidity fragmentation across sushiswap and balancer. significance: essential for defi price discovery; yields average net profit of 82bps per successful rebalance event.',
   'Mempool Front-run Protection': 'how: bundles useroperations through flashbots private relays. why: eliminates public exposure to toxic sandwich bots. significance: saves institutional users 15-40bps in mev leakage; vital for maintaining execution integrity on large swaps.',
   'Stabilizer Alpha #09': 'how: algorithmic smoothing of volatile pairs using jit liquidity. why: high-resilience alpha during peak network congestion. significance: generates consistent 12% apr by capturing micro-volatility noise that manual traders miss.',
@@ -860,7 +860,7 @@ const buttonText = withdrawalMode === 'auto' ? (hasUnsavedAuto ? 'Pending Save' 
                   }}
                   className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500 slider-thumb"
                   style={{
-                    background: `linear-gradient(to right, rgb(16, 185, 129) 0%, rgb(16, 185, 129) ${reinvestmentPercent}%, rgb(30, 41, 59) ${reinvestmentPercent}%, rgb(30, 41, 59) 100%)`
+                    background: 'linear-gradient(to right, rgb(16, 185, 129) 0%, rgb(16, 185, 129) ' + reinvestmentPercent + '%, rgb(30, 41, 59) ' + reinvestmentPercent + '%, rgb(30, 41, 59) 100%)'
                   }}
                 />
                 <div className="flex justify-between mt-2 text-[8px] font-bold text-slate-600 uppercase tracking-widest">
