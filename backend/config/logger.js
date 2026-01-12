@@ -19,14 +19,12 @@ const logger = winston.createLogger({
   ],
 });
 
-// If we're not in production, log to the console with colorized output
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple()
-    )
-  }));
-}
+// Always log to console in both dev and production for Render stdout capture
+logger.add(new winston.transports.Console({
+  format: winston.format.combine(
+    winston.format.colorize(),
+    winston.format.simple()
+  )
+}));
 
 export default logger;

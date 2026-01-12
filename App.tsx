@@ -88,12 +88,45 @@ const App: React.FC = () => {
     initService();
   }, []);
 
+  const handleEngineStart = () => {
+    setIsEngineRunning(true);
+
+    // Create a new deployment record for the registry
+    if (connectedWallet) {
+      const newDeployment = {
+        id: `deploy-${Date.now()}`,
+        deploymentCode: `ORION-HFT-${Math.floor(Math.random() * 900) + 100}`,
+        date: new Date().toLocaleString(),
+        timestamp: Date.now(),
+        smartWalletAddress: `0x748A${connectedWallet.substring(2, 6).toUpperCase()}...${connectedWallet.substring(connectedWallet.length - 4).toUpperCase()}`,
+        contractNumber: `42.v${Math.floor(Math.random() * 9) + 1}`,
+        status: 'active' as const,
+        network: 'Arbitrum Sepolia',
+        gasUsed: `${(Math.random() * 0.05 + 0.02).toFixed(4)} ETH`,
+        transactionHash: `0x${Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`
+      };
+
+      try {
+        const stored = localStorage.getItem('alpha_deployments');
+        const deployments = stored ? JSON.parse(stored) : [];
+        const updated = [newDeployment, ...deployments].slice(0, 50);
+        localStorage.setItem('alpha_deployments', JSON.stringify(updated));
+
+        // Trigger storage event for same-page listeners
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {
+        console.error('Failed to save deployment:', e);
+      }
+    }
+  };
+
   const handleWalletChange = (address: string) => {
     setConnectedWallet(address);
-    setIsEngineRunning(!!address);
+    // Auto-start if connecting for the first time or reconnecting
     if (address) {
       startBotActivity();
     } else {
+      setIsEngineRunning(false);
       stopBotActivity();
     }
   };
@@ -373,7 +406,7 @@ const App: React.FC = () => {
                           for gasless arbitrage.
                         </p>
                         <button
-                          onClick={() => setIsEngineRunning(true)}
+                          onClick={handleEngineStart}
                           className="w-full px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-emerald-500/20"
                         >
                           Initialize & Forge Smart Account

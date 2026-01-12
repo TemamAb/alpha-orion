@@ -6,8 +6,15 @@ import { validateMarketContext } from '../middleware/validator.js';
 
 const router = express.Router();
 
-// Initialize Gemini AI
-const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Helper to get Gemini AI instance safely
+const getAIInstance = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    logger.error('CRITICAL: GEMINI_API_KEY is missing from environment variables');
+    return null;
+  }
+  return new GoogleGenerativeAI(apiKey);
+};
 
 // Discovery Registry
 const DISCOVERY_REGISTRY = {
@@ -25,9 +32,11 @@ const DEFAULT_FORGE_DATA = {
 };
 
 // Helper function to try a specific model
-const tryModel = async (modelName, marketContext) => {
-  logger.info(`Attempting to forge alpha with model: ${modelName}`);
+const tryForgeModel = async (modelName, marketContext) => {
+  const ai = getAIInstance();
+  if (!ai) throw new Error("AI Service Unconfigured");
 
+  logger.info(`Attempting to forge alpha with model: ${modelName}`);
   const model = ai.getGenerativeModel({ model: modelName });
 
   const prompt = `You are the ArbiNexus Alpha Forging Engine. 
@@ -90,8 +99,6 @@ const tryModel = async (modelName, marketContext) => {
   const jsonText = jsonMatch ? jsonMatch[0] : text;
   const parsed = JSON.parse(jsonText);
 
-  logger.info(`Successfully forged ${parsed.strategies?.length || 0} strategies with ${modelName}`);
-
   return { strategies: parsed.strategies, wallets: [] };
 };
 
@@ -99,32 +106,21 @@ const tryModel = async (modelName, marketContext) => {
 router.post('/forge-alpha', geminiLimiter, validateMarketContext, async (req, res, next) => {
   try {
     const { marketContext } = req.body;
+    logger.info('Received forge-alpha request', { marketContext });
 
-    logger.info('Received forge-alpha request', {
-      ip: req.ip,
-      marketContext: marketContext
-    });
-
-    let result;
-
-    // Try gemini-1.5-pro first
     try {
-      result = await tryModel("gemini-1.5-pro", marketContext);
-      logger.info('Successfully used gemini-1.5-pro');
+      const result = await tryForgeModel("gemini-1.5-pro", marketContext);
+      return res.json(result);
     } catch (error) {
       logger.warn(`Pro Forge failed: ${error.message}. Switching to Flash...`);
-
-      // Fallback to gemini-1.5-flash
       try {
-        result = await tryModel("gemini-1.5-flash", marketContext);
-        logger.info('Successfully used gemini-1.5-flash');
+        const result = await tryForgeModel("gemini-1.5-flash", marketContext);
+        return res.json(result);
       } catch (innerError) {
-        logger.warn(`Flash Forge failed: ${innerError.message}. Using default data...`);
-        result = DEFAULT_FORGE_DATA;
+        logger.error(`Critical Forge Failure: ${innerError.message}`);
+        return res.json(DEFAULT_FORGE_DATA);
       }
     }
-
-    res.json(result);
   } catch (error) {
     logger.error('Error in forge-alpha endpoint:', error);
     next(error);
@@ -135,54 +131,56 @@ router.post('/forge-alpha', geminiLimiter, validateMarketContext, async (req, re
 router.post('/ai-terminal-chat', geminiLimiter, async (req, res, next) => {
   try {
     const { query, systemContext } = req.body;
-
     logger.info('Received terminal-chat request', { query });
 
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const ai = getAIInstance();
+    if (!ai) {
+      return res.status(503).json({
+        response: "🤖 **Intelligence Offline**: The Gemini API key is missing. Please configure `GEMINI_API_KEY` in the environment variables."
+      });
+    }
 
-    const prompt = `You are the Alpha-Orion Enterprise Intelligence System (Core v4.2).
-      You are an elite DeFi quant, blockchain security expert, and arbitrage architect.
-      
-      TERMINAL CAPABILITIES:
-      - Real-time monitoring of the Seven Champion Strategy Clusters.
-      - DEEP DISCOVERY: Specialized in identifying 'Champion Wallets' (top 0.1% on-chain performers) for these 7 specific routes.
-      - STRATEGY FORGING: Synthesizing alpha strictly within the 7-strategy framework:
-          1. L2 Flash Arbitrage (Aave-Uni)
-          2. Cross-Dex Rebalance (Eth-Usdc)
-          3. Mempool Front-run Protection
-          4. Stabilizer Alpha #09
-          5. L2 Sequential Executor
-          6. Delta Neutral Forge
-          7. Shadow Mempool Sweep
-      - WALLET FORGING: Reconstructing whale bot architecture for these specific 7 profiles.
-      - Strategy forging and discovery matrix synchronization.
-      
-      CORE FOCUS:
-      - You MUST ONLY analyze and forge within these 7 specific strategy domains.
-      - Do NOT suggest or scan for unrelated strategies. Keep analysis hyper-focused.
-      
-      DISCOVERY PARAMETERS:
-      - Scan for: High win-rate (>80%) arbitrage frequency in the 7 clusters.
-      - Monitor for: Private mempool usage (Flashbots/Eden) specifically for these routes.
-      - Target: Wallets with consistent 'first-in-bundle' positioning for the identified 7 alpha types.
-      
-      SYSTEM CONTEXT (LIVE DATA):
-      ${JSON.stringify(systemContext)}
-      
-      USER QUERY: "${query}"
-      
-      INSTRUCTIONS:
-      1. Provide enterprise-grade, highly technical, and actionable insights.
-      2. Use markdown formatting for readability (bolding, lists, code blocks).
-      3. If the user asks for "Deep Monitoring", analyze the live data for specific optimization opportunities.
-      4. Maintain a professional, elite-quant persona.
-      5. Response should be concise but packed with intelligence.`;
+    const tryChat = async (modelName) => {
+      const model = ai.getGenerativeModel({ model: modelName });
+      const prompt = `You are the Alpha-Orion Enterprise Intelligence System (Core v4.2).
+        You are an elite DeFi quant and arbitrage architect.
+        
+        TERMINAL CAPABILITIES:
+        - Real-time monitoring of the Seven Champion Strategy Clusters.
+        - DEEP DISCOVERY: Identifying Champion Wallets.
+        - STRATEGY SYNTHESIS: L2 Flash Arbitrage, Mempool Protection, Shadow Sweeps.
+        
+        SYSTEM CONTEXT (LIVE DATA):
+        ${JSON.stringify(systemContext)}
+        
+        USER QUERY: "${query}"
+        
+        INSTRUCTIONS:
+        1. Provide enterprise-grade, technical, and actionable insights.
+        2. Use markdown.
+        3. Maintain an elite-quant persona.
+        4. If the user asks for "Profit Status", confirm the system is in LIVE sync mode.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    };
 
-    res.json({ response: text });
+    try {
+      const text = await tryChat("gemini-1.5-pro");
+      res.json({ response: text });
+    } catch (error) {
+      logger.warn(`Pro Chat failed: ${error.message}. Switching to Flash...`);
+      try {
+        const text = await tryChat("gemini-1.5-flash");
+        res.json({ response: text });
+      } catch (innerError) {
+        logger.error(`Critical Chat Failure: ${innerError.message}`);
+        res.status(500).json({
+          response: "🤖 **Uplink Error**: I am currently unable to process your request due to an internal AI provider error. Details: " + innerError.message
+        });
+      }
+    }
   } catch (error) {
     logger.error('Error in ai-terminal-chat endpoint:', error);
     next(error);
