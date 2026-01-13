@@ -1,9 +1,0 @@
-Deploy Engine
-Connect your wallet to deploy the arbitrage engine
-
-Engine Running
-Generated Execution Node
-
-0x748A...2751
-
-The system has automatically generated this Smart Account for high-frequency execution. No manual input required

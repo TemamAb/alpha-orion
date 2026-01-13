@@ -1,8 +1,0 @@
-{
-  "marketContext": {
-    "aave_liquidity": 4500000,
-    "active_integrations": ["1Click", "DexTools", "BitQuery"],
-    "network_load": "Low",
-    "mempool_volatility": "0.24%"
-  }
-}
