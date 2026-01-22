@@ -36,7 +36,7 @@ const Dashboard: React.FC = () => {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [reinvestmentRate, setReinvestmentRate] = useState(parseInt(localStorage.getItem('reinvestmentRate') || '50'));
-  const [deployMode, setDeployMode] = useState<'simulation' | 'production'>(localStorage.getItem('deployMode') as 'simulation' | 'production' || 'simulation');
+  const [deployMode, setDeployMode] = useState<'live-simulation' | 'production'>(localStorage.getItem('deployMode') as 'live-simulation' | 'production' || 'live-simulation');
   const [currency, setCurrency] = useState<'USD' | 'ETH'>(localStorage.getItem('currency') as 'USD' | 'ETH' || 'USD');
   const [settingsResult, setSettingsResult] = useState<string | null>(null);
 
@@ -244,12 +244,12 @@ const Dashboard: React.FC = () => {
                     <label className="flex items-center">
                       <input
                         type="radio"
-                        value="simulation"
-                        checked={deployMode === 'simulation'}
-                        onChange={(e) => setDeployMode(e.target.value as 'simulation' | 'production')}
+                        value="live-simulation"
+                        checked={deployMode === 'live-simulation'}
+                        onChange={(e) => setDeployMode(e.target.value as 'live-simulation' | 'production')}
                         className="mr-2"
                       />
-                      Simulation
+                      Live-Simulation
                     </label>
                     <label className="flex items-center">
                       <input
