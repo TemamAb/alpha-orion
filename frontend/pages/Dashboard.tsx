@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -25,7 +25,7 @@ const Dashboard: React.FC = () => {
 
   const [withdrawalMode, setWithdrawalMode] = useState<'manual' | 'auto'>('manual');
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
-  const [withdrawalAddress, setWithdrawalAddress] = useState(walletAddress);
+  const [withdrawalAddress, setWithdrawalAddress] = useState('');
   const [autoThreshold, setAutoThreshold] = useState('');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawalResult, setWithdrawalResult] = useState<string | null>(null);
@@ -41,6 +41,8 @@ const Dashboard: React.FC = () => {
   const [settingsResult, setSettingsResult] = useState<string | null>(null);
 
   const onlineServices = services.filter(s => s.status === 'online').length;
+
+
 
   const isValidWalletAddress = (address: string) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
@@ -191,6 +193,8 @@ const Dashboard: React.FC = () => {
           </div>
         </Card>
       </div>
+
+
 
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
