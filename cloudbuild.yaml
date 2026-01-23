@@ -1,43 +1,43 @@
 steps:
-  # Build scanner service
+  # Build AI Agent service
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/scanner-service:$COMMIT_SHA', './scanner/']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/ai-agent-service:$COMMIT_SHA', './backend-services/services/ai-agent-service/']
 
-  # Push scanner image
+  # Push AI Agent image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/scanner-service:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/ai-agent-service:$COMMIT_SHA']
 
-  # Build orchestrator service
+  # Build AI Optimizer service
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/orchestrator-service:$COMMIT_SHA', './orchestrator/']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/ai-optimizer:$COMMIT_SHA', './backend-services/services/ai-optimizer/']
 
-  # Push orchestrator image
+  # Push AI Optimizer image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/orchestrator-service:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/ai-optimizer:$COMMIT_SHA']
 
-  # Build executor service
+  # Build User API service
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/executor-service:$COMMIT_SHA', './executor/']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/user-api-service:$COMMIT_SHA', './backend-services/services/user-api-service/']
 
-  # Push executor image
+  # Push User API image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/executor-service:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/user-api-service:$COMMIT_SHA']
 
-  # Build backend service
+  # Build Withdrawal service
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/backend-service:$COMMIT_SHA', './backend/']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/withdrawal-service:$COMMIT_SHA', './backend-services/services/withdrawal-service/']
 
-  # Push backend image
+  # Push Withdrawal image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/backend-service:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/withdrawal-service:$COMMIT_SHA']
 
   # Build frontend service
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/frontend-service:$COMMIT_SHA', './frontend/']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/frontend:$COMMIT_SHA', './frontend/']
 
   # Push frontend image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/frontend-service:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/frontend:$COMMIT_SHA']
 
   # Deploy with Terraform
   - name: 'hashicorp/terraform'
