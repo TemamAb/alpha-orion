@@ -36,7 +36,7 @@ const Dashboard: React.FC = () => {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [reinvestmentRate, setReinvestmentRate] = useState(parseInt(localStorage.getItem('reinvestmentRate') || '50'));
-  const [deployMode, setDeployMode] = useState<'live-simulation' | 'production'>(localStorage.getItem('deployMode') as 'live-simulation' | 'production' || 'live-simulation');
+  const [deployMode, setDeployMode] = useState<'sim' | 'live'>('sim');
   const [currency, setCurrency] = useState<'USD' | 'ETH'>(localStorage.getItem('currency') as 'USD' | 'ETH' || 'USD');
   const [settingsResult, setSettingsResult] = useState<string | null>(null);
   const [deployMode, setDeployMode] = useState<'production' | 'live-simulation'>('live-simulation');
@@ -46,10 +46,10 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchMode = async () => {
       try {
-        const response = await fetch('http://localhost:3001/mode/current');
+        const response = await fetch('http://localhost:8080/mode/status');
         const data = await response.json();
         setDeployMode(data.mode);
-        setIsProductionMode(data.mode === 'production');
+        setIsProductionMode(data.mode === 'live');
       } catch (error) {
         console.error('Error fetching mode:', error);
       }
@@ -103,6 +103,28 @@ const Dashboard: React.FC = () => {
     setTimeout(() => setSettingsResult(null), 3000);
   };
 
+  const handleModeSwitch = async () => {
+    const newMode = deployMode === 'sim' ? 'live' : 'sim';
+    try {
+      const response = await fetch('http://localhost:8080/mode/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: newMode, confirmation: true }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setSettingsResult(`Mode switched to ${newMode}`);
+        setDeployMode(newMode);
+        setIsProductionMode(newMode === 'live');
+      } else {
+        setSettingsResult(data.error || 'Mode switch failed');
+      }
+    } catch (error) {
+      setSettingsResult('Error switching mode');
+    }
+    setTimeout(() => setSettingsResult(null), 3000);
+  };
+
   const handleWithdrawal = async () => {
     if (withdrawalMode === 'manual' && (!withdrawalAmount || !withdrawalAddress)) return;
     if (withdrawalMode === 'auto' && (!autoThreshold || !withdrawalAddress)) return;
@@ -140,15 +162,21 @@ const Dashboard: React.FC = () => {
            {isProductionMode && (
              <div className="flex items-center space-x-2 px-3 py-1 bg-red-900/30 border border-red-600 rounded-md">
                <AlertTriangle className="w-4 h-4 text-red-400" />
-               <span className="text-xs font-bold text-red-400">PRODUCTION MODE</span>
+               <span className="text-xs font-bold text-red-400">LIVE MODE</span>
              </div>
            )}
            {!isProductionMode && (
              <div className="flex items-center space-x-2 px-3 py-1 bg-blue-900/30 border border-blue-600 rounded-md">
                <CheckCircle className="w-4 h-4 text-blue-400" />
-               <span className="text-xs font-bold text-blue-400">LIVE-SIMULATION</span>
+               <span className="text-xs font-bold text-blue-400">SIMULATION MODE</span>
              </div>
            )}
+           <button
+             onClick={handleModeSwitch}
+             className="px-3 py-1 bg-blue-700 text-white rounded-md hover:bg-blue-600"
+           >
+             Switch to {deployMode === 'sim' ? 'Live' : 'Sim'}
+           </button>
            <button
              onClick={() => setCurrency(currency === 'USD' ? 'ETH' : 'USD')}
              className="px-3 py-1 bg-gray-700 text-white rounded-md hover:bg-gray-600"
@@ -268,36 +296,36 @@ const Dashboard: React.FC = () => {
                 </div>
               </Card>
 
-              <Card title="Deploy Mode">
+              <Card title="System Mode">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-4">
                     <label className="flex items-center">
                       <input
                         type="radio"
-                        value="live-simulation"
-                        checked={deployMode === 'live-simulation'}
-                        onChange={(e) => setDeployMode(e.target.value as 'live-simulation' | 'production')}
+                        value="sim"
+                        checked={deployMode === 'sim'}
+                        onChange={(e) => setDeployMode(e.target.value as 'sim' | 'live')}
                         className="mr-2"
                       />
-                      Live-Simulation
+                      Simulation
                     </label>
                     <label className="flex items-center">
                       <input
                         type="radio"
-                        value="production"
-                        checked={deployMode === 'production'}
-                        onChange={(e) => setDeployMode(e.target.value as 'simulation' | 'production')}
+                        value="live"
+                        checked={deployMode === 'live'}
+                        onChange={(e) => setDeployMode(e.target.value as 'sim' | 'live')}
                         className="mr-2"
                       />
-                      Production
+                      Live
                     </label>
                   </div>
                   <button
-                    onClick={handleDeploy}
+                    onClick={handleModeSwitch}
                     className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                   >
                     <Play className="w-4 h-4" />
-                    <span>Deploy</span>
+                    <span>Switch Mode</span>
                   </button>
                 </div>
               </Card>

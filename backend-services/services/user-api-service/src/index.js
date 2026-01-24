@@ -82,6 +82,11 @@ const pool = new Pool({
 const redisClient = createClient({ url: process.env.REDIS_URL });
 redisClient.connect();
 
+// Database connection helper
+function get_db_connection() {
+  return pool;
+}
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -312,13 +317,14 @@ async function initializeSecrets() {
 (async () => {
   await initializeSecrets();
   await initializeRedis();
-  
+  await initializeUserSettingsTable();
+
   // Initialize the Real Arbitrage Engine with loaded secrets
   try {
     arbitrageEngine = new ArbitrageEngine();
     pimlicoEngine = new PimlicoGaslessEngine();
-    log('INFO', '✅ Arbitrage Engine Initialized', { 
-      network: 'Polygon zkEVM', 
+    log('INFO', '✅ Arbitrage Engine Initialized', {
+      network: 'Polygon zkEVM',
       mode: 'PRODUCTION',
       gasless: true,
       minProfitThreshold: process.env.MIN_PROFIT_THRESHOLD_USD || 100,
@@ -454,29 +460,33 @@ const confirmInterval = setInterval(async () => {
 
 // Auto-withdrawal loop
 const withdrawInterval = setInterval(async () => {
-  const threshold = parseInt(process.env.AUTO_WITHDRAWAL_THRESHOLD_USD) || 1000;
-  
-  if (realizedProfit >= threshold) {
+  const settings = await getUserSettings();
+  const threshold = settings.auto_withdrawal_threshold || 1000;
+
+  if (realizedProfit >= threshold && settings.withdrawal_mode === 'auto') {
     log('NOTICE', 'Auto-withdrawal triggered', { threshold, realizedProfit });
-    
+
     try {
-      const destinationWallet = process.env.PROFIT_WALLET_ADDRESS;
+      let destinationWallet = settings.profit_withdrawal_address;
       if (!destinationWallet) {
-        throw new Error('Profit destination wallet not found in Secret Manager (profit-destination-wallet)');
+        destinationWallet = process.env.PROFIT_WALLET_ADDRESS;
+      }
+      if (!destinationWallet) {
+        throw new Error('Profit destination wallet not configured');
       }
 
       const withdrawAmount = realizedProfit;
-      
+
       log('INFO', `Executing GASLESS withdrawal to ${destinationWallet}`, { amount: withdrawAmount });
-      
+
       const withdrawalResult = await pimlicoEngine.executeGaslessWithdrawal(withdrawAmount, destinationWallet);
-      
-      log('INFO', 'Profit Withdrawn Successfully', { 
-        amount: withdrawAmount, 
+
+      log('INFO', 'Profit Withdrawn Successfully', {
+        amount: withdrawAmount,
         destination: destinationWallet,
-        txHash: withdrawalResult.userOpHash 
+        txHash: withdrawalResult.userOpHash
       });
-      
+
       realizedProfit -= withdrawAmount;
       totalWithdrawals++;
       saveState(); // Persist state
@@ -895,22 +905,26 @@ app.get('/pimlico/status', (req, res) => {
   });
 });
 
-app.post('/withdraw/manual', async (req, res) => {
+app.post('/withdraw/manual', checkJwt, requireRole(['admin', 'user']), async (req, res) => {
   try {
-    const destinationWallet = process.env.PROFIT_WALLET_ADDRESS;
+    const settings = await getUserSettings(req.auth.sub || req.auth.username);
+    let destinationWallet = settings.profit_withdrawal_address;
+    if (!destinationWallet) {
+      destinationWallet = process.env.PROFIT_WALLET_ADDRESS;
+    }
     if (!destinationWallet) return res.status(500).json({ error: 'No wallet configured' });
-    
-    // Withdraw all realized profit
-    const amount = realizedProfit;
-    if (amount <= 0) return res.status(400).json({ error: 'No realized profit to withdraw' });
+
+    // Use manual withdrawal amount from settings
+    const amount = settings.manual_withdrawal_amount || 100.00;
+    if (realizedProfit < amount) return res.status(400).json({ error: 'Insufficient realized profit' });
 
     log('NOTICE', 'Manual withdrawal requested', { amount });
     const result = await pimlicoEngine.executeGaslessWithdrawal(amount, destinationWallet);
-    
+
     realizedProfit -= amount;
     totalWithdrawals++;
     saveState(); // Persist state
-    
+
     res.json({ status: 'success', amount, destination: destinationWallet, txHash: result.userOpHash });
   } catch (error) {
     log('ERROR', 'Manual withdrawal failed', { error: error.message });
@@ -953,6 +967,157 @@ app.get('/health', (req, res) => {
     pimlico: !!PIMLICO_API_KEY,
     mocks: false
   });
+});
+
+// ============================================
+// USER SETTINGS ENDPOINTS
+// ============================================
+
+// Initialize user settings table
+async function initializeUserSettingsTable() {
+  const db = get_db_connection();
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        user_id VARCHAR(255) PRIMARY KEY,
+        reinvestment_rate DECIMAL(5,2) DEFAULT 50.00,
+        refresh_interval_seconds INTEGER DEFAULT 5,
+        withdrawal_mode VARCHAR(20) DEFAULT 'auto',
+        auto_withdrawal_threshold DECIMAL(20,2) DEFAULT 1000.00,
+        manual_withdrawal_amount DECIMAL(20,2) DEFAULT 100.00,
+        profit_withdrawal_address VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    log('INFO', 'User settings table initialized');
+  } catch (error) {
+    log('ERROR', 'Failed to initialize user settings table', { error: error.message });
+  }
+}
+
+// Get user settings (internal function)
+async function getUserSettings(userId = 'default') {
+  try {
+    const db = get_db_connection();
+    const result = await db.query(
+      'SELECT * FROM user_settings WHERE user_id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return {
+        user_id: userId,
+        reinvestment_rate: 50.00,
+        refresh_interval_seconds: 5,
+        withdrawal_mode: 'auto',
+        auto_withdrawal_threshold: 1000.00,
+        manual_withdrawal_amount: 100.00,
+        profit_withdrawal_address: null
+      };
+    }
+    return result.rows[0];
+  } catch (error) {
+    log('ERROR', 'Failed to get user settings', { error: error.message });
+    return {
+      user_id: userId,
+      reinvestment_rate: 50.00,
+      refresh_interval_seconds: 5,
+      withdrawal_mode: 'auto',
+      auto_withdrawal_threshold: 1000.00,
+      manual_withdrawal_amount: 100.00,
+      profit_withdrawal_address: null
+    };
+  }
+}
+
+// Get user settings
+app.get('/settings', checkJwt, requireRole(['admin', 'user']), async (req, res) => {
+  try {
+    const userId = req.auth.sub || req.auth.username; // Adjust based on your JWT payload
+    const db = get_db_connection();
+
+    const result = await db.query(
+      'SELECT * FROM user_settings WHERE user_id = $1',
+      [userId]
+    );
+
+    let settings;
+    if (result.rows.length === 0) {
+      // Return defaults if no settings exist
+      settings = {
+        user_id: userId,
+        reinvestment_rate: 50.00,
+        refresh_interval_seconds: 5,
+        withdrawal_mode: 'auto',
+        auto_withdrawal_threshold: 1000.00,
+        manual_withdrawal_amount: 100.00,
+        profit_withdrawal_address: null
+      };
+    } else {
+      settings = result.rows[0];
+    }
+
+    res.json(settings);
+  } catch (error) {
+    log('ERROR', 'Failed to get user settings', { error: error.message });
+    res.status(500).json({ error: 'Failed to get settings' });
+  }
+});
+
+// Update user settings
+app.put('/settings', checkJwt, requireRole(['admin', 'user']), async (req, res) => {
+  try {
+    const userId = req.auth.sub || req.auth.username;
+    const {
+      reinvestment_rate,
+      refresh_interval_seconds,
+      withdrawal_mode,
+      auto_withdrawal_threshold,
+      manual_withdrawal_amount,
+      profit_withdrawal_address
+    } = req.body;
+
+    const db = get_db_connection();
+
+    // Validate inputs
+    if (reinvestment_rate < 0 || reinvestment_rate > 100) {
+      return res.status(400).json({ error: 'Reinvestment rate must be between 0 and 100' });
+    }
+    if (refresh_interval_seconds < 1 || refresh_interval_seconds > 30) {
+      return res.status(400).json({ error: 'Refresh interval must be between 1 and 30 seconds' });
+    }
+    if (!['auto', 'manual'].includes(withdrawal_mode)) {
+      return res.status(400).json({ error: 'Withdrawal mode must be auto or manual' });
+    }
+
+    const result = await db.query(`
+      INSERT INTO user_settings (
+        user_id, reinvestment_rate, refresh_interval_seconds,
+        withdrawal_mode, auto_withdrawal_threshold, manual_withdrawal_amount,
+        profit_withdrawal_address, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id) DO UPDATE SET
+        reinvestment_rate = EXCLUDED.reinvestment_rate,
+        refresh_interval_seconds = EXCLUDED.refresh_interval_seconds,
+        withdrawal_mode = EXCLUDED.withdrawal_mode,
+        auto_withdrawal_threshold = EXCLUDED.auto_withdrawal_threshold,
+        manual_withdrawal_amount = EXCLUDED.manual_withdrawal_amount,
+        profit_withdrawal_address = EXCLUDED.profit_withdrawal_address,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `, [
+      userId, reinvestment_rate, refresh_interval_seconds,
+      withdrawal_mode, auto_withdrawal_threshold, manual_withdrawal_amount,
+      profit_withdrawal_address
+    ]);
+
+    log('INFO', 'User settings updated', { userId });
+    res.json(result.rows[0]);
+  } catch (error) {
+    log('ERROR', 'Failed to update user settings', { error: error.message });
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
 });
 
 console.log(`Attempting to start server on port ${PORT}`);

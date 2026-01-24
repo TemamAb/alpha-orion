@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Server, Zap, BrainCircuit, BarChart3, Bot, Terminal } from 'lucide-react';
+import { LayoutDashboard, Server, Zap, BrainCircuit, BarChart3, Bot, Terminal, Settings } from 'lucide-react';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/strategies', icon: BrainCircuit, label: 'Strategies' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/terminal', icon: Terminal, label: 'Terminal' },
+  { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 const Sidebar: React.FC = () => {

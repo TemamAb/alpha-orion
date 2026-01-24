@@ -8,6 +8,7 @@ import Opportunities from './pages/Opportunities';
 import Strategies from './pages/Strategies';
 import Analytics from './pages/Analytics';
 import Terminal from './pages/Terminal';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/strategies" element={<Strategies />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/terminal" element={<Terminal />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>
     </HashRouter>
