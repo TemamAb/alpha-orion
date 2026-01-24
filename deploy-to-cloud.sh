@@ -7,6 +7,7 @@ echo "==========================================="
 # 1. Commit Changes
 echo "📦 Committing latest configuration and fixes..."
 git add .
+git add cloudbuild.yaml 2>/dev/null || true
 git commit -m "deploy: production release $(date +%Y%m%d-%H%M)" || echo "⚠️  Nothing to commit, proceeding..."
 
 # 2. Push to GitHub (Triggers Cloud Build if configured)
@@ -38,6 +39,8 @@ if ! command -v gcloud &> /dev/null; then
     echo "    👉 Install: https://cloud.google.com/sdk/docs/install"
     exit 0
 fi
+
+echo "✅ Google Cloud SDK detected: $(gcloud --version | head -n 1)"
 
 # 4. Deploy User API Service
 echo "☁️  Deploying User API Service..."
