@@ -46,6 +46,7 @@ DOCUMENTATION (Read in Order):
 ├── DASHBOARD_READY.md                      📖 Technical details
 ├── DASHBOARD_LAUNCH_SUMMARY.md             📖 Complete summary
 ├── PROFIT_VALIDATION_GUIDE.md              📖 Validation checklist
+├── GEMINI_MONITORING_SETUP.md              📖 AI Monitoring Guide
 └── DASHBOARD_INDEX.txt                     📖 This file
 
 ═══════════════════════════════════════════════════════════════════════════════════

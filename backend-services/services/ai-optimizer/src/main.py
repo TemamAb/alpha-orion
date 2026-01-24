@@ -182,12 +182,15 @@ def generate_fallback_optimization(prompt, market_context):
         'executionAdvice': 'Use during stable market conditions'
     }
 
-@app.route('/optimize', methods=['POST'])
+@app.route('/optimize', methods=['GET', 'POST'])
 def optimize():
     """AI-powered arbitrage strategy optimization"""
     try:
-        data = request.get_json()
-        prompt = data.get('prompt', 'Optimize arbitrage strategy for current market conditions')
+        if request.method == 'GET':
+            prompt = request.args.get('prompt', 'Optimize arbitrage strategy for current market conditions')
+        else:
+            data = request.get_json()
+            prompt = data.get('prompt', 'Optimize arbitrage strategy for current market conditions')
 
         # Get market context
         market_context = get_market_data_context()

@@ -39,17 +39,38 @@ if ! command -v gcloud &> /dev/null; then
     exit 0
 fi
 
-# Navigate to service directory
+# 4. Deploy User API Service
+echo "☁️  Deploying User API Service..."
 cd backend-services/services/user-api-service
 
-# Deploy command
 gcloud run deploy user-api-service \
   --source . \
   --region us-central1 \
   --allow-unauthenticated \
   --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project),MIN_PROFIT_THRESHOLD_USD=500,AUTO_WITHDRAWAL_THRESHOLD_USD=1000"
 
+# 5. Deploy AI Optimizer Service (Updated for Gemini Monitoring)
+echo "☁️  Deploying AI Optimizer Service..."
+cd ../ai-optimizer
+
+gcloud run deploy brain-ai-optimizer-us \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project)"
+
 echo ""
 echo "✅ Deployment Complete!"
-echo "   Service URL: $(gcloud run services describe user-api-service --region us-central1 --format 'value(status.url)')"
-echo "   Monitor: https://console.cloud.google.com/run/detail/us-central1/user-api-service/metrics"
+
+USER_API_URL=$(gcloud run services describe user-api-service --region us-central1 --format 'value(status.url)')
+OPTIMIZER_URL=$(gcloud run services describe brain-ai-optimizer-us --region us-central1 --format 'value(status.url)')
+
+echo "   User API URL: $USER_API_URL"
+echo "   AI Optimizer URL: $OPTIMIZER_URL"
+echo "   User API Monitor: https://console.cloud.google.com/run/detail/us-central1/user-api-service/metrics"
+echo "   AI Optimizer Monitor: https://console.cloud.google.com/run/detail/us-central1/brain-ai-optimizer-us/metrics"
+
+echo ""
+echo "🔍 Verifying Service Health..."
+echo "   User API: $(curl -s "$USER_API_URL/health")"
+echo "   AI Optimizer: $(curl -s "$OPTIMIZER_URL/health")"
