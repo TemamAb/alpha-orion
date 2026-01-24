@@ -7,12 +7,12 @@ steps:
 
   # 2. Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/alpha-orion-user-service', '.']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/alpha-orion-user-service', '.']
     dir: 'backend-services/services/user-api-service'
 
-  # 3. Push the image to Container Registry
+  # 3. Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/alpha-orion-user-service']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/alpha-orion-user-service']
 
   # 4. Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -22,19 +22,22 @@ steps:
       - 'deploy'
       - 'alpha-orion-user-service'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/alpha-orion-user-service'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/alpha-orion-user-service'
       - '--region'
       - 'us-central1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'NODE_ENV=production'
+      - 'NODE_ENV=production,GCP_PROJECT_ID=$PROJECT_ID'
       - '--memory'
-      - '1Gi'
+      - '512Mi' # COST OPTIMIZATION: Reduced from 1Gi. Monitor usage and adjust.
+      - '--set-secrets'
+      - >-
+        PIMLICO_API_KEY=pimlico-api-key:latest,ONE_INCH_API_KEY=one-inch-api-key:latest,PROFIT_WALLET_ADDRESS=profit-destination-wallet:latest,POLYGON_ZKEVM_RPC_URL=polygon-rpc-url:latest,PRIVATE_KEY=executor-private-key:latest,SMART_ACCOUNT_ADDRESS=smart-account-address:latest,SMART_ACCOUNT_PRIVATE_KEY=smart-account-private-key:latest,FLASH_LOAN_EXECUTOR_ADDRESS=flash-loan-executor-address:latest
 
 images:
-  - 'gcr.io/$PROJECT_ID/alpha-orion-user-service'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/alpha-orion-user-service'
 
 options:
   logging: CLOUD_LOGGING_ONLY

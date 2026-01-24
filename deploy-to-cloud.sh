@@ -18,9 +18,24 @@ echo "☁️  Deploying directly to Google Cloud Run..."
 
 # Check for gcloud CLI
 if ! command -v gcloud &> /dev/null; then
+    # Try to auto-fix PATH for MINGW64/Windows standard installs
+    if [ -d "/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
+        echo "🔄 Detected Google Cloud SDK in Program Files (x86). Adding to PATH..."
+        export PATH=$PATH:"/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin"
+    elif [ -d "/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
+        echo "🔄 Detected Google Cloud SDK in Program Files. Adding to PATH..."
+        export PATH=$PATH:"/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin"
+    elif [ -d "/c/Users/$USER/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
+        echo "🔄 Detected Google Cloud SDK in AppData. Adding to PATH..."
+        export PATH=$PATH:"/c/Users/$USER/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
+    fi
+fi
+
+if ! command -v gcloud &> /dev/null; then
     echo "⚠️  'gcloud' CLI not found or not in PATH."
     echo "✅ Code pushed to GitHub. If Cloud Build is configured, deployment will start automatically."
     echo "ℹ️  To enable direct deployment from this script, install the Google Cloud SDK."
+    echo "    👉 Install: https://cloud.google.com/sdk/docs/install"
     exit 0
 fi
 

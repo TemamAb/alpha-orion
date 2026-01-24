@@ -44,6 +44,24 @@ git push -u origin main
 
 # 4. Pre-flight Checks
 echo "🔍 Checking configuration..."
+
+if ! command -v gcloud &> /dev/null; then
+    # Try to auto-fix PATH for MINGW64/Windows standard installs
+    if [ -d "/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
+        echo "🔄 Detected Google Cloud SDK in Program Files (x86). Adding to PATH..."
+        export PATH=$PATH:"/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin"
+    elif [ -d "/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
+        echo "🔄 Detected Google Cloud SDK in Program Files. Adding to PATH..."
+        export PATH=$PATH:"/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin"
+    fi
+fi
+
+if ! command -v gcloud &> /dev/null; then
+    echo "⚠️  'gcloud' CLI not found. Skipping secret validation and direct deployment."
+    echo "✅ Code pushed to GitHub. CI/CD should handle deployment."
+    exit 0
+fi
+
 REQUIRED_SECRETS=("profit-destination-wallet" "pimlico-api-key" "one-inch-api-key" "infura-api-key" "polygon-rpc-url" "ethereum-rpc-url")
 
 for SECRET in "${REQUIRED_SECRETS[@]}"; do
