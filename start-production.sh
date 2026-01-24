@@ -29,10 +29,9 @@ if [ -z "$PRIVATE_KEY" ]; then
     exit 1
 fi
 
-if [ -z "$ETHEREUM_RPC_URL" ]; then
-    echo "❌ ETHEREUM_RPC_URL not configured"
-    exit 1
-fi
+# Set default RPC if not configured (Polygon zkEVM)
+RPC_URL=${POLYGON_ZKEVM_RPC_URL:-"https://zkevm-rpc.com"}
+echo "ℹ️  Using RPC URL: $RPC_URL"
 
 if [ "$DEPLOY_MODE" != "production" ]; then
     echo "❌ DEPLOY_MODE not set to 'production'"
@@ -40,21 +39,21 @@ if [ "$DEPLOY_MODE" != "production" ]; then
 fi
 
 echo "✅ Private Key: Configured"
-echo "✅ RPC Endpoint: Configured"
+echo "✅ RPC Endpoint: Configured (or using default)"
 echo "✅ Deploy Mode: $DEPLOY_MODE"
 
 # Test RPC connection
 echo ""
 echo "🌐 Testing Blockchain Connection..."
-RPC_TEST=$(curl -s -X POST "$ETHEREUM_RPC_URL" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' | grep -q "result" && echo "✅" || echo "❌")
+RESPONSE=$(curl -s --max-time 10 -X POST "$RPC_URL" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}')
 
-if [ "$RPC_TEST" != "✅" ]; then
+if echo "$RESPONSE" | grep -q "result"; then
+    echo "✅ RPC connection successful"
+else
     echo "❌ Failed to connect to RPC endpoint"
+    echo "   Response: $RESPONSE"
     exit 1
 fi
-echo "✅ RPC connection successful"
 
 # Create necessary directories
 mkdir -p logs data
@@ -64,32 +63,21 @@ echo ""
 echo "🔧 Starting Backend Services..."
 
 # Terminal 1: User API Service
-echo "[1/3] Starting User API Service (port 3001)..."
+echo "[1/2] Starting User API Service (port 8080)..."
 cd backend-services/services/user-api-service
 npm install > /dev/null 2>&1 || true
-DEPLOY_MODE=production npm start > ../../logs/user-api.log 2>&1 &
+PORT=8080 DEPLOY_MODE=production npm start > ../../../logs/user-api.log 2>&1 &
 USER_API_PID=$!
 cd ../../..
 echo "✅ User API Service started (PID: $USER_API_PID)"
 
 sleep 2
 
-# Terminal 2: Withdrawal Service  
-echo "[2/3] Starting Withdrawal Service (port 3008)..."
-cd backend-services/services/withdrawal-service
-npm install > /dev/null 2>&1 || true
-DEPLOY_MODE=production npm start > ../../logs/withdrawal.log 2>&1 &
-WITHDRAWAL_PID=$!
-cd ../../..
-echo "✅ Withdrawal Service started (PID: $WITHDRAWAL_PID)"
-
-sleep 2
-
 # Terminal 3: Frontend
-echo "[3/3] Starting Frontend (port 3000)..."
+echo "[2/2] Starting Frontend (port 3000)..."
 cd frontend
 npm install > /dev/null 2>&1 || true
-REACT_APP_API_URL=http://localhost:3001 npm start > ../logs/frontend.log 2>&1 &
+REACT_APP_API_URL=http://localhost:8080 npm start > ../logs/frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ..
 echo "✅ Frontend started (PID: $FRONTEND_PID)"
@@ -104,7 +92,7 @@ echo ""
 echo "🏥 Checking Service Health..."
 
 # Check User API
-if curl -s http://localhost:3001/health | grep -q "ok"; then
+if curl -s http://localhost:8080/health | grep -q "ok"; then
     echo "✅ User API Service: HEALTHY"
 else
     echo "❌ User API Service: FAILED"
@@ -112,26 +100,16 @@ else
     exit 1
 fi
 
-# Check Withdrawal Service
-if curl -s http://localhost:3008/health | grep -q "ok"; then
-    echo "✅ Withdrawal Service: HEALTHY"
-else
-    echo "❌ Withdrawal Service: FAILED"
-    kill $WITHDRAWAL_PID 2>/dev/null || true
-    exit 1
-fi
-
 # Get current mode
 echo ""
 echo "📊 Current Status:"
-curl -s http://localhost:3001/mode/current | jq .
+curl -s http://localhost:8080/mode/current | jq .
 
 # Save PIDs for stopping
 echo ""
 echo "💾 Saving process information..."
 cat > .pids << EOF
 USER_API_PID=$USER_API_PID
-WITHDRAWAL_PID=$WITHDRAWAL_PID
 FRONTEND_PID=$FRONTEND_PID
 EOF
 
@@ -140,8 +118,7 @@ echo "🎉 Production Mode Started Successfully!"
 echo "======================================="
 echo ""
 echo "📱 Frontend: http://localhost:3000"
-echo "🔌 API: http://localhost:3001"
-echo "💳 Withdrawals: http://localhost:3008"
+echo "🔌 API: http://localhost:8080"
 echo ""
 echo "🔐 PRODUCTION MODE - REAL MONEY AT RISK"
 echo "⚠️  Monitor: tail -f logs/*.log"

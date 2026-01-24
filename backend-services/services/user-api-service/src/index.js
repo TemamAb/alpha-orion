@@ -488,6 +488,7 @@ app.get('/health', (req, res) => {
     mode: 'PRODUCTION',
     pimlico: !!PIMLICO_API_KEY,
     mocks: false
+  });
 });
 
 console.log(`Attempting to start server on port ${PORT}`);
