@@ -1,0 +1,5 @@
+backend-services/
+.git/
+node_modules/
+__pycache__/
+*.pyc

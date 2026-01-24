@@ -8,6 +8,7 @@ echo "==========================================="
 echo "📦 Committing latest configuration and fixes..."
 git add .
 git add cloudbuild.yaml 2>/dev/null || true
+git add Dockerfile .dockerignore 2>/dev/null || true
 git commit -m "deploy: production release $(date +%Y%m%d-%H%M)" || echo "⚠️  Nothing to commit, proceeding..."
 
 # 2. Push to GitHub (Triggers Cloud Build if configured)
@@ -62,18 +63,35 @@ gcloud run deploy brain-ai-optimizer-us \
   --allow-unauthenticated \
   --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project)"
 
+# 6. Deploy Frontend Dashboard
+echo "☁️  Deploying Frontend Dashboard..."
+cd ../../..
+echo "   Source Directory: $(pwd)"
+
+gcloud run deploy frontend-dashboard \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated
+
 echo ""
 echo "✅ Deployment Complete!"
 
 USER_API_URL=$(gcloud run services describe user-api-service --region us-central1 --format 'value(status.url)')
 OPTIMIZER_URL=$(gcloud run services describe brain-ai-optimizer-us --region us-central1 --format 'value(status.url)')
+DASHBOARD_URL=$(gcloud run services describe frontend-dashboard --region us-central1 --format 'value(status.url)')
 
 echo "   User API URL: $USER_API_URL"
 echo "   AI Optimizer URL: $OPTIMIZER_URL"
+echo "   Dashboard URL: $DASHBOARD_URL"
 echo "   User API Monitor: https://console.cloud.google.com/run/detail/us-central1/user-api-service/metrics"
 echo "   AI Optimizer Monitor: https://console.cloud.google.com/run/detail/us-central1/brain-ai-optimizer-us/metrics"
+echo "   Dashboard Monitor: https://console.cloud.google.com/run/detail/us-central1/frontend-dashboard/metrics"
 
 echo ""
 echo "🔍 Verifying Service Health..."
 echo "   User API: $(curl -s "$USER_API_URL/health")"
 echo "   AI Optimizer: $(curl -s "$OPTIMIZER_URL/health")"
+echo "   Dashboard: $(curl -s -o /dev/null -w "%{http_code}" "$DASHBOARD_URL")"
+
+echo ""
+echo "ℹ️  To check Cloud Build trigger status: ./check_build_status.sh"

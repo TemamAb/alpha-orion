@@ -45,6 +45,24 @@ steps:
     entrypoint: gcloud
     args: ['run', 'deploy', 'brain-ai-optimizer-us', '--image', 'gcr.io/$PROJECT_ID/brain-ai-optimizer-us', '--region', 'us-central1', '--allow-unauthenticated', '--set-env-vars', 'NODE_ENV=production,GCP_PROJECT_ID=$PROJECT_ID']
 
+  # ==============================================================================
+  # 3. FRONTEND DASHBOARD SERVICE
+  # ==============================================================================
+
+  # Build Frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/frontend-dashboard', '.']
+
+  # Push Frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/frontend-dashboard']
+
+  # Deploy Frontend
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: ['run', 'deploy', 'frontend-dashboard', '--image', 'gcr.io/$PROJECT_ID/frontend-dashboard', '--region', 'us-central1', '--allow-unauthenticated']
+
 images:
   - 'gcr.io/$PROJECT_ID/user-api-service'
   - 'gcr.io/$PROJECT_ID/brain-ai-optimizer-us'
+  - 'gcr.io/$PROJECT_ID/frontend-dashboard'
