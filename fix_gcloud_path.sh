@@ -27,7 +27,7 @@ echo "🔍 Searching for Google Cloud SDK..."
 PATHS_TO_CHECK=(
     "/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin"
     "/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin"
-    "/c/Users/$USER/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
+    "/c/Users/$USERNAME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
     "/c/google-cloud-sdk/bin"
 )
 

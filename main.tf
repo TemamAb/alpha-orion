@@ -368,7 +368,7 @@ module "flash-loan-lb-global-lb-backend" {
   load_balancing_scheme   = "EXTERNAL_MANAGED"
   protocol                = "HTTP"
   enable_cdn              = true
-  serverless_neg_backends = concat([{"region" = module.dashboard-frontend.location, "service_name" = module.dashboard-frontend.service_name, "service_version" = "", "type" = "cloud-run"}], [{"service_name" = module.dashboard-frontend-eu.service_name, "service_version" = "", "type" = "cloud-run", "region" = module.dashboard-frontend-eu.location}])
+  serverless_neg_backends = concat([{"region" = module.dashboard-frontend.location, "service_name" = module.dashboard-frontend.service_name, "service_version" = "", "type" = "cloud-run"}], [{"service_name" = module.dashboard-frontend-eu.service_name, "service_version" = "", "type" = "cloud-run", "region" = module.dashboard-frontend-eu.location}], [{"region" = module.user-api-service.location, "service_name" = module.user-api-service.service_name, "service_version" = "", "type" = "cloud-run"}], [{"service_name" = module.user-api-service-eu.service_name, "service_version" = "", "type" = "cloud-run", "region" = module.user-api-service-eu.location}], [{"region" = module.ai-terminal-frontend.location, "service_name" = module.ai-terminal-frontend.service_name, "service_version" = "", "type" = "cloud-run"}], [{"service_name" = module.ai-terminal-frontend-eu.service_name, "service_version" = "", "type" = "cloud-run", "region" = module.ai-terminal-frontend-eu.location}])
   security_policy         = "projects/alpha-orion/global/securityPolicies/flash-loan-security-policy"
   depends_on              = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
@@ -681,8 +681,11 @@ module "benchmarking-scraper-service-eu" {
     min_instance_count = 0
   }
   template_scaling = {
-    max_instance_count = 10
-    min_instance_count = 1
+    max_instance_count = 50
+    min_instance_count = 2
+    cpu_utilization_percent = 70
+    memory_utilization_percent = 80
+    max_concurrency = 1000
   }
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }

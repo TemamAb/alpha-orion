@@ -1,5 +1,7 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, get_jwt
+from flask_talisman import Talisman
 import random
 import os
 import json
@@ -8,11 +10,55 @@ from google.cloud import storage
 from google.cloud import bigquery
 from google.cloud import bigtable
 from google.cloud import secretmanager
+from google.cloud import logging as cloud_logging
 import psycopg2
 import redis
 
 app = Flask(__name__)
 CORS(app)
+
+# Security headers
+Talisman(app, content_security_policy={
+    'default-src': "'self'",
+    'style-src': "'self' 'unsafe-inline'",
+    'script-src': "'self'",
+    'img-src': "'self' data: https:",
+}, force_https=True, strict_transport_security=True, strict_transport_security_preload=True)
+
+# JWT Configuration
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
+app.config['JWT_ACCESS_TOKEN_EXPIRE_MINUTES'] = 15
+app.config['JWT_REFRESH_TOKEN_EXPIRE_DAYS'] = 30
+jwt = JWTManager(app)
+
+# GCP Logging Client for audit logging
+logging_client = cloud_logging.Client()
+logger = logging_client.logger('ai-agent-service-audit')
+
+# Role-based access control decorator
+def role_required(required_role):
+    def decorator(func):
+        @jwt_required()
+        def wrapper(*args, **kwargs):
+            claims = get_jwt()
+            user_role = claims.get('role', 'user')
+            if user_role not in required_role:
+                return jsonify({'error': 'Insufficient permissions'}), 403
+            return func(*args, **kwargs)
+        wrapper.__name__ = func.__name__
+        return wrapper
+    return decorator
+
+# Audit logging helper
+def log_audit_event(event_type, user_id, action, details=None):
+    logger.log_struct({
+        'event_type': event_type,
+        'user_id': user_id,
+        'action': action,
+        'timestamp': json.dumps({'timestamp': {'seconds': int(os.times()[4]), 'nanos': 0}}),
+        'service': 'ai-agent-service',
+        'details': details or {}
+    })
 
 # GCP Clients
 project_id = os.getenv('PROJECT_ID', 'alpha-orion')
@@ -41,12 +87,31 @@ def get_redis_connection():
     return redis_conn
 
 @app.route('/agent', methods=['GET'])
+@role_required(['admin', 'trader'])
 def agent():
+    user_id = get_jwt_identity()
+    claims = get_jwt()
+
+    # Audit log the access
+    log_audit_event('AGENT_ACCESS', user_id, 'get_agent_actions', {
+        'user_role': claims.get('role'),
+        'endpoint': '/agent'
+    })
+
     # Mock AI agent actions
     actions = [
         {'action': 'buy', 'asset': 'ETH', 'amount': random.uniform(0.1, 1.0)},
         {'action': 'sell', 'asset': 'USDC', 'amount': random.uniform(100, 1000)}
     ]
+
+    # Log financial actions for audit
+    for action in actions:
+        log_audit_event('FINANCIAL_ACTION', user_id, action['action'], {
+            'asset': action['asset'],
+            'amount': action['amount'],
+            'service': 'ai-agent-service'
+        })
+
     return jsonify({'actions': actions})
 
 @app.route('/health', methods=['GET'])

@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 // Flash Loan interfaces
 interface IFlashLoanReceiver {
@@ -78,7 +81,25 @@ interface IUniswapV2Router {
  * - DEX routing (Uniswap V2/V3, Sushiswap)
  * - Profit extraction and transfer
  */
-contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable {
+contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable, Pausable, AccessControl {
+    using ECDSA for bytes32;
+
+    bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+
+    // Multi-signature parameters
+    uint256 public constant REQUIRED_SIGNATURES = 2;
+    mapping(bytes32 => mapping(address => bool)) public signedTransactions;
+    mapping(bytes32 => uint256) public signatureCount;
+    mapping(bytes32 => bool) public executedTransactions;
+
+    // Timelock parameters
+    uint256 public constant TIMELOCK_DURATION = 24 hours;
+    mapping(bytes32 => uint256) public timelockTimestamps;
+
+    // Emergency pause
+    bool public emergencyPaused;
     // State variables
     address public flashLoanProvider; // Aave or other FL provider
     address public uniswapV3Router = 0x68b3465833fb72B5a828cCEd3294e3e6962E3786;
@@ -116,8 +137,124 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable {
         uint256 amount
     );
 
-    constructor(address _flashLoanProvider) {
+    // Multi-signature and security events
+    event TransactionSigned(bytes32 indexed txHash, address indexed signer);
+    event MultiSigTransactionExecuted(bytes32 indexed txHash, address indexed executor);
+    event TransactionScheduled(bytes32 indexed txHash, address indexed target, uint256 executeTime);
+    event TimelockedTransactionExecuted(bytes32 indexed txHash, address indexed target);
+    event EmergencyPaused(address indexed pauser);
+    event EmergencyUnpaused(address indexed unpauser);
+
+    constructor(address _flashLoanProvider, address[] memory _signers) {
         flashLoanProvider = _flashLoanProvider;
+
+        // Setup roles
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, msg.sender);
+        _grantRole(EXECUTOR_ROLE, msg.sender);
+        _grantRole(EMERGENCY_ROLE, msg.sender);
+
+        // Setup multi-sig signers
+        for (uint256 i = 0; i < _signers.length; i++) {
+            _grantRole(EXECUTOR_ROLE, _signers[i]);
+        }
+    }
+
+    // Multi-signature functions
+    function signTransaction(bytes32 txHash) external onlyRole(EXECUTOR_ROLE) {
+        require(!signedTransactions[txHash][msg.sender], "Already signed");
+        signedTransactions[txHash][msg.sender] = true;
+        signatureCount[txHash]++;
+
+        emit TransactionSigned(txHash, msg.sender);
+    }
+
+    function executeMultiSigTransaction(
+        address asset,
+        uint256 amount,
+        address[] calldata tokenPath,
+        uint256 minProfitThreshold,
+        uint256 maxSlippage
+    ) external onlyRole(EXECUTOR_ROLE) whenNotPaused {
+        bytes32 txHash = keccak256(abi.encodePacked(
+            asset, amount, tokenPath, minProfitThreshold, maxSlippage, block.timestamp
+        ));
+
+        require(signatureCount[txHash] >= REQUIRED_SIGNATURES, "Insufficient signatures");
+        require(!executedTransactions[txHash], "Transaction already executed");
+
+        executedTransactions[txHash] = true;
+
+        // Execute the arbitrage
+        _executeArbitrageInternal(asset, amount, tokenPath, minProfitThreshold, maxSlippage);
+
+        emit MultiSigTransactionExecuted(txHash, msg.sender);
+    }
+
+    // Timelock functions
+    function scheduleTransaction(
+        bytes32 txHash,
+        address target,
+        bytes calldata data
+    ) external onlyRole(ADMIN_ROLE) {
+        timelockTimestamps[txHash] = block.timestamp + TIMELOCK_DURATION;
+        emit TransactionScheduled(txHash, target, block.timestamp + TIMELOCK_DURATION);
+    }
+
+    function executeTimelockedTransaction(
+        bytes32 txHash,
+        address target,
+        bytes calldata data
+    ) external onlyRole(ADMIN_ROLE) {
+        require(block.timestamp >= timelockTimestamps[txHash], "Timelock not expired");
+        require(timelockTimestamps[txHash] != 0, "Transaction not scheduled");
+
+        delete timelockTimestamps[txHash];
+
+        (bool success,) = target.call(data);
+        require(success, "Timelocked transaction failed");
+
+        emit TimelockedTransactionExecuted(txHash, target);
+    }
+
+    // Emergency functions
+    function emergencyPause() external onlyRole(EMERGENCY_ROLE) {
+        _pause();
+        emergencyPaused = true;
+        emit EmergencyPaused(msg.sender);
+    }
+
+    function emergencyUnpause() external onlyRole(ADMIN_ROLE) {
+        _unpause();
+        emergencyPaused = false;
+        emit EmergencyUnpaused(msg.sender);
+    }
+
+    // Internal function to execute arbitrage
+    function _executeArbitrageInternal(
+        address asset,
+        uint256 amount,
+        address[] calldata tokenPath,
+        uint256 minProfitThreshold,
+        uint256 maxSlippage
+    ) internal {
+        require(tokenPath.length >= 2, "Invalid token path");
+
+        ArbitrageParams memory params = ArbitrageParams({
+            tokenPath: tokenPath,
+            initialAmount: amount,
+            minProfitThreshold: minProfitThreshold,
+            maxSlippage: maxSlippage
+        });
+
+        bytes memory encodedParams = abi.encode(params);
+
+        IFlashLoanProvider(flashLoanProvider).flashLoan(
+            address(this),
+            asset,
+            amount,
+            encodedParams
+        );
     }
 
     /**
@@ -129,7 +266,7 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable {
         address[] calldata tokenPath,
         uint256 minProfitThreshold,
         uint256 maxSlippage
-    ) external onlyOwner nonReentrant returns (bool) {
+    ) external onlyRole(EXECUTOR_ROLE) nonReentrant whenNotPaused returns (bool) {
         require(tokenPath.length >= 2, "Invalid token path");
         require(amount > 0, "Invalid amount");
 
@@ -306,7 +443,7 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable {
     /**
      * Withdraw profits
      */
-    function withdrawProfit(address token, uint256 amount) external onlyOwner nonReentrant {
+    function withdrawProfit(address token, uint256 amount) external onlyRole(ADMIN_ROLE) nonReentrant whenNotPaused {
         require(amount > 0, "Invalid amount");
         require(IERC20(token).balanceOf(address(this)) >= amount, "Insufficient balance");
 
@@ -317,7 +454,7 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable {
     /**
      * Withdraw all profits of a token
      */
-    function withdrawAllProfit(address token) external onlyOwner nonReentrant {
+    function withdrawAllProfit(address token) external onlyRole(ADMIN_ROLE) nonReentrant whenNotPaused {
         uint256 balance = IERC20(token).balanceOf(address(this));
         require(balance > 0, "No balance to withdraw");
 
@@ -353,7 +490,7 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable {
     function setRouterAddresses(
         address _uniswapV3Router,
         address _uniswapV2Router
-    ) external onlyOwner {
+    ) external onlyRole(ADMIN_ROLE) {
         uniswapV3Router = _uniswapV3Router;
         uniswapV2Router = _uniswapV2Router;
     }
@@ -361,7 +498,7 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable {
     /**
      * Emergency function to recover stuck tokens
      */
-    function emergencyWithdraw(address token) external onlyOwner {
+    function emergencyWithdraw(address token) external onlyRole(EMERGENCY_ROLE) {
         uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance > 0) {
             IERC20(token).transfer(owner(), balance);

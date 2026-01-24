@@ -12,14 +12,24 @@ module "pimlico-api-secret" {
   }
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
+module "jwt-secret" {
+  source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
+  project_id  = "alpha-orion"
+  name        = "jwt-secret-key"
+  secret_data = "your-very-secure-jwt-secret-key-change-in-production-256-bits"
+  automatic_replication = {
+    kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
+  }
+  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+}
 module "user-api-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
   project_id                    = "alpha-orion"
   location                      = "us-central1"
   service_name                  = "user-api-service"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/user-api-service:${lookup(var.image_versions, \"user-api-service\", \"latest\")}"
+ "container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/user-api-service:${lookup(var.image_versions, \"user-api-service\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
-  service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
+  service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"], ["roles/logging.logWriter"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
   vpc_access = {
     egress = "ALL_TRAFFIC"
