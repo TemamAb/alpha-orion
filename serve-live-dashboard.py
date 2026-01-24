@@ -106,11 +106,27 @@ def main():
         print(f'{e}')
         print()
         print('⚠️  Port 8888 not available, will try fallback ports...')
+    if os.environ.get('PORT'):
+        PORT = int(os.environ.get('PORT'))
+        print('🔍 STAGE 2: PORT CONFIGURATION (ENV DETECTED)')
+        print(f'  ✓ Using environment variable PORT: {PORT}')
+    else:
+        print('🔍 STAGE 2: PORT DETECTION (TESTING PORT 8888)')
         try:
             PORT, is_default = find_free_port(start_port=9200, max_attempts=100)
         except RuntimeError as e2:
             print(f'{e2}')
             sys.exit(1)
+            PORT, is_default = find_free_port(start_port=8888, max_attempts=1)
+        except RuntimeError as e:
+            print(f'{e}')
+            print()
+            print('⚠️  Port 8888 not available, will try fallback ports...')
+            try:
+                PORT, is_default = find_free_port(start_port=9200, max_attempts=100)
+            except RuntimeError as e2:
+                print(f'{e2}')
+                sys.exit(1)
     print()
     
     # Stage 3: Configuration
