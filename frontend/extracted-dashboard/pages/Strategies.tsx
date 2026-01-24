@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import Card from '../components/ui/Card';
-import { useApiData } from '../hooks/useApiData';
+import { useApiData } from '../hooks/useMockData';
 import { Strategy } from '../types';
 import { getStrategyOptimization, OptimizationResult } from '../services/geminiService';
 import { Bot, Cpu, Zap } from 'lucide-react';
@@ -31,7 +31,7 @@ const StrategyCard: React.FC<{ strategy: Strategy }> = ({ strategy }) => (
 );
 
 const Strategies: React.FC = () => {
-  const { strategies, loading, error } = useApiData();
+  const { strategies } = useApiData();
   const [isLoading, setIsLoading] = useState(false);
   const [optimizationResult, setOptimizationResult] = useState<OptimizationResult | null>(null);
 

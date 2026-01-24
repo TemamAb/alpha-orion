@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Frontend - Auto-detected port: 3000
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+    depends_on:
+      - user-api-service
+
+  # Main API Gateway - Auto-detected port: 3001
+  user-api-service:
+    build:
+      context: ./backend-services/services/user-api-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:8080"
+    environment:
+      - NODE_ENV=development
+      - AI_OPTIMIZER_URL=http://ai-optimizer:8080
+      - ORDER_MANAGEMENT_URL=http://order-management-service:8080
+    depends_on:
+      - ai-optimizer
+      - order-management-service
+
+  # AI Services
+  ai-optimizer:
+    build:
+      context: ./backend-services/services/ai-optimizer
+      dockerfile: Dockerfile
+    ports:
+      - "3002:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+
+  ai-agent-service:
+    build:
+      context: ./backend-services/services/ai-agent-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+
+  # Core Services
+  order-management-service:
+    build:
+      context: ./backend-services/services/order-management-service
+      dockerfile: Dockerfile
+    ports:
+      - "3004:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+
+  brain-orchestrator:
+    build:
+      context: ./backend-services/services/brain-orchestrator
+      dockerfile: Dockerfile
+    ports:
+      - "3005:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+
+  eye-scanner:
+    build:
+      context: ./backend-services/services/eye-scanner
+      dockerfile: Dockerfile
+    ports:
+      - "3006:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+
+  # Database
+  db:
+    image: postgres:13
+    ports:
+      - "3007:5432"
+    environment:
+      - POSTGRES_DB=alpha_orion
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "3008:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

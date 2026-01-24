@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha-Orion AI Trading Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%); color: white; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; }
+        .metric-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .profit-positive { color: #10b981; }
+        .profit-negative { color: #ef4444; }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-2">Alpha-Orion AI Trading Dashboard</h1>
+            <p class="text-gray-400">Real-time AI-powered arbitrage trading platform</p>
+            <div class="mt-4 flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-sm">AI Optimizer Active</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span class="text-sm">Profit Generation Live</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="metrics">
+            <div class="metric-card p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">Total PnL</p>
+                        <p class="text-2xl font-bold" id="totalPnl">$125,430.50</p>
+                    </div>
+                    <div class="text-white/50 text-2xl">📈</div>
+                </div>
+            </div>
+            <div class="metric-card p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">Active Strategies</p>
+                        <p class="text-2xl font-bold" id="activeStrategies">5</p>
+                    </div>
+                    <div class="text-white/50 text-2xl">🎯</div>
+                </div>
+            </div>
+            <div class="metric-card p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">Online Services</p>
+                        <p class="text-2xl font-bold" id="onlineServices">14</p>
+                    </div>
+                    <div class="text-white/50 text-2xl">⚡</div>
+                </div>
+            </div>
+            <div class="metric-card p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">AI Confidence</p>
+                        <p class="text-2xl font-bold" id="aiConfidence">92%</p>
+                    </div>
+                    <div class="text-white/50 text-2xl">🤖</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profit Withdrawal Section -->
+        <div class="card p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4 flex items-center">
+                <span class="mr-2">💰</span>
+                Profit Withdrawal
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Manual Withdrawal -->
+                <div class="space-y-4">
+                    <h4 class="font-semibold text-white">Manual Withdrawal</h4>
+                    <div class="space-y-3">
+                        <input type="number" id="withdrawAmount" placeholder="Amount (USD)" class="w-full p-3 rounded bg-white/10 border border-white/20 text-white placeholder-gray-400">
+                        <input type="text" id="withdrawAddress" placeholder="Wallet Address" class="w-full p-3 rounded bg-white/10 border border-white/20 text-white placeholder-gray-400">
+                        <button onclick="withdrawManual()" class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+                            💸 Withdraw Profits
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Auto Withdrawal -->
+                <div class="space-y-4">
+                    <h4 class="font-semibold text-white">Auto Withdrawal</h4>
+                    <div class="space-y-3">
+                        <input type="number" id="autoThreshold" placeholder="Threshold Amount (USD)" class="w-full p-3 rounded bg-white/10 border border-white/20 text-white placeholder-gray-400">
+                        <input type="text" id="autoAddress" placeholder="Auto Wallet Address" class="w-full p-3 rounded bg-white/10 border border-white/20 text-white placeholder-gray-400">
+                        <button onclick="setupAutoWithdraw()" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+                            🔄 Setup Auto Withdrawal
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="withdrawalResult" class="mt-4"></div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+            <!-- AI Optimization Panel -->
+            <div class="lg:col-span-1">
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <span class="mr-2">🎯</span>
+                        AI Optimization
+                    </h3>
+                    <button onclick="optimizeStrategy()" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg mb-4 transition duration-300">
+                        🚀 Generate Profits
+                    </button>
+                    <div id="optimizationResult" class="space-y-3">
+                        <div class="text-center text-gray-400 py-8">
+                            Click "Generate Profits" to see AI optimization results
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Services Status -->
+            <div class="lg:col-span-1">
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <span class="mr-2">⚙️</span>
+                        Service Status
+                    </h3>
+                    <div id="servicesList" class="space-y-2 max-h-80 overflow-y-auto">
+                        <div class="text-center text-gray-400 py-8">
+                            Loading services...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trading Opportunities -->
+            <div class="lg:col-span-1">
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <span class="mr-2">💼</span>
+                        Opportunities
+                    </h3>
+                    <div id="opportunitiesList" class="space-y-2 max-h-80 overflow-y-auto">
+                        <div class="text-center text-gray-400 py-8">
+                            Loading opportunities...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- PnL Chart -->
+            <div class="card p-6">
+                <h3 class="text-xl font-bold mb-4">📊 PnL Performance</h3>
+                <canvas id="pnlChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- Strategy Performance -->
+            <div class="card p-6">
+                <h3 class="text-xl font-bold mb-4">🎯 Strategy Performance</h3>
+                <canvas id="strategyChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+
+        // Load initial data
+        async function loadDashboard() {
+            try {
+                await Promise.all([
+                    loadServices(),
+                    loadOpportunities(),
+                    loadStrategies(),
+                    loadAnalytics()
+                ]);
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        async function loadServices() {
+            try {
+                const response = await fetch(`${API_BASE}/services`);
+                const services = await response.json();
+
+                const onlineServices = services.filter(s => s.status === 'online').length;
+                document.getElementById('onlineServices').textContent = onlineServices;
+
+                const servicesList = document.getElementById('servicesList');
+                servicesList.innerHTML = services.slice(0, 8).map(service => `
+                    <div class="flex items-center justify-between p-2 rounded">
+                        <span class="text-sm">${service.name}</span>
+                        <span class="w-2 h-2 rounded-full ${service.status === 'online' ? 'bg-green-500' : 'bg-red-500'}"></span>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('servicesList').innerHTML = '<div class="text-center text-red-400 py-4">Failed to load services</div>';
+            }
+        }
+
+        async function loadOpportunities() {
+            try {
+                const response = await fetch(`${API_BASE}/opportunities`);
+                const opportunities = await response.json();
+
+                const opportunitiesList = document.getElementById('opportunitiesList');
+                opportunitiesList.innerHTML = opportunities.slice(0, 5).map(opp => `
+                    <div class="p-3 rounded bg-white/5">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-sm font-medium">${opp.assets.join('/')}</span>
+                            <span class="text-green-400 text-sm">$${opp.potentialProfit.toFixed(2)}</span>
+                        </div>
+                        <div class="text-xs text-gray-400">${opp.exchanges.join(' → ')}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('opportunitiesList').innerHTML = '<div class="text-center text-red-400 py-4">Failed to load opportunities</div>';
+            }
+        }
+
+        async function loadStrategies() {
+            try {
+                const response = await fetch(`${API_BASE}/strategies`);
+                const strategies = await response.json();
+
+                const activeStrategies = strategies.filter(s => s.isActive).length;
+                document.getElementById('activeStrategies').textContent = activeStrategies;
+
+                // Create strategy performance chart
+                createStrategyChart(strategies);
+            } catch (error) {
+                console.error('Error loading strategies:', error);
+            }
+        }
+
+        async function loadAnalytics() {
+            try {
+                const [pnlResponse, totalResponse] = await Promise.all([
+                    fetch(`${API_BASE}/analytics/pnl`),
+                    fetch(`${API_BASE}/analytics/total-pnl`)
+                ]);
+
+                const pnlData = await pnlResponse.json();
+                const totalData = await totalResponse.json();
+
+                document.getElementById('totalPnl').textContent = `$${totalData.totalPnl.toLocaleString()}`;
+                document.getElementById('aiConfidence').textContent = '92%';
+
+                createPnLChart(pnlData);
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        async function optimizeStrategy() {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = '🤖 Optimizing...';
+            button.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/optimize`);
+                const result = await response.json();
+
+                const resultDiv = document.getElementById('optimizationResult');
+                resultDiv.innerHTML = `
+                    <div class="p-4 rounded bg-gradient-to-r from-green-600/20 to-blue-600/20 border border-green-500/30">
+                        <div class="flex items-center mb-2">
+                            <span class="text-green-400 mr-2">✅</span>
+                            <span class="font-medium">Optimization Complete</span>
+                        </div>
+                        <div class="space-y-1 text-sm">
+                            <div><strong>Strategy:</strong> ${result.strategy}</div>
+                            <div><strong>Expected Return:</strong> <span class="profit-positive">${result.expectedReturn.toFixed(2)}%</span></div>
+                            <div><strong>Max Slippage:</strong> ${(result.parameters.maxSlippage * 100).toFixed(2)}%</div>
+                            <div><strong>Threshold:</strong> ${(result.parameters.threshold * 100).toFixed(2)}%</div>
+                        </div>
+                    </div>
+                `;
+
+                // Update AI confidence based on result
+                const confidence = Math.min(Math.max(result.expectedReturn / 10 * 100, 70), 98);
+                document.getElementById('aiConfidence').textContent = `${confidence.toFixed(0)}%`;
+
+            } catch (error) {
+                document.getElementById('optimizationResult').innerHTML = `
+                    <div class="p-4 rounded bg-red-600/20 border border-red-500/30">
+                        <div class="flex items-center">
+                            <span class="text-red-400 mr-2">❌</span>
+                            <span>Optimization failed. Check if AI service is running.</span>
+                        </div>
+                    </div>
+                `;
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        function createPnLChart(pnlData) {
+            const ctx = document.getElementById('pnlChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: pnlData.map(d => d.time),
+                    datasets: [{
+                        label: 'PnL ($)',
+                        data: pnlData.map(d => d.pnl),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createStrategyChart(strategies) {
+            const ctx = document.getElementById('strategyChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: strategies.map(s => s.name.split(' ')[0]),
+                    datasets: [{
+                        label: 'Win Rate (%)',
+                        data: strategies.map(s => s.winRate),
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function withdrawManual() {
+            const amount = document.getElementById('withdrawAmount').value;
+            const address = document.getElementById('withdrawAddress').value;
+
+            if (!amount || !address) {
+                showWithdrawalResult('Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3003/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: 'manual',
+                        amount: parseFloat(amount),
+                        address: address
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showWithdrawalResult(`Withdrawal successful! TX: ${result.txHash}`, 'success');
+                    document.getElementById('withdrawAmount').value = '';
+                    document.getElementById('withdrawAddress').value = '';
+                } else {
+                    showWithdrawalResult(result.message, 'error');
+                }
+            } catch (error) {
+                showWithdrawalResult('Withdrawal failed. Service may not be running.', 'error');
+            }
+        }
+
+        async function setupAutoWithdraw() {
+            const threshold = document.getElementById('autoThreshold').value;
+            const address = document.getElementById('autoAddress').value;
+
+            if (!threshold || !address) {
+                showWithdrawalResult('Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3003/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: 'auto',
+                        threshold: parseFloat(threshold),
+                        address: address
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showWithdrawalResult(result.message, 'success');
+                    document.getElementById('autoThreshold').value = '';
+                    document.getElementById('autoAddress').value = '';
+                } else {
+                    showWithdrawalResult(result.message, 'error');
+                }
+            } catch (error) {
+                showWithdrawalResult('Auto withdrawal setup failed. Service may not be running.', 'error');
+            }
+        }
+
+        function showWithdrawalResult(message, type) {
+            const resultDiv = document.getElementById('withdrawalResult');
+            const bgColor = type === 'success' ? 'bg-green-600/20 border-green-500/30' : 'bg-red-600/20 border-red-500/30';
+            const textColor = type === 'success' ? 'text-green-400' : 'text-red-400';
+
+            resultDiv.innerHTML = `
+                <div class="p-4 rounded ${bgColor} border">
+                    <div class="flex items-center">
+                        <span class="${textColor} mr-2">${type === 'success' ? '✅' : '❌'}</span>
+                        <span>${message}</span>
+                    </div>
+                </div>
+            `;
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                resultDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // Auto-refresh data every 30 seconds
+        setInterval(() => {
+            loadServices();
+            loadOpportunities();
+        }, 30000);
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+</html>

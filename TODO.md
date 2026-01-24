@@ -25,11 +25,17 @@
 - Created useApiData hook, updated some pages to use it (Strategies updated)
 - Updated some pages to use useApiData
 - Updated terminal to call API
+- Implemented comprehensive settings feature in dashboard (modal with profit reinvestment, data refresh, deploy mode, wallet settings, profit withdrawal)
+- Updated dashboard header with title, deploy mode indicator, currency toggle
+- Added footer branding
+- Integrated GCP services (Pub/Sub, GCS, BigQuery, Bigtable, AlloyDB, Redis, Secret Manager) in eye-scanner and brain-orchestrator services
+- Created Terraform configuration for GCP infrastructure (AlloyDB, Redis, GCS, BigQuery, Bigtable, Pub/Sub, Cloud Run services, load balancer)
+- Updated GitHub Actions workflow for GCP deployment
 
 ## Next Steps
+- Integrate GCP services in remaining services
 - Update all frontend pages to use useApiData
 - Update geminiService getStrategyOptimization to call AI API
-- Integrate GCP services (Pub/Sub, DB, etc.) in services
 - Test services locally
 - Update terraform if needed
 - Deploy and validate

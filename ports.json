@@ -1,0 +1,11 @@
+{
+  "frontend": 3000,
+  "api": 3001,
+  "ai_optimizer": 3002,
+  "ai_agent": 3003,
+  "order_management": 3004,
+  "brain_orchestrator": 3005,
+  "eye_scanner": 3006,
+  "postgres": 3007,
+  "redis": 3008
+}

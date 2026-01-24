@@ -2,12 +2,12 @@
 import React from 'react';
 import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import Card from '../components/ui/Card';
-import { useMockData } from '../hooks/useMockData';
+import { useApiData } from '../hooks/useMockData';
 
 const COLORS = ['#3B82F6', '#10B981', '#F97316', '#8B5CF6', '#EC4899'];
 
 const Analytics: React.FC = () => {
-  const { strategies, pnlData } = useMockData();
+  const { strategies, pnlData } = useApiData();
 
   const strategyPnlData = strategies.map(s => ({ name: s.name, PnL: s.pnl }));
   const winRateData = strategies.map(s => ({ name: s.name, 'Win Rate': s.winRate }));
