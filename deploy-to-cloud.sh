@@ -16,6 +16,14 @@ git push origin main
 # 3. Direct Cloud Run Deployment (Ensures immediate update)
 echo "☁️  Deploying directly to Google Cloud Run..."
 
+# Check for gcloud CLI
+if ! command -v gcloud &> /dev/null; then
+    echo "⚠️  'gcloud' CLI not found or not in PATH."
+    echo "✅ Code pushed to GitHub. If Cloud Build is configured, deployment will start automatically."
+    echo "ℹ️  To enable direct deployment from this script, install the Google Cloud SDK."
+    exit 0
+fi
+
 # Navigate to service directory
 cd backend-services/services/user-api-service
 
