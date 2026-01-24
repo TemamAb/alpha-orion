@@ -1,6 +1,5 @@
 const axios = require('axios');
 const { ethers } = require('ethers');
-const { UserOperation } = require('userop');
 
 class PimlicoGaslessEngine {
   constructor() {
@@ -16,6 +15,27 @@ class PimlicoGaslessEngine {
     
     this.provider = new ethers.providers.JsonRpcProvider(this.rpcUrl);
     console.log(`[Pimlico] Engine initialized for Polygon zkEVM with API Key: ${this.apiKey.substring(0, 6)}...`);
+  }
+
+  async getUserOperationReceipt(userOpHash) {
+    try {
+      const { data } = await axios.post(this.bundlerUrl, {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_getUserOperationReceipt',
+        params: [userOpHash]
+      }, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+      return data.result;
+    } catch (error) {
+      console.error(`[Pimlico] Failed to get user operation receipt for ${userOpHash}:`, error.message);
+      return null;
+    }
   }
 
   async executeGaslessWithdrawal(amount, destinationAddress, tokenAddress = '0xA8CE8aee21bC2A48a5EF670afCc9274C7bbC681C') {
@@ -66,30 +86,32 @@ class PimlicoGaslessEngine {
       });
 
       userOp.paymasterAndData = paymasterResponse.data.result.paymasterAndData;
+      userOp.callGasLimit = paymasterResponse.data.result.callGasLimit;
+      userOp.preVerificationGas = paymasterResponse.data.result.preVerificationGas;
+      userOp.verificationGasLimit = paymasterResponse.data.result.verificationGasLimit;
 
       // 3. Sign the UserOperation
       const privateKey = process.env.SMART_ACCOUNT_PRIVATE_KEY;
       if (!privateKey) {
         throw new Error("Smart account private key is required for signing.");
       }
+      const entryPointAddress = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789';
       const wallet = new ethers.Wallet(privateKey, this.provider);
-      const signature = await wallet.signMessage(ethers.utils.arrayify(ethers.utils.keccak256(
+
+      // Correctly calculate the UserOp hash to be signed
+      const userOpHash = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
           ['address', 'uint256', 'bytes32', 'bytes32', 'uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'bytes32'],
-          [
-            userOp.sender,
-            userOp.nonce,
-            ethers.utils.keccak256(userOp.initCode),
-            ethers.utils.keccak256(userOp.callData),
-            userOp.callGasLimit,
-            userOp.verificationGasLimit,
-            userOp.preVerificationGas,
-            userOp.maxFeePerGas,
-            userOp.maxPriorityFeePerGas,
-            ethers.utils.keccak256(userOp.paymasterAndData)
-          ]
+          [userOp.sender, userOp.nonce, ethers.utils.keccak256(userOp.initCode), ethers.utils.keccak256(userOp.callData), userOp.callGasLimit, userOp.verificationGasLimit, userOp.preVerificationGas, userOp.maxFeePerGas, userOp.maxPriorityFeePerGas, ethers.utils.keccak256(userOp.paymasterAndData)]
         )
-      )));
+      );
+      const packedUserOpHash = ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+            ['bytes32', 'address', 'uint256'],
+            [userOpHash, entryPointAddress, this.chainId]
+        )
+      );
+      const signature = await wallet.signMessage(ethers.utils.arrayify(packedUserOpHash));
       userOp.signature = signature;
 
       // 4. Send to bundler

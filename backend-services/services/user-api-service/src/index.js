@@ -59,7 +59,7 @@ async function initializeRedis() {
 async function saveState() {
   if (!redisClient) return;
   try {
-    const state = { totalPnl, totalTrades, realizedProfit, unrealizedProfit, executedTrades, totalWithdrawals };
+    const state = { totalTrades, realizedProfit, unrealizedProfit, executedTrades, totalWithdrawals };
     await redisClient.set('alpha-orion:state', JSON.stringify(state));
   } catch (err) {
     log('ERROR', 'Failed to save state to Redis', { error: err.message });
@@ -71,13 +71,12 @@ async function loadState() {
   const data = await redisClient.get('alpha-orion:state');
   if (data) {
     const state = JSON.parse(data);
-    totalPnl = state.totalPnl || 0;
     totalTrades = state.totalTrades || 0;
     realizedProfit = state.realizedProfit || 0;
     unrealizedProfit = state.unrealizedProfit || 0;
     executedTrades = state.executedTrades || [];
     totalWithdrawals = state.totalWithdrawals || 0;
-    log('INFO', 'State restored from Redis', { totalPnl, totalTrades });
+    log('INFO', 'State restored from Redis', { totalTrades, realizedProfit, unrealizedProfit });
   }
 }
 
@@ -158,7 +157,6 @@ async function initializeSecrets() {
 })();
 
 // Real-time state tracking
-let totalPnl = 0;
 let totalTrades = 0;
 let realizedProfit = 0;
 let unrealizedProfit = 0;
@@ -239,25 +237,43 @@ const scanInterval = setInterval(async () => {
 }, 30000); // Every 30 seconds - REAL
 
 // Trade confirmation loop
-const confirmInterval = setInterval(() => {
+const confirmInterval = setInterval(async () => {
   const pending = executedTrades.filter(t => !t.confirmed);
   
   if (pending.length > 0) {
     log('INFO', 'Checking trade confirmations', { pendingCount: pending.length });
     
     for (const trade of pending) {
-      // In production: verify on Polygon zkEVM blockchain
-      // TODO: Add real receipt checking via provider.getTransactionReceipt(trade.txHash)
-      trade.confirmed = true;
-      realizedProfit += trade.profit;
-      totalPnl += trade.profit;
-      
-      log('INFO', 'Profit Confirmed', { 
-        tradeId: trade.number, 
-        profit: trade.profit, 
-        totalPnL: totalPnl 
-      });
-      saveState(); // Persist state
+      if (!pimlicoEngine || !trade.txHash) continue;
+
+      try {
+        const receipt = await pimlicoEngine.getUserOperationReceipt(trade.txHash);
+        
+        if (receipt && receipt.success) {
+          trade.confirmed = true;
+          unrealizedProfit -= trade.profit;
+          realizedProfit += trade.profit;
+          
+          log('INFO', 'Profit Confirmed', { 
+            tradeId: trade.number, 
+            profit: trade.profit, 
+            txHash: trade.txHash
+          });
+          saveState(); // Persist state
+        } else if (receipt && !receipt.success) {
+            log('ERROR', 'Trade failed on-chain', {
+                tradeId: trade.number,
+                txHash: trade.txHash,
+                reason: receipt.reason
+            });
+            trade.confirmed = true; // Mark as handled
+            trade.status = 'FAILED';
+            unrealizedProfit -= trade.profit; // Revert unrealized profit
+            saveState();
+        }
+      } catch (error) {
+          log('WARNING', 'Error checking trade confirmation', { tradeId: trade.number, error: error.message });
+      }
     }
   }
 }, 15000); // Every 15 seconds
@@ -299,6 +315,7 @@ const withdrawInterval = setInterval(async () => {
 // Live profit report with real-time drops display
 const reportInterval = setInterval(() => {
   const sessionDuration = Math.floor((Date.now() - sessionStartTime) / 1000);
+  const totalPnl = realizedProfit + unrealizedProfit;
   const avgProfitPerTrade = totalTrades > 0 ? Math.round(totalPnl / totalTrades) : 0;
   const confirmed = executedTrades.filter(t => t.confirmed).length;
   const pending = totalTrades - confirmed;
@@ -341,6 +358,7 @@ app.get('/mission/status', (req, res) => {
       wallet_configured: !!process.env.PROFIT_WALLET_ADDRESS
     },
     metrics: {
+      total_pnl: realizedProfit + unrealizedProfit,
       total_pnl: totalPnl,
       realized_profit: realizedProfit,
       trades_count: totalTrades,
@@ -359,6 +377,7 @@ app.get('/opportunities', (req, res) => {
 });
 
 app.get('/analytics/total-pnl', (req, res) => {
+  const totalPnl = realizedProfit + unrealizedProfit;
   res.json({
     totalPnL: Math.round(totalPnl),
     totalTrades,
@@ -381,6 +400,7 @@ app.get('/trades/executed', (req, res) => {
 });
 
 app.get('/mode/current', (req, res) => {
+  const totalPnl = realizedProfit + unrealizedProfit;
   res.json({
     mode: 'PRODUCTION',
     status: 'PROFIT_GENERATION_ACTIVE',
@@ -452,7 +472,6 @@ app.post('/simulate/market-event', (req, res) => {
   });
   
   realizedProfit += profitAmount;
-  totalPnl += profitAmount;
   totalTrades++;
   saveState(); // Persist state
   
