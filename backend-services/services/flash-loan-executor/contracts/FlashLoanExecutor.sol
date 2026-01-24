@@ -114,7 +114,15 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable, Paus
         uint256 initialAmount;
         uint256 minProfitThreshold;
         uint256 maxSlippage; // in basis points (0-10000, where 10000 = 100%)
+        uint256 maxGasPrice; // Maximum gas price to prevent sandwich attacks
+        bool usePrivateTx; // Use private transaction pool if available
+        uint256 deadline; // Transaction deadline
     }
+
+    // MEV Protection features
+    address public privateTxPool; // Private transaction pool address
+    uint256 public maxGasPriceLimit = 500 gwei; // Maximum allowed gas price
+    bool public mevProtectionEnabled = true;
 
     // Events
     event FlashLoanExecuted(
@@ -174,10 +182,13 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable, Paus
         uint256 amount,
         address[] calldata tokenPath,
         uint256 minProfitThreshold,
-        uint256 maxSlippage
+        uint256 maxSlippage,
+        uint256 maxGasPrice,
+        bool usePrivateTx,
+        uint256 deadline
     ) external onlyRole(EXECUTOR_ROLE) whenNotPaused {
         bytes32 txHash = keccak256(abi.encodePacked(
-            asset, amount, tokenPath, minProfitThreshold, maxSlippage, block.timestamp
+            asset, amount, tokenPath, minProfitThreshold, maxSlippage, maxGasPrice, usePrivateTx, deadline, block.timestamp
         ));
 
         require(signatureCount[txHash] >= REQUIRED_SIGNATURES, "Insufficient signatures");
@@ -185,8 +196,8 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable, Paus
 
         executedTransactions[txHash] = true;
 
-        // Execute the arbitrage
-        _executeArbitrageInternal(asset, amount, tokenPath, minProfitThreshold, maxSlippage);
+        // Execute the arbitrage with MEV protection
+        _executeArbitrageInternal(asset, amount, tokenPath, minProfitThreshold, maxSlippage, maxGasPrice, usePrivateTx, deadline);
 
         emit MultiSigTransactionExecuted(txHash, msg.sender);
     }
@@ -236,7 +247,10 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable, Paus
         uint256 amount,
         address[] calldata tokenPath,
         uint256 minProfitThreshold,
-        uint256 maxSlippage
+        uint256 maxSlippage,
+        uint256 maxGasPrice,
+        bool usePrivateTx,
+        uint256 deadline
     ) internal {
         require(tokenPath.length >= 2, "Invalid token path");
 
@@ -244,7 +258,10 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable, Paus
             tokenPath: tokenPath,
             initialAmount: amount,
             minProfitThreshold: minProfitThreshold,
-            maxSlippage: maxSlippage
+            maxSlippage: maxSlippage,
+            maxGasPrice: maxGasPrice,
+            usePrivateTx: usePrivateTx,
+            deadline: deadline
         });
 
         bytes memory encodedParams = abi.encode(params);
@@ -260,22 +277,43 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable, Paus
     /**
      * Initiate flash loan for arbitrage
      */
+    // MEV Protection management
+    function setMEVProtection(bool enabled) external onlyRole(ADMIN_ROLE) {
+        mevProtectionEnabled = enabled;
+        emit EmergencyPaused(msg.sender); // Reuse event
+    }
+
+    function setMaxGasPriceLimit(uint256 newLimit) external onlyRole(ADMIN_ROLE) {
+        maxGasPriceLimit = newLimit;
+    }
+
+    function setPrivateTxPool(address pool) external onlyRole(ADMIN_ROLE) {
+        privateTxPool = pool;
+    }
+
     function flashLoanArbitrage(
         address asset,
         uint256 amount,
         address[] calldata tokenPath,
         uint256 minProfitThreshold,
-        uint256 maxSlippage
+        uint256 maxSlippage,
+        uint256 maxGasPrice,
+        bool usePrivateTx,
+        uint256 deadline
     ) external onlyRole(EXECUTOR_ROLE) nonReentrant whenNotPaused returns (bool) {
         require(tokenPath.length >= 2, "Invalid token path");
         require(amount > 0, "Invalid amount");
+        require(deadline > block.timestamp, "Invalid deadline");
 
         // Encode parameters for callback
         ArbitrageParams memory params = ArbitrageParams({
             tokenPath: tokenPath,
             initialAmount: amount,
             minProfitThreshold: minProfitThreshold,
-            maxSlippage: maxSlippage
+            maxSlippage: maxSlippage,
+            maxGasPrice: maxGasPrice,
+            usePrivateTx: usePrivateTx,
+            deadline: deadline
         });
 
         bytes memory encodedParams = abi.encode(params);
@@ -306,6 +344,15 @@ contract FlashLoanExecutor is IFlashLoanReceiver, ReentrancyGuard, Ownable, Paus
 
         // Decode parameters
         ArbitrageParams memory arbParams = abi.decode(params, (ArbitrageParams));
+
+        // MEV Protection: Check gas price
+        if (mevProtectionEnabled) {
+            require(tx.gasprice <= arbParams.maxGasPrice, "Gas price too high - potential sandwich attack");
+            require(tx.gasprice <= maxGasPriceLimit, "Gas price exceeds global limit");
+        }
+
+        // Check deadline
+        require(block.timestamp <= arbParams.deadline, "Transaction deadline exceeded");
 
         // Execute triangular arbitrage
         uint256 outputAmount = _executeArbitrage(

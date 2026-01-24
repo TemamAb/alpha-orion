@@ -38,14 +38,31 @@ def get_redis_connection():
         redis_conn = redis.from_url(redis_url)
     return redis_conn
 
+def get_system_mode():
+    redis_conn = get_redis_connection()
+    mode = redis_conn.get('system_mode')
+    return mode.decode('utf-8') if mode else 'sim'  # default to sim
+
 def create_event():
-    # Mock event data
-    event = {
-        'type': random.choice(['trade', 'order', 'price_update']),
-        'symbol': random.choice(['ETH', 'BTC', 'USDC']),
-        'volume': random.uniform(100, 100000),
-        'timestamp': int(time.time() * 1000)
-    }
+    mode = get_system_mode()
+
+    if mode == 'live':
+        # For live mode, use more conservative event patterns
+        event = {
+            'type': random.choice(['trade', 'order', 'price_update']),
+            'symbol': random.choice(['ETH', 'BTC', 'USDC']),
+            'volume': random.uniform(1000, 50000),  # More realistic volumes
+            'timestamp': int(time.time() * 1000)
+        }
+    else:
+        # For sim mode, use varied event patterns for testing
+        event = {
+            'type': random.choice(['trade', 'order', 'price_update', 'market_data']),
+            'symbol': random.choice(['ETH', 'BTC', 'USDC']),
+            'volume': random.uniform(100, 100000),
+            'timestamp': int(time.time() * 1000)
+        }
+
     return event
 
 def filter_high_volume(event):

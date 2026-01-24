@@ -42,12 +42,16 @@ def get_redis_connection():
 
 @app.route('/orders', methods=['GET'])
 def orders():
-    # Mock order management
-    orders = [
-        {'id': 'order-1', 'type': 'buy', 'asset': 'ETH', 'amount': random.uniform(0.1, 1.0), 'status': 'pending'},
-        {'id': 'order-2', 'type': 'sell', 'asset': 'USDC', 'amount': random.uniform(100, 500), 'status': 'executed'}
-    ]
-    return jsonify({'orders': orders})
+    # Get real orders from database
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, type, asset, amount, status FROM orders ORDER BY created_at DESC")
+        orders = cursor.fetchall()
+        cursor.close()
+        return jsonify({'orders': [{'id': row[0], 'type': row[1], 'asset': row[2], 'amount': row[3], 'status': row[4]} for row in orders]})
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch orders', 'details': str(e)}), 500
 
 @app.route('/health', methods=['GET'])
 def health():

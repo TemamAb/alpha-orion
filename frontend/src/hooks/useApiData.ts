@@ -55,7 +55,7 @@ export const useApiData = () => {
         setLoading(true);
         const [servicesRes, opportunitiesRes, strategiesRes, pnlRes, analyticsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/services`),
-          fetch(`${API_BASE_URL}/opportunities`),
+          fetch(`http://localhost:8082/opportunities`), // Updated to use eye-scanner service
           fetch(`${API_BASE_URL}/strategies`),
           fetch(`${API_BASE_URL}/analytics/pnl`),
           fetch(`${API_BASE_URL}/analytics/total-pnl`),

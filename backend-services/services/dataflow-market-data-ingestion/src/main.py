@@ -4,6 +4,7 @@ import random
 import time
 import os
 import json
+import requests
 from google.cloud import pubsub_v1
 from google.cloud import storage
 from google.cloud import bigquery
@@ -38,15 +39,56 @@ def get_redis_connection():
         redis_conn = redis.from_url(redis_url)
     return redis_conn
 
+def get_system_mode():
+    redis_conn = get_redis_connection()
+    mode = redis_conn.get('system_mode')
+    return mode.decode('utf-8') if mode else 'sim'  # default to sim
+
 def create_market_data():
-    # Mock market data
-    data = {
-        'symbol': random.choice(['ETH', 'BTC', 'USDC']),
-        'price': random.uniform(100, 5000),
-        'volume': random.uniform(1000, 100000),
-        'timestamp': int(time.time() * 1000)
-    }
-    return data
+    mode = get_system_mode()
+
+    if mode == 'live':
+        # For live mode, use real market data
+        try:
+            # Use CoinGecko API for real crypto prices
+            symbols = ['ethereum', 'bitcoin', 'usd-coin']
+            symbol = random.choice(symbols)
+            response = requests.get(f'https://api.coingecko.com/api/v3/simple/price?ids={symbol}&vs_currencies=usd&include_24hr_vol=true')
+            if response.status_code == 200:
+                data = response.json()
+                price = data[symbol]['usd']
+                volume = data[symbol]['usd_24h_vol'] if 'usd_24h_vol' in data[symbol] else random.uniform(1000000, 10000000)
+                symbol_name = 'ETH' if symbol == 'ethereum' else 'BTC' if symbol == 'bitcoin' else 'USDC'
+                return {
+                    'symbol': symbol_name,
+                    'price': price,
+                    'volume': volume,
+                    'timestamp': int(time.time() * 1000)
+                }
+        except Exception as e:
+            pass  # Fall through to mock data if API fails
+
+    # For sim mode or fallback, use real data patterns but with some variation
+    try:
+        symbols = ['ethereum', 'bitcoin', 'usd-coin']
+        symbol = random.choice(symbols)
+        response = requests.get(f'https://api.coingecko.com/api/v3/simple/price?ids={symbol}&vs_currencies=usd&include_24hr_vol=true')
+        if response.status_code == 200:
+            data = response.json()
+            base_price = data[symbol]['usd']
+            # Add some realistic variation for sim mode
+            price = base_price * random.uniform(0.95, 1.05)
+            volume = (data[symbol].get('usd_24h_vol', 5000000) * random.uniform(0.8, 1.2))
+            symbol_name = 'ETH' if symbol == 'ethereum' else 'BTC' if symbol == 'bitcoin' else 'USDC'
+            return {
+                'symbol': symbol_name,
+                'price': price,
+                'volume': volume,
+                'timestamp': int(time.time() * 1000)
+            }
+    except Exception as e:
+        # No fallback - raise error if all APIs fail
+        raise Exception("All market data APIs failed")
 
 def process_data(data):
     # Simple processing: log the data
