@@ -95,7 +95,7 @@ jobs:
     - name: Build and Push Docker Images
       run: |
         # Build and push all services
-        for service in scanner orchestrator executor backend frontend; do
+        for service in scanner orchestrator executor backend frontend frontend-dashboard; do
           if [ -d "./${service}" ]; then
             docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/alpha-orion-repo/${service}:${{ github.sha }} ./${service}/
             docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/alpha-orion-repo/${service}:${{ github.sha }}

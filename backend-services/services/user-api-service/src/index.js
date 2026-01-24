@@ -66,8 +66,12 @@ const { Logging } = require('@google-cloud/logging');
 const { Monitoring } = require('@google-cloud/monitoring');
 const { Pool } = require('pg');
 const { createClient } = require('redis');
-const ArbitrageEngine = require('./arbitrage-engine');
+const MultiChainArbitrageEngine = require('./multi-chain-arbitrage-engine');
 const PimlicoGaslessEngine = require('./pimlico-gasless');
+const InstitutionalRiskEngine = require('./institutional-risk-engine');
+const InstitutionalComplianceEngine = require('./institutional-compliance-engine');
+const InstitutionalMonitoringEngine = require('./institutional-monitoring-engine');
+const EnterpriseProfitEngine = require('./enterprise-profit-engine');
 
 const app = express();
 
@@ -319,19 +323,35 @@ async function initializeSecrets() {
   await initializeRedis();
   await initializeUserSettingsTable();
 
-  // Initialize the Real Arbitrage Engine with loaded secrets
+  // Initialize Institutional-Grade Engines
   try {
-    arbitrageEngine = new ArbitrageEngine();
+    arbitrageEngine = new MultiChainArbitrageEngine();
     pimlicoEngine = new PimlicoGaslessEngine();
-    log('INFO', '✅ Arbitrage Engine Initialized', {
-      network: 'Polygon zkEVM',
+    riskEngine = new InstitutionalRiskEngine();
+    complianceEngine = new InstitutionalComplianceEngine();
+    monitoringEngine = new InstitutionalMonitoringEngine();
+    profitEngine = new EnterpriseProfitEngine(arbitrageEngine);
+
+    log('INFO', '✅ INSTITUTIONAL-GRADE ENGINES INITIALIZED', {
+      arbitrage: 'Multi-Chain Arbitrage Engine',
+      profit: 'Enterprise Profit Generation Engine',
+      risk: 'Institutional Risk Management',
+      compliance: 'Regulatory Compliance Engine',
+      monitoring: 'Enterprise Monitoring & Alerting',
+      strategies: ['Triangular', 'Cross-DEX', 'Cross-Chain', 'MEV', 'Statistical', 'Order Flow'],
+      networks: ['Ethereum', 'Polygon', 'BSC', 'Arbitrum', 'Optimism', 'Avalanche', 'Fantom', 'Polygon zkEVM'],
       mode: 'PRODUCTION',
       gasless: true,
       minProfitThreshold: process.env.MIN_PROFIT_THRESHOLD_USD || 100,
-      autoWithdrawalThreshold: process.env.AUTO_WITHDRAWAL_THRESHOLD_USD || 1000
+      autoWithdrawalThreshold: process.env.AUTO_WITHDRAWAL_THRESHOLD_USD || 1000,
+      dexes: ['1inch', 'Uniswap', 'SushiSwap', 'PancakeSwap', 'QuickSwap', 'TraderJoe', 'SpookySwap']
     });
+
+    // Start monitoring loops
+    monitoringEngine.startMonitoring();
+
   } catch (err) {
-    log('CRITICAL', 'Failed to initialize ArbitrageEngine', { error: err.message });
+    log('CRITICAL', 'Failed to initialize institutional engines', { error: err.message });
     process.exit(1);
   }
 })();
@@ -834,20 +854,266 @@ app.get('/mission/status', checkJwt, requireRole(['admin', 'user']), (req, res) 
   });
 });
 
-app.get('/opportunities', checkJwt, requireRole(['admin', 'trader']), (req, res) => {
-  // Audit log access to opportunities
-  log('INFO', 'Opportunities accessed', {
-    userId: req.auth.sub,
-    userRole: req.auth.role,
-    count: activeOpportunities.length
-  });
+app.get('/opportunities', checkJwt, requireRole(['admin', 'trader']), async (req, res) => {
+  try {
+    // Use enterprise profit engine for advanced opportunity generation
+    const opportunities = await profitEngine.generateProfitOpportunities();
 
+    // Audit log access to opportunities
+    log('INFO', 'Enterprise opportunities accessed', {
+      userId: req.auth.sub,
+      userRole: req.auth.role,
+      count: opportunities.length,
+      strategies: [...new Set(opportunities.map(o => o.strategy))]
+    });
+
+    res.json({
+      count: opportunities.length,
+      opportunities: opportunities,
+      networks: arbitrageEngine.getSupportedChains(),
+      mode: 'PRODUCTION',
+      engine: 'ENTERPRISE'
+    });
+  } catch (error) {
+    log('ERROR', 'Enterprise opportunity generation failed', { error: error.message });
+    res.status(500).json({ error: 'Opportunity generation failed' });
+  }
+});
+
+app.get('/chains/supported', (req, res) => {
   res.json({
-    count: activeOpportunities.length,
-    opportunities: activeOpportunities,
-    network: 'Polygon zkEVM',
-    mode: 'PRODUCTION'
+    chains: arbitrageEngine.getSupportedChains(),
+    totalChains: arbitrageEngine.getSupportedChains().length,
+    activeChains: arbitrageEngine.getSupportedChains().filter(c => c.status === 'connected').length
   });
+});
+
+app.get('/chains/health', (req, res) => {
+  arbitrageEngine.healthCheck().then(health => {
+    res.json(health);
+  }).catch(error => {
+    log('ERROR', 'Health check failed', { error: error.message });
+    res.status(500).json({ error: 'Health check failed' });
+  });
+});
+
+// ============================================
+// INSTITUTIONAL-GRADE API ENDPOINTS
+// ============================================
+
+// Risk Management Endpoints
+app.get('/risk/portfolio', checkJwt, requireRole(['admin', 'trader']), (req, res) => {
+  try {
+    const portfolioMetrics = riskEngine.updatePortfolioMetrics(
+      Array.from(riskEngine.portfolio.positions.entries()),
+      riskEngine.portfolio.totalValue
+    );
+    res.json({
+      portfolio: riskEngine.portfolio,
+      metrics: portfolioMetrics,
+      limits: riskEngine.riskLimits,
+      breaches: portfolioMetrics.breaches
+    });
+  } catch (error) {
+    log('ERROR', 'Risk portfolio check failed', { error: error.message });
+    res.status(500).json({ error: 'Risk assessment failed' });
+  }
+});
+
+app.post('/risk/evaluate-trade', checkJwt, requireRole(['admin', 'trader']), (req, res) => {
+  try {
+    const { opportunity } = req.body;
+    const evaluation = riskEngine.evaluateTradeOpportunity(opportunity);
+    res.json(evaluation);
+  } catch (error) {
+    log('ERROR', 'Trade evaluation failed', { error: error.message });
+    res.status(500).json({ error: 'Trade evaluation failed' });
+  }
+});
+
+app.get('/risk/stress-test', checkJwt, requireRole(['admin']), (req, res) => {
+  try {
+    const portfolioValue = riskEngine.portfolio.totalValue;
+    riskEngine.runStressTests(portfolioValue).then(results => {
+      res.json({ stressTests: results });
+    });
+  } catch (error) {
+    log('ERROR', 'Stress test failed', { error: error.message });
+    res.status(500).json({ error: 'Stress test failed' });
+  }
+});
+
+app.get('/risk/report', checkJwt, requireRole(['admin']), (req, res) => {
+  try {
+    const report = riskEngine.getRiskReport();
+    res.json(report);
+  } catch (error) {
+    log('ERROR', 'Risk report generation failed', { error: error.message });
+    res.status(500).json({ error: 'Risk report generation failed' });
+  }
+});
+
+// Compliance Endpoints
+app.post('/compliance/kyc', checkJwt, requireRole(['admin', 'compliance']), async (req, res) => {
+  try {
+    const { userId, documentData, biometricData, provider } = req.body;
+    const kycResult = await complianceEngine.performKYC(userId, documentData, biometricData, provider);
+    res.json(kycResult);
+  } catch (error) {
+    log('ERROR', 'KYC verification failed', { error: error.message });
+    res.status(500).json({ error: 'KYC verification failed' });
+  }
+});
+
+app.post('/compliance/aml-screening', checkJwt, requireRole(['admin', 'compliance']), async (req, res) => {
+  try {
+    const { userId, transactionData, userDetails } = req.body;
+    const amlResult = await complianceEngine.performAMLScreening(userId, transactionData, userDetails);
+    res.json(amlResult);
+  } catch (error) {
+    log('ERROR', 'AML screening failed', { error: error.message });
+    res.status(500).json({ error: 'AML screening failed' });
+  }
+});
+
+app.post('/compliance/monitor-transaction', checkJwt, requireRole(['admin', 'compliance']), async (req, res) => {
+  try {
+    const { transaction } = req.body;
+    const monitoringResult = await complianceEngine.monitorTransaction(transaction);
+    res.json(monitoringResult);
+  } catch (error) {
+    log('ERROR', 'Transaction monitoring failed', { error: error.message });
+    res.status(500).json({ error: 'Transaction monitoring failed' });
+  }
+});
+
+app.post('/compliance/report-sar', checkJwt, requireRole(['admin', 'compliance']), async (req, res) => {
+  try {
+    const { reportData } = req.body;
+    const report = await complianceEngine.fileRegulatoryReport({ ...reportData, type: 'SAR' });
+    res.json(report);
+  } catch (error) {
+    log('ERROR', 'SAR filing failed', { error: error.message });
+    res.status(500).json({ error: 'SAR filing failed' });
+  }
+});
+
+app.get('/compliance/audit-trail', checkJwt, requireRole(['admin', 'compliance']), (req, res) => {
+  try {
+    const { type, userId, startDate, endDate } = req.query;
+    const auditTrail = complianceEngine.getAuditTrail({
+      type,
+      userId,
+      startDate,
+      endDate
+    });
+    res.json({ auditTrail });
+  } catch (error) {
+    log('ERROR', 'Audit trail retrieval failed', { error: error.message });
+    res.status(500).json({ error: 'Audit trail retrieval failed' });
+  }
+});
+
+app.get('/compliance/report', checkJwt, requireRole(['admin', 'compliance']), (req, res) => {
+  try {
+    const { timeRange } = req.query;
+    const report = complianceEngine.getComplianceReport(timeRange);
+    res.json(report);
+  } catch (error) {
+    log('ERROR', 'Compliance report generation failed', { error: error.message });
+    res.status(500).json({ error: 'Compliance report generation failed' });
+  }
+});
+
+// Monitoring Endpoints
+app.get('/monitoring/health', checkJwt, requireRole(['admin']), (req, res) => {
+  try {
+    const healthDashboard = monitoringEngine.getHealthDashboard();
+    res.json(healthDashboard);
+  } catch (error) {
+    log('ERROR', 'Health dashboard retrieval failed', { error: error.message });
+    res.status(500).json({ error: 'Health dashboard retrieval failed' });
+  }
+});
+
+app.get('/monitoring/alerts', checkJwt, requireRole(['admin']), (req, res) => {
+  try {
+    const alerts = Array.from(monitoringEngine.alerts.values());
+    res.json({
+      alerts,
+      summary: {
+        total: alerts.length,
+        open: alerts.filter(a => a.status === 'OPEN').length,
+        critical: alerts.filter(a => a.severity === 'CRITICAL').length
+      }
+    });
+  } catch (error) {
+    log('ERROR', 'Alerts retrieval failed', { error: error.message });
+    res.status(500).json({ error: 'Alerts retrieval failed' });
+  }
+});
+
+app.post('/monitoring/alert/:alertId/close', checkJwt, requireRole(['admin']), (req, res) => {
+  try {
+    const { alertId } = req.params;
+    const { resolution } = req.body;
+    const alert = monitoringEngine.updateAlert(alertId, 'CLOSED', resolution);
+    res.json({ alert });
+  } catch (error) {
+    log('ERROR', 'Alert closure failed', { error: error.message });
+    res.status(500).json({ error: 'Alert closure failed' });
+  }
+});
+
+app.get('/monitoring/incidents', checkJwt, requireRole(['admin']), (req, res) => {
+  try {
+    const incidents = monitoringEngine.incidents;
+    res.json({
+      incidents,
+      summary: {
+        total: incidents.length,
+        open: incidents.filter(i => i.status === 'OPEN').length,
+        critical: incidents.filter(i => i.priority === 'P1').length
+      }
+    });
+  } catch (error) {
+    log('ERROR', 'Incidents retrieval failed', { error: error.message });
+    res.status(500).json({ error: 'Incidents retrieval failed' });
+  }
+});
+
+app.post('/monitoring/incident', checkJwt, requireRole(['admin']), (req, res) => {
+  try {
+    const { alertId, description, priority } = req.body;
+    const incident = monitoringEngine.createIncident(alertId, description, priority);
+    res.json({ incident });
+  } catch (error) {
+    log('ERROR', 'Incident creation failed', { error: error.message });
+    res.status(500).json({ error: 'Incident creation failed' });
+  }
+});
+
+app.get('/monitoring/report', checkJwt, requireRole(['admin']), (req, res) => {
+  try {
+    const { timeRange } = req.query;
+    const report = monitoringEngine.generateReport(timeRange);
+    res.json(report);
+  } catch (error) {
+    log('ERROR', 'Monitoring report generation failed', { error: error.message });
+    res.status(500).json({ error: 'Monitoring report generation failed' });
+  }
+});
+
+// Record metrics endpoint
+app.post('/monitoring/metric', checkJwt, requireRole(['admin']), async (req, res) => {
+  try {
+    const { name, value, labels } = req.body;
+    await monitoringEngine.recordMetric(name, value, labels || {});
+    res.json({ success: true });
+  } catch (error) {
+    log('ERROR', 'Metric recording failed', { error: error.message });
+    res.status(500).json({ error: 'Metric recording failed' });
+  }
 });
 
 app.get('/analytics/total-pnl', (req, res) => {

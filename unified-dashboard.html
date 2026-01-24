@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha-Orion Unified Trading Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
+    <style>
+        /* Grafana-inspired Dark Theme */
+        :root {
+            --grafana-bg-primary: #181b1f;
+            --grafana-bg-secondary: #212327;
+            --grafana-bg-tertiary: #2a2e33;
+            --grafana-border: #464c54;
+            --grafana-text-primary: #f8f9fa;
+            --grafana-text-secondary: #c7d0d9;
+            --grafana-text-muted: #9fa7b3;
+            --grafana-blue: #33a2e5;
+            --grafana-green: #73bf69;
+            --grafana-orange: #f2cc0c;
+            --grafana-red: #f2495c;
+        }
+
+        body {
+            background: var(--grafana-bg-primary);
+            color: var(--grafana-text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .sidebar {
+            background: var(--grafana-bg-secondary);
+            border-right: 1px solid var(--grafana-border);
+            width: 250px;
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+
+        .panel {
+            background: var(--grafana-bg-secondary);
+            border: 1px solid var(--grafana-border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--grafana-border);
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--grafana-text-primary);
+            margin: 0;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 500;
+            color: var(--grafana-green);
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--grafana-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-online { background: var(--grafana-green); }
+        .status-warning { background: var(--grafana-orange); }
+        .status-error { background: var(--grafana-red); }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 16px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .settings-panel {
+            background: var(--grafana-bg-tertiary);
+            border: 1px solid var(--grafana-border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .setting-group {
+            margin-bottom: 24px;
+        }
+
+        .setting-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--grafana-text-primary);
+            margin-bottom: 8px;
+        }
+
+        .setting-input {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--grafana-bg-primary);
+            border: 1px solid var(--grafana-border);
+            border-radius: 4px;
+            color: var(--grafana-text-primary);
+            font-size: 14px;
+        }
+
+        .setting-input:focus {
+            outline: none;
+            border-color: var(--grafana-blue);
+        }
+
+        .btn-primary {
+            background: var(--grafana-blue);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #2e94d2;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: var(--grafana-bg-primary);
+            border-radius: 6px;
+            padding: 2px;
+            margin-bottom: 16px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: var(--grafana-blue);
+            color: white;
+        }
+
+        .mode-btn:not(.active) {
+            color: var(--grafana-text-secondary);
+        }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            background: var(--grafana-green);
+            color: var(--grafana-bg-primary);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .live-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--grafana-bg-primary);
+            border-radius: 50%;
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--grafana-border);
+        }
+
+        .table th {
+            font-weight: 600;
+            color: var(--grafana-text-primary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table td {
+            color: var(--grafana-text-secondary);
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--grafana-bg-primary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--grafana-green), var(--grafana-blue));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="p-6">
+            <h2 class="text-xl font-bold text-white mb-8">Alpha-Orion</h2>
+
+            <nav class="space-y-2">
+                <a href="#overview" class="nav-link active flex items-center p-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="home" class="w-5 h-5 mr-3"></i>
+                    Overview
+                </a>
+                <a href="#analytics" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5 mr-3"></i>
+                    Analytics
+                </a>
+                <a href="#opportunities" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="target" class="w-5 h-5 mr-3"></i>
+                    Opportunities
+                </a>
+                <a href="#services" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="server" class="w-5 h-5 mr-3"></i>
+                    Services
+                </a>
+                <a href="#risk" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="shield" class="w-5 h-5 mr-3"></i>
+                    Risk Management
+                </a>
+                <a href="#compliance" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="file-check" class="w-5 h-5 mr-3"></i>
+                    Compliance
+                </a>
+                <a href="#monitoring" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="activity" class="w-5 h-5 mr-3"></i>
+                    Monitoring
+                </a>
+                <a href="#settings" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                    Settings
+                </a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-white">Trading Dashboard</h1>
+                <p class="text-gray-400 mt-1">Real-time AI-powered arbitrage trading platform</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="live-badge">
+                    INSTITUTIONAL GRADE
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-400">Session Time</div>
+                    <div class="text-lg font-mono" id="sessionTime">00:00:00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status Bar -->
+        <div class="panel mb-6">
+            <div class="grid grid-cols-4 gap-4">
+                <div class="text-center">
+                    <div class="status-indicator status-online"></div>
+                    <div class="metric-label">Mode</div>
+                    <div class="text-sm font-medium" id="systemMode">PRODUCTION</div>
+                </div>
+                <div class="text-center">
+                    <div class="status-indicator status-online"></div>
+                    <div class="metric-label">Networks</div>
+                    <div class="text-sm font-medium" id="networkStatus">8 Chains Active</div>
+                </div>
+                <div class="text-center">
+                    <div class="status-indicator status-online"></div>
+                    <div class="metric-label">Bundler</div>
+                    <div class="text-sm font-medium" id="bundlerStatus">Pimlico</div>
+                </div>
+                <div class="text-center">
+                    <div class="status-indicator status-online"></div>
+                    <div class="metric-label">AI Status</div>
+                    <div class="text-sm font-medium" id="aiStatus">Active</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overview Section -->
+        <section id="overview" class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-4">Overview</h2>
+
+            <div class="grid-layout">
+                <!-- Key Metrics -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Total P&L</h3>
+                    </div>
+                    <div class="metric-value" id="totalPnl">$0.00</div>
+                    <div class="metric-label">Real-time accumulated profit</div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Realized Profit</h3>
+                    </div>
+                    <div class="metric-value text-green-400" id="realizedProfit">$0.00</div>
+                    <div class="metric-label" id="realizedCount">From 0 confirmed trades</div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Active Opportunities</h3>
+                    </div>
+                    <div class="metric-value text-blue-400" id="activeOpportunities">0</div>
+                    <div class="metric-label">Currently scanning</div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Trades Executed</h3>
+                    </div>
+                    <div class="metric-value text-cyan-400" id="totalTrades">0</div>
+                    <div class="metric-label" id="confirmedTrades">0 confirmed</div>
+                </div>
+
+                <!-- P&L Chart -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">P&L Performance</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="pnlChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Trades -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Recent Trades</h3>
+                    </div>
+                    <div class="overflow-y-auto max-h-64" id="tradesList">
+                        <div class="text-center text-gray-400 py-8">Waiting for trades...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chains Section -->
+        <section id="chains" class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-4">Multi-Chain Status</h2>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Supported Networks</h3>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="chainsGrid">
+                    <div class="text-center p-4 border border-gray-700 rounded">
+                        <div class="status-indicator status-online"></div>
+                        <div class="font-medium">Ethereum</div>
+                        <div class="text-sm text-gray-400">1inch, Uniswap</div>
+                    </div>
+                    <div class="text-center p-4 border border-gray-700 rounded">
+                        <div class="status-indicator status-online"></div>
+                        <div class="font-medium">Polygon</div>
+                        <div class="text-sm text-gray-400">QuickSwap, Sushi</div>
+                    </div>
+                    <div class="text-center p-4 border border-gray-700 rounded">
+                        <div class="status-indicator status-online"></div>
+                        <div class="font-medium">BSC</div>
+                        <div class="text-sm text-gray-400">PancakeSwap</div>
+                    </div>
+                    <div class="text-center p-4 border border-gray-700 rounded">
+                        <div class="status-indicator status-online"></div>
+                        <div class="font-medium">Arbitrum</div>
+                        <div class="text-sm text-gray-400">Uniswap, Sushi</div>
+                    </div>
+                    <div class="text-center p-4 border border-gray-700 rounded">
+                        <div class="status-indicator status-online"></div>
+                        <div class="font-medium">Optimism</div>
+                        <div class="text-sm text-gray-400">Uniswap</div>
+                    </div>
+                    <div class="text-center p-4 border border-gray-700 rounded">
+                        <div class="status-indicator status-online"></div>
+                        <div class="font-medium">Avalanche</div>
+                        <div class="text-sm text-gray-400">TraderJoe</div>
+                    </div>
+                    <div class="text-center p-4 border border-gray-700 rounded">
+                        <div class="status-indicator status-online"></div>
+                        <div class="font-medium">Fantom</div>
+                        <div class="text-sm text-gray-400">SpookySwap</div>
+                    </div>
+                    <div class="text-center p-4 border border-gray-700 rounded">
+                        <div class="status-indicator status-online"></div>
+                        <div class="font-medium">Polygon zkEVM</div>
+                        <div class="text-sm text-gray-400">1inch, QuickSwap</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Section -->
+        <section id="analytics" class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-4">Analytics</h2>
+
+            <div class="grid-layout">
+                <!-- Strategy Performance -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Strategy Performance</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="strategyChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Win Rate Distribution -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Win Rate by Strategy</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="winRateChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- P&L Distribution -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">P&L Contribution</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="pnlDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Opportunities Section -->
+        <section id="opportunities" class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-4">Arbitrage Opportunities</h2>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Live Opportunities</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Chain</th>
+                                <th>Asset Pair</th>
+                                <th>Exchanges</th>
+                                <th>Potential Profit</th>
+                                <th>Risk Level</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="opportunitiesTable">
+                            <tr>
+                                <td colspan="6" class="text-center text-gray-400 py-8">Scanning for opportunities...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services Section -->
+        <section id="services" class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-4">Microservices Health</h2>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Service Status</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Service Name</th>
+                                <th>Status</th>
+                                <th>Region</th>
+                                <th>CPU Usage</th>
+                                <th>Memory Usage</th>
+                                <th>Response Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="servicesTable">
+                            <tr>
+                                <td colspan="6" class="text-center text-gray-400 py-8">Loading services...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settings" class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-4">Settings</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Trading Settings -->
+                <div class="settings-panel">
+                    <h3 class="text-lg font-semibold text-white mb-4">Trading Configuration</h3>
+
+                    <div class="setting-group">
+                        <label class="setting-label">Reinvestment Rate (%)</label>
+                        <input type="range" id="reinvestmentRate" min="0" max="100" value="50" class="setting-input">
+                        <div class="flex justify-between text-sm text-gray-400 mt-1">
+                            <span>0%</span>
+                            <span id="reinvestmentValue" class="font-medium">50%</span>
+                            <span>100%</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Percentage of profits to reinvest in new trades</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label">Auto-Withdrawal Threshold (USD)</label>
+                        <input type="number" id="autoWithdrawThreshold" value="1000" class="setting-input">
+                        <p class="text-xs text-gray-500 mt-1">Trigger automatic withdrawal when profit reaches this amount</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label">Reinvestment Rate (%)</label>
+                        <input type="range" id="reinvestmentRate" min="0" max="100" value="50" class="setting-input">
+                        <div class="flex justify-between text-sm text-gray-400 mt-1">
+                            <span>0%</span>
+                            <span id="reinvestmentValue" class="font-medium">50%</span>
+                            <span>100%</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Percentage of profits automatically reinvested in new trades</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label">Minimum Profit Threshold (USD)</label>
+                        <input type="number" id="minProfitThreshold" value="100" class="setting-input">
+                        <p class="text-xs text-gray-500 mt-1">Minimum profit required to execute a trade</p>
+                    </div>
+                </div>
+
+                <!-- System Settings -->
+                <div class="settings-panel">
+                    <h3 class="text-lg font-semibold text-white mb-4">System Configuration</h3>
+
+                    <div class="setting-group">
+                        <label class="setting-label">Deploy Mode</label>
+                        <div class="mode-toggle">
+                            <button id="modeProduction" class="mode-btn active">Production</button>
+                            <button id="modeSim" class="mode-btn">Simulation</button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            Production mode operates on live blockchain. Simulation mode tests strategies without real transactions.
+                        </p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label">Refresh Interval (seconds)</label>
+                        <input type="number" id="refreshInterval" value="5" min="1" max="30" class="setting-input">
+                        <p class="text-xs text-gray-500 mt-1">How often to refresh dashboard data</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label">Wallet Address</label>
+                        <input type="text" id="walletAddress" placeholder="0x..." class="setting-input">
+                        <p class="text-xs text-gray-500 mt-1">Destination address for profit withdrawals</p>
+                    </div>
+
+                    <button class="btn-primary w-full" onclick="saveSettings()">Save Settings</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Risk Management Section -->
+        <section id="risk" class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-4">Institutional Risk Management</h2>
+
+            <div class="grid-layout">
+                <!-- Risk Metrics -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Risk Metrics</h3>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Value at Risk (95%)</span>
+                            <span class="font-medium" id="varMetric">0.00%</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Expected Shortfall</span>
+                            <span class="font-medium" id="esMetric">0.00%</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Sharpe Ratio</span>
+                            <span class="font-medium" id="sharpeMetric">0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Max Drawdown</span>
+                            <span class="font-medium" id="drawdownMetric">0.00%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Portfolio Risk -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Portfolio Risk</h3>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Leverage</span>
+                            <span class="font-medium" id="leverageMetric">1.00x</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Liquidity Ratio</span>
+                            <span class="font-medium" id="liquidityMetric">100%</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Concentration</span>
+                            <span class="font-medium" id="concentrationMetric">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Alerts -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Risk Alerts</h3>
+                    </div>
+                    <div id="riskAlerts" class="space-y-2">
+                        <div class="text-center text-gray-400 py-4">No risk alerts</div>
+                    </div>
+                </div>
+
+                <!-- Stress Test Results -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Stress Test Results</h3>
+                    </div>
+                    <div id="stressTests" class="space-y-2">
+                        <div class="text-center text-gray-400 py-4">Run stress tests to view results</div>
+                    </div>
+                    <button class="btn-primary w-full mt-4" onclick="runStressTests()">Run Stress Tests</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Compliance Section -->
+        <section id="compliance" class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-4">Regulatory Compliance</h2>
+
+            <div class="grid-layout">
+                <!-- Compliance Status -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Compliance Status</h3>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">KYC Verifications</span>
+                            <span class="font-medium text-green-400" id="kycCount">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">AML Screenings</span>
+                            <span class="font-medium text-green-400" id="amlCount">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">SAR Filed</span>
+                            <span class="font-medium text-yellow-400" id="sarCount">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Compliance Rate</span>
+                            <span class="font-medium text-green-400" id="complianceRate">100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction Monitoring -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Transaction Monitoring</h3>
+                    </div>
+                    <div id="transactionAlerts" class="space-y-2">
+                        <div class="text-center text-gray-400 py-4">No transaction alerts</div>
+                    </div>
+                </div>
+
+                <!-- Sanctions Screening -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Sanctions Screening</h3>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">OFAC Checks</span>
+                            <span class="font-medium text-green-400" id="ofacChecks">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">EU Sanctions</span>
+                            <span class="font-medium text-green-400" id="euChecks">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">UN Sanctions</span>
+                            <span class="font-medium text-green-400" id="unChecks">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">PEP Screening</span>
+                            <span class="font-medium text-green-400" id="pepChecks">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compliance Actions -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Compliance Actions</h3>
+                    </div>
+                    <div class="space-y-2">
+                        <button class="btn-primary w-full" onclick="runKYCCheck()">Run KYC Check</button>
+                        <button class="btn-primary w-full" onclick="runAMLScreening()">Run AML Screening</button>
+                        <button class="btn-primary w-full" onclick="fileSAR()">File SAR Report</button>
+                        <button class="btn-primary w-full" onclick="viewAuditTrail()">View Audit Trail</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Monitoring Section -->
+        <section id="monitoring" class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-4">Enterprise Monitoring</h2>
+
+            <div class="grid-layout">
+                <!-- System Health -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">System Health</h3>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Overall Status</span>
+                            <span class="font-medium text-green-400" id="systemStatus">HEALTHY</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Active Alerts</span>
+                            <span class="font-medium text-yellow-400" id="activeAlerts">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Open Incidents</span>
+                            <span class="font-medium text-red-400" id="openIncidents">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">SLO Compliance</span>
+                            <span class="font-medium text-green-400" id="sloCompliance">100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Alerts -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Active Alerts</h3>
+                    </div>
+                    <div id="activeAlertsList" class="space-y-2 max-h-64 overflow-y-auto">
+                        <div class="text-center text-gray-400 py-4">No active alerts</div>
+                    </div>
+                </div>
+
+                <!-- SLO Status -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Service Level Objectives</h3>
+                    </div>
+                    <div id="sloStatus" class="space-y-2">
+                        <div class="text-center text-gray-400 py-4">Loading SLO status...</div>
+                    </div>
+                </div>
+
+                <!-- Monitoring Actions -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Monitoring Actions</h3>
+                    </div>
+                    <div class="space-y-2">
+                        <button class="btn-primary w-full" onclick="viewHealthDashboard()">Health Dashboard</button>
+                        <button class="btn-primary w-full" onclick="viewIncidents()">View Incidents</button>
+                        <button class="btn-primary w-full" onclick="generateReport()">Generate Report</button>
+                        <button class="btn-primary w-full" onclick="configureAlerts()">Configure Alerts</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Global state
+        const state = {
+            sessionStart: Date.now(),
+            charts: {},
+            settings: {
+                reinvestmentRate: 50,
+                autoWithdrawThreshold: 1000,
+                minProfitThreshold: 100,
+                refreshInterval: 5,
+                walletAddress: '',
+                deployMode: 'production'
+            },
+            data: {
+                pnl: [],
+                trades: [],
+                opportunities: [],
+                services: [],
+                chains: []
+            }
+        };
+
+        // Initialize dashboard
+        async function init() {
+            loadSettings();
+            setupEventListeners();
+            await loadDashboardData();
+            startRefreshTimer();
+            updateSessionTimer();
+        }
+
+        // Load settings from localStorage
+        function loadSettings() {
+            const saved = localStorage.getItem('alphaOrionSettings');
+            if (saved) {
+                state.settings = { ...state.settings, ...JSON.parse(saved) };
+                updateSettingsUI();
+            }
+        }
+
+        // Save settings to localStorage
+        function saveSettings() {
+            state.settings.reinvestmentRate = parseInt(document.getElementById('reinvestmentRate').value);
+            state.settings.autoWithdrawThreshold = parseFloat(document.getElementById('autoWithdrawThreshold').value);
+            state.settings.minProfitThreshold = parseFloat(document.getElementById('minProfitThreshold').value);
+            state.settings.refreshInterval = parseInt(document.getElementById('refreshInterval').value);
+            state.settings.walletAddress = document.getElementById('walletAddress').value;
+
+            localStorage.setItem('alphaOrionSettings', JSON.stringify(state.settings));
+
+            // Send settings to backend if available
+            fetch('/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(state.settings)
+            }).catch(err => console.log('Backend settings update failed:', err));
+
+            // Show success message
+            showNotification('Settings saved successfully!', 'success');
+        }
+
+        // Update settings UI
+        function updateSettingsUI() {
+            document.getElementById('reinvestmentRate').value = state.settings.reinvestmentRate;
+            document.getElementById('reinvestmentValue').textContent = state.settings.reinvestmentRate + '%';
+            document.getElementById('autoWithdrawThreshold').value = state.settings.autoWithdrawThreshold;
+            document.getElementById('minProfitThreshold').value = state.settings.minProfitThreshold;
+            document.getElementById('refreshInterval').value = state.settings.refreshInterval;
+            document.getElementById('walletAddress').value = state.settings.walletAddress;
+
+            // Update mode buttons
+            document.getElementById('modeProduction').classList.toggle('active', state.settings.deployMode === 'production');
+            document.getElementById('modeSim').classList.toggle('active', state.settings.deployMode === 'sim');
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+
+                    const target = link.getAttribute('href').substring(1);
+                    document.getElementById(target).scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+
+            // Settings
+            document.getElementById('reinvestmentRate').addEventListener('input', (e) => {
+                document.getElementById('reinvestmentValue').textContent = e.target.value + '%';
+            });
+
+            // Mode toggle
+            document.getElementById('modeProduction').addEventListener('click', () => setDeployMode('production'));
+            document.getElementById('modeSim').addEventListener('click', () => setDeployMode('sim'));
+        }
+
+        // Set deploy mode
+        function setDeployMode(mode) {
+            state.settings.deployMode = mode;
+            updateSettingsUI();
+            showNotification(`Switched to ${mode} mode`, 'info');
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                const [analyticsRes, tradesRes, opportunitiesRes, chainsRes] = await Promise.all([
+                    fetch('http://localhost:8080/analytics/total-pnl'),
+                    fetch('http://localhost:8080/trades/executed'),
+                    fetch('http://localhost:8080/opportunities'),
+                    fetch('http://localhost:8080/chains/supported').catch(() => ({ ok: false }))
+                ]);
+
+                if (analyticsRes.ok) {
+                    const analytics = await analyticsRes.json();
+                    updateMetrics(analytics);
+                }
+
+                if (tradesRes.ok) {
+                    const trades = await tradesRes.json();
+                    updateTrades(trades);
+                }
+
+                if (opportunitiesRes.ok) {
+                    const opportunities = await opportunitiesRes.json();
+                    updateOpportunities(opportunities);
+                }
+
+                if (chainsRes.ok) {
+                    const chains = await chainsRes.json();
+                    updateChains(chains.chains || []);
+                }
+
+                // Mock services data for now
+                updateServices(getMockServices());
+
+                updateCharts();
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        // Update metrics
+        function updateMetrics(data) {
+            document.getElementById('totalPnl').textContent = `$${data.totalPnL?.toLocaleString() || '0.00'}`;
+            document.getElementById('realizedProfit').textContent = `$${data.realizedProfit?.toLocaleString() || '0.00'}`;
+            document.getElementById('totalTrades').textContent = data.totalTrades || 0;
+            document.getElementById('confirmedTrades').textContent = `${data.confirmedTrades || 0} confirmed`;
+            document.getElementById('realizedCount').textContent = `From ${data.confirmedTrades || 0} confirmed trades`;
+
+            // Add to P&L history
+            state.data.pnl.push({
+                time: new Date().toLocaleTimeString(),
+                value: data.totalPnL || 0
+            });
+
+            if (state.data.pnl.length > 50) {
+                state.data.pnl.shift();
+            }
+        }
+
+        // Update trades
+        function updateTrades(data) {
+            state.data.trades = data.trades || [];
+            const tradesList = document.getElementById('tradesList');
+
+            if (state.data.trades.length === 0) {
+                tradesList.innerHTML = '<div class="text-center text-gray-400 py-8">No trades executed yet</div>';
+                return;
+            }
+
+            tradesList.innerHTML = state.data.trades.slice(-10).reverse().map(trade => `
+                <div class="flex items-center justify-between p-3 border-b border-gray-700">
+                    <div>
+                        <div class="font-medium">${trade.pair || 'Unknown'}</div>
+                        <div class="text-sm text-gray-400">${trade.txHash ? trade.txHash.substring(0, 10) + '...' : 'Pending'}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-medium text-green-400">+$${trade.profit?.toLocaleString() || '0.00'}</div>
+                        <div class="text-sm ${trade.confirmed ? 'text-green-400' : 'text-yellow-400'}">
+                            ${trade.confirmed ? 'Confirmed' : 'Pending'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update opportunities
+        function updateOpportunities(data) {
+            state.data.opportunities = data.opportunities || [];
+            document.getElementById('activeOpportunities').textContent = data.count || 0;
+
+            const tableBody = document.getElementById('opportunitiesTable');
+
+            if (state.data.opportunities.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8">No opportunities found</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = state.data.opportunities.map(opp => `
+                <tr>
+                    <td>${new Date(opp.timestamp || Date.now()).toLocaleTimeString()}</td>
+                    <td>
+                        <span class="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-400">
+                            ${opp.chainName || opp.chain || 'Multi'}
+                        </span>
+                    </td>
+                    <td class="font-medium">${(opp.assets || []).join('/')}</td>
+                    <td>${(opp.exchanges || []).join(' → ')}</td>
+                    <td class="text-green-400 font-medium">$${opp.potentialProfit?.toFixed(2) || '0.00'}</td>
+                    <td>
+                        <span class="px-2 py-1 text-xs rounded-full ${
+                            opp.riskLevel === 'Low' ? 'bg-green-500/20 text-green-400' :
+                            opp.riskLevel === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                        }">
+                            ${opp.riskLevel || 'Unknown'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn-primary text-xs px-3 py-1" onclick="executeTrade('${opp.id}')">
+                            Execute
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update services
+        function updateServices(services) {
+            state.data.services = services;
+            const tableBody = document.getElementById('servicesTable');
+
+            tableBody.innerHTML = services.map(service => `
+                <tr>
+                    <td class="font-medium">${service.name}</td>
+                    <td>
+                        <div class="flex items-center">
+                            <div class="status-indicator ${service.status === 'online' ? 'status-online' : 'status-error'}"></div>
+                            <span class="${service.status === 'online' ? 'text-green-400' : 'text-red-400'}">
+                                ${service.status}
+                            </span>
+                        </div>
+                    </td>
+                    <td>${service.region || 'Global'}</td>
+                    <td>
+                        <div class="flex items-center">
+                            <div class="progress-bar mr-2" style="width: 60px;">
+                                <div class="progress-fill" style="width: ${service.cpuUsage || 0}%"></div>
+                            </div>
+                            <span class="text-sm">${service.cpuUsage || 0}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="flex items-center">
+                            <div class="progress-bar mr-2" style="width: 60px;">
+                                <div class="progress-fill" style="width: ${service.memoryUsage || 0}%"></div>
+                            </div>
+                            <span class="text-sm">${service.memoryUsage || 0}%</span>
+                        </div>
+                    </td>
+                    <td class="text-sm">${service.responseTime || 'N/A'}ms</td>
+                </tr>
+            `).join('');
+        }
+
+        // Update chains display
+        function updateChains(chains) {
+            state.data.chains = chains;
+            const chainsGrid = document.getElementById('chainsGrid');
+
+            if (chains.length === 0) return;
+
+            chainsGrid.innerHTML = chains.map(chain => `
+                <div class="text-center p-4 border border-gray-700 rounded">
+                    <div class="status-indicator ${chain.status === 'connected' ? 'status-online' : 'status-error'}"></div>
+                    <div class="font-medium">${chain.name}</div>
+                    <div class="text-sm text-gray-400">${chain.dexes?.slice(0, 2).join(', ') || 'N/A'}</div>
+                </div>
+            `).join('');
+
+            // Update network status
+            const activeChains = chains.filter(c => c.status === 'connected').length;
+            document.getElementById('networkStatus').textContent = `${activeChains} Chains Active`;
+        }
+
+        // Mock services data
+        function getMockServices() {
+            return [
+                { name: 'user-api-service', status: 'online', region: 'us-central1', cpuUsage: 45, memoryUsage: 62, responseTime: 23 },
+                { name: 'brain-orchestrator', status: 'online', region: 'us-central1', cpuUsage: 38, memoryUsage: 55, responseTime: 45 },
+                { name: 'eye-scanner', status: 'online', region: 'us-central1', cpuUsage: 52, memoryUsage: 48, responseTime: 67 },
+                { name: 'brain-strategy-engine', status: 'online', region: 'us-central1', cpuUsage: 41, memoryUsage: 59, responseTime: 34 },
+                { name: 'hand-blockchain-proxy', status: 'online', region: 'us-central1', cpuUsage: 35, memoryUsage: 42, responseTime: 28 }
+            ];
+        }
+
+        // Update charts
+        function updateCharts() {
+            // P&L Chart
+            const pnlCtx = document.getElementById('pnlChart').getContext('2d');
+            if (state.charts.pnlChart) {
+                state.charts.pnlChart.destroy();
+            }
+
+            state.charts.pnlChart = new Chart(pnlCtx, {
+                type: 'line',
+                data: {
+                    labels: state.data.pnl.map(d => d.time),
+                    datasets: [{
+                        label: 'P&L ($)',
+                        data: state.data.pnl.map(d => d.value),
+                        borderColor: '#73bf69',
+                        backgroundColor: 'rgba(115, 191, 105, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: 'rgba(70, 76, 84, 0.3)' }, ticks: { color: '#c7d0d9' } },
+                        x: { grid: { color: 'rgba(70, 76, 84, 0.3)' }, ticks: { color: '#c7d0d9' } }
+                    }
+                }
+            });
+
+            // Strategy Chart (mock data for now)
+            const strategyCtx = document.getElementById('strategyChart').getContext('2d');
+            if (state.charts.strategyChart) {
+                state.charts.strategyChart.destroy();
+            }
+
+            state.charts.strategyChart = new Chart(strategyCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Arbitrage', 'Triangular', 'Cross-Exchange'],
+                    datasets: [{
+                        label: 'Performance',
+                        data: [1250, 890, 650],
+                        backgroundColor: ['#73bf69', '#33a2e5', '#f2cc0c']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: 'rgba(70, 76, 84, 0.3)' }, ticks: { color: '#c7d0d9' } },
+                        x: { grid: { color: 'rgba(70, 76, 84, 0.3)' }, ticks: { color: '#c7d0d9' } }
+                    }
+                }
+            });
+
+            // Win Rate Chart
+            const winRateCtx = document.getElementById('winRateChart').getContext('2d');
+            if (state.charts.winRateChart) {
+                state.charts.winRateChart.destroy();
+            }
+
+            state.charts.winRateChart = new Chart(winRateCtx, {
+                type: 'horizontalBar',
+                data: {
+                    labels: ['Arbitrage', 'Triangular', 'Cross-Exchange'],
+                    datasets: [{
+                        label: 'Win Rate (%)',
+                        data: [87, 72, 65],
+                        backgroundColor: '#33a2e5'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(70, 76, 84, 0.3)' }, ticks: { color: '#c7d0d9' } },
+                        y: { grid: { color: 'rgba(70, 76, 84, 0.3)' }, ticks: { color: '#c7d0d9' } }
+                    }
+                }
+            });
+
+            // P&L Distribution Chart
+            const pnlDistCtx = document.getElementById('pnlDistributionChart').getContext('2d');
+            if (state.charts.pnlDistributionChart) {
+                state.charts.pnlDistributionChart.destroy();
+            }
+
+            state.charts.pnlDistributionChart = new Chart(pnlDistCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Arbitrage', 'Triangular', 'Cross-Exchange'],
+                    datasets: [{
+                        data: [55, 30, 15],
+                        backgroundColor: ['#73bf69', '#33a2e5', '#f2cc0c']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#c7d0d9' } } }
+                }
+            });
+        }
+
+        // Execute trade
+        function executeTrade(opportunityId) {
+            showNotification('Trade execution initiated...', 'info');
+            // In real implementation, this would call the API
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Simple notification - could be enhanced with a proper notification system
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Update session timer
+        function updateSessionTimer() {
+            const elapsed = Math.floor((Date.now() - state.sessionStart) / 1000);
+            const hours = Math.floor(elapsed / 3600);
+            const minutes = Math.floor((elapsed % 3600) / 60);
+            const seconds = elapsed % 60;
+
+            document.getElementById('sessionTime').textContent =
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Institutional-grade functions
+        async function loadRiskData() {
+            try {
+                const response = await fetch('http://localhost:8080/risk/portfolio');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateRiskMetrics(data);
+                }
+            } catch (error) {
+                console.error('Error loading risk data:', error);
+            }
+        }
+
+        function updateRiskMetrics(data) {
+            document.getElementById('varMetric').textContent = `${(data.metrics.var * 100).toFixed(2)}%`;
+            document.getElementById('esMetric').textContent = `${(data.metrics.expectedShortfall * 100).toFixed(2)}%`;
+            document.getElementById('sharpeMetric').textContent = data.metrics.sharpeRatio.toFixed(2);
+            document.getElementById('drawdownMetric').textContent = `${(data.metrics.maxDrawdown * 100).toFixed(2)}%`;
+            document.getElementById('leverageMetric').textContent = `${data.metrics.leverage.toFixed(2)}x`;
+            document.getElementById('liquidityMetric').textContent = `${(data.metrics.liquidityRatio * 100).toFixed(0)}%`;
+            document.getElementById('concentrationMetric').textContent = `${(data.portfolio.concentration * 100).toFixed(0)}%`;
+
+            // Update risk alerts
+            const alertsContainer = document.getElementById('riskAlerts');
+            if (data.metrics.breaches && data.metrics.breaches.length > 0) {
+                alertsContainer.innerHTML = data.metrics.breaches.map(breach => `
+                    <div class="p-2 bg-red-500/20 border border-red-500/50 rounded text-sm">
+                        <div class="font-medium text-red-400">${breach.type}</div>
+                        <div class="text-gray-300">${breach.message}</div>
+                    </div>
+                `).join('');
+            } else {
+                alertsContainer.innerHTML = '<div class="text-center text-gray-400 py-4">No risk breaches</div>';
+            }
+        }
+
+        async function runStressTests() {
+            try {
+                const response = await fetch('http://localhost:8080/risk/stress-test');
+                if (response.ok) {
+                    const data = await response.json();
+                    const container = document.getElementById('stressTests');
+                    container.innerHTML = data.stressTests.map(test => `
+                        <div class="p-2 border border-gray-600 rounded text-sm">
+                            <div class="font-medium">${test.scenario}</div>
+                            <div class="text-gray-400">Loss: ${(test.lossPercentage * 100).toFixed(1)}%</div>
+                            <div class="text-${test.breachesLimit ? 'red' : 'green'}-400">
+                                ${test.breachesLimit ? 'BREACHES LIMIT' : 'WITHIN LIMITS'}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error running stress tests:', error);
+            }
+        }
+
+        async function loadComplianceData() {
+            try {
+                const response = await fetch('http://localhost:8080/compliance/report?timeRange=24h');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateComplianceMetrics(data);
+                }
+            } catch (error) {
+                console.error('Error loading compliance data:', error);
+            }
+        }
+
+        function updateComplianceMetrics(data) {
+            document.getElementById('kycCount').textContent = data.statistics.kycVerifications;
+            document.getElementById('amlCount').textContent = data.statistics.amlScreenings;
+            document.getElementById('sarCount').textContent = data.statistics.regulatoryReports;
+            document.getElementById('complianceRate').textContent = '99.9%'; // Placeholder
+            document.getElementById('ofacChecks').textContent = data.statistics.totalEvents;
+            document.getElementById('euChecks').textContent = data.statistics.totalEvents;
+            document.getElementById('unChecks').textContent = data.statistics.totalEvents;
+            document.getElementById('pepChecks').textContent = data.statistics.totalEvents;
+        }
+
+        async function loadMonitoringData() {
+            try {
+                const response = await fetch('http://localhost:8080/monitoring/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateMonitoringMetrics(data);
+                }
+            } catch (error) {
+                console.error('Error loading monitoring data:', error);
+            }
+        }
+
+        function updateMonitoringMetrics(data) {
+            document.getElementById('systemStatus').textContent = data.systemStatus;
+            document.getElementById('activeAlerts').textContent = data.metrics.activeAlerts;
+            document.getElementById('openIncidents').textContent = data.metrics.openIncidents;
+            document.getElementById('sloCompliance').textContent = '99.9%'; // Placeholder
+
+            // Update alerts list
+            const alertsContainer = document.getElementById('activeAlertsList');
+            if (data.topAlerts && data.topAlerts.length > 0) {
+                alertsContainer.innerHTML = data.topAlerts.map(alert => `
+                    <div class="p-2 border border-gray-600 rounded text-sm">
+                        <div class="font-medium text-${alert.severity === 'CRITICAL' ? 'red' : 'yellow'}-400">
+                            ${alert.severity}: ${alert.title}
+                        </div>
+                        <div class="text-gray-400">${alert.description}</div>
+                    </div>
+                `).join('');
+            }
+
+            // Update SLO status
+            const sloContainer = document.getElementById('sloStatus');
+            if (data.sloStatus) {
+                sloContainer.innerHTML = Object.values(data.sloStatus).map(slo => `
+                    <div class="flex justify-between items-center p-2 border border-gray-600 rounded">
+                        <span class="text-sm">${slo.name}</span>
+                        <span class="text-sm font-medium text-${slo.status === 'BREACHED' ? 'red' : 'green'}-400">
+                            ${slo.status}
+                        </span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Compliance action functions
+        function runKYCCheck() {
+            showNotification('KYC verification initiated', 'info');
+        }
+
+        function runAMLScreening() {
+            showNotification('AML screening initiated', 'info');
+        }
+
+        function fileSAR() {
+            showNotification('SAR filing initiated', 'info');
+        }
+
+        function viewAuditTrail() {
+            showNotification('Opening audit trail...', 'info');
+        }
+
+        // Monitoring action functions
+        function viewHealthDashboard() {
+            showNotification('Loading health dashboard...', 'info');
+        }
+
+        function viewIncidents() {
+            showNotification('Loading incidents...', 'info');
+        }
+
+        function generateReport() {
+            showNotification('Generating monitoring report...', 'info');
+        }
+
+        function configureAlerts() {
+            showNotification('Opening alert configuration...', 'info');
+        }
+
+        // Enhanced data loading
+        async function loadDashboardData() {
+            try {
+                const [analyticsRes, tradesRes, opportunitiesRes, chainsRes] = await Promise.all([
+                    fetch('http://localhost:8080/analytics/total-pnl'),
+                    fetch('http://localhost:8080/trades/executed'),
+                    fetch('http://localhost:8080/opportunities'),
+                    fetch('http://localhost:8080/chains/supported').catch(() => ({ ok: false }))
+                ]);
+
+                if (analyticsRes.ok) {
+                    const analytics = await analyticsRes.json();
+                    updateMetrics(analytics);
+                }
+
+                if (tradesRes.ok) {
+                    const trades = await tradesRes.json();
+                    updateTrades(trades);
+                }
+
+                if (opportunitiesRes.ok) {
+                    const opportunities = await opportunitiesRes.json();
+                    updateOpportunities(opportunities);
+                }
+
+                if (chainsRes.ok) {
+                    const chains = await chainsRes.json();
+                    updateChains(chains.chains || []);
+                }
+
+                // Load institutional data
+                await loadRiskData();
+                await loadComplianceData();
+                await loadMonitoringData();
+
+                // Mock services data for now
+                updateServices(getMockServices());
+
+                updateCharts();
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        // Start refresh timer
+        function startRefreshTimer() {
+            setInterval(() => {
+                loadDashboardData();
+                updateSessionTimer();
+            }, state.settings.refreshInterval * 1000);
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

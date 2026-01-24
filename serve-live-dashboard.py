@@ -10,6 +10,8 @@ import os
 import sys
 import socket
 from datetime import datetime
+import urllib.request
+import urllib.error
 
 DASHBOARD_FILE = 'LIVE_PROFIT_DASHBOARD.html'
 HARDCODED_PORT = 8888  # Proposed working port
@@ -65,9 +67,40 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         """Handle GET requests"""
         if self.path == '/' or self.path == '/dashboard':
             self.path = '/' + DASHBOARD_FILE
-        
+            return super().do_GET()
+
+        # API Endpoints - Proxy to Backend
+        api_prefixes = ['/analytics', '/trades', '/opportunities', '/mode', '/pimlico', '/health']
+        if any(self.path.startswith(p) for p in api_prefixes):
+            self.handle_api_request()
+            return
+
         return super().do_GET()
     
+    def handle_api_request(self):
+        """Proxy to backend service"""
+        backend_url = os.environ.get('BACKEND_URL', 'http://localhost:8080')
+        
+        # Prevent self-recursion if running on same port without external backend
+        # (Common in Docker standalone mode)
+        if str(self.server.server_address[1]) in backend_url and 'localhost' in backend_url:
+            self.send_error(500, "Configuration Error: Backend URL points to self")
+            return
+
+        try:
+            # Try to proxy to backend
+            target = f"{backend_url}{self.path}"
+            req = urllib.request.Request(target)
+            with urllib.request.urlopen(req, timeout=0.5) as response:
+                self.send_response(response.status)
+                for key, value in response.headers.items():
+                    self.send_header(key, value)
+                self.end_headers()
+                self.wfile.write(response.read())
+        except (urllib.error.URLError, socket.timeout, ConnectionRefusedError) as e:
+            # Backend offline
+            self.send_error(503, f"Backend Unavailable: {e}")
+
     def end_headers(self):
         """Add CORS and cache control headers"""
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -99,13 +132,6 @@ def main():
     print()
     
     # Stage 2: Port Detection
-    print('🔍 STAGE 2: PORT DETECTION (TESTING PORT 8888)')
-    try:
-        PORT, is_default = find_free_port(start_port=8888, max_attempts=1)
-    except RuntimeError as e:
-        print(f'{e}')
-        print()
-        print('⚠️  Port 8888 not available, will try fallback ports...')
     if os.environ.get('PORT'):
         PORT = int(os.environ.get('PORT'))
         print('🔍 STAGE 2: PORT CONFIGURATION (ENV DETECTED)')
@@ -113,10 +139,6 @@ def main():
     else:
         print('🔍 STAGE 2: PORT DETECTION (TESTING PORT 8888)')
         try:
-            PORT, is_default = find_free_port(start_port=9200, max_attempts=100)
-        except RuntimeError as e2:
-            print(f'{e2}')
-            sys.exit(1)
             PORT, is_default = find_free_port(start_port=8888, max_attempts=1)
         except RuntimeError as e:
             print(f'{e}')

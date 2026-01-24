@@ -515,42 +515,8 @@
                 addLog(`✅ Dashboard updated: $${data.totalPnL} profit from ${data.totalTrades} trades`);
             } catch (error) {
                 addLog(`❌ Error loading dashboard: ${error.message}`);
-                // Fallback to mock data for demo
-                const mockData = {
-                    totalPnL: Math.floor(Math.random() * 5000) + 1000,
-                    realizedProfit: Math.floor(Math.random() * 3000) + 500,
-                    unrealizedProfit: Math.floor(Math.random() * 2000) + 200,
-                    totalTrades: Math.floor(Math.random() * 50) + 10,
-                    confirmedTrades: Math.floor(Math.random() * 30) + 5,
-                    executedTrades: Math.floor(Math.random() * 20) + 5
-                };
-
-                // Update metrics with mock data
-                document.getElementById('totalPnl').textContent = `$${mockData.totalPnL.toLocaleString()}`;
-                document.getElementById('realizedProfit').textContent = `$${mockData.realizedProfit.toLocaleString()}`;
-                document.getElementById('unrealizedProfit').textContent = `$${mockData.unrealizedProfit.toLocaleString()}`;
-                document.getElementById('totalTrades').textContent = mockData.totalTrades;
-                document.getElementById('realizedCount').textContent = `From ${mockData.confirmedTrades} confirmed trades`;
-                document.getElementById('unrealizedCount').textContent = `From ${mockData.executedTrades} pending trades`;
-                document.getElementById('confirmedTrades').textContent = `${mockData.confirmedTrades} confirmed`;
-                document.getElementById('tradesCount').textContent = `${mockData.executedTrades} transactions saved`;
-
-                // Track for chart
-                STATS.pnlHistory.push({
-                    time: new Date().toLocaleTimeString(),
-                    pnl: mockData.totalPnL
-                });
-
-                // Load trades
-                await loadTrades();
-
-                // Load opportunities
-                await loadOpportunities();
-
-                // Update charts
-                updateCharts();
-
-                addLog(`✅ Dashboard updated with mock data: $${mockData.totalPnL} profit from ${mockData.totalTrades} trades`);
+                document.getElementById('systemStatus').textContent = 'OFFLINE';
+                document.querySelector('.status-indicator').classList.replace('status-active', 'status-error');
             }
         }
 
