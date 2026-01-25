@@ -848,6 +848,9 @@
         // Initialize Lucide icons
         lucide.createIcons();
 
+        // API Configuration - can be overridden by environment
+        const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8080';
+
         // Global state
         const state = {
             sessionStart: Date.now(),
@@ -957,10 +960,10 @@
         async function loadDashboardData() {
             try {
                 const [analyticsRes, tradesRes, opportunitiesRes, chainsRes] = await Promise.all([
-                    fetch('http://localhost:8080/analytics/total-pnl'),
-                    fetch('http://localhost:8080/trades/executed'),
-                    fetch('http://localhost:8080/opportunities'),
-                    fetch('http://localhost:8080/chains/supported').catch(() => ({ ok: false }))
+                    fetch(`${API_BASE_URL}/analytics/total-pnl`),
+                    fetch(`${API_BASE_URL}/trades/executed`),
+                    fetch(`${API_BASE_URL}/opportunities`),
+                    fetch(`${API_BASE_URL}/chains/supported`).catch(() => ({ ok: false }))
                 ]);
 
                 if (analyticsRes.ok) {
@@ -1282,7 +1285,7 @@
         // Institutional-grade functions
         async function loadRiskData() {
             try {
-                const response = await fetch('http://localhost:8080/risk/portfolio');
+                const response = await fetch(`${API_BASE_URL}/risk/portfolio`);
                 if (response.ok) {
                     const data = await response.json();
                     updateRiskMetrics(data);
@@ -1317,7 +1320,7 @@
 
         async function runStressTests() {
             try {
-                const response = await fetch('http://localhost:8080/risk/stress-test');
+                const response = await fetch(`${API_BASE_URL}/risk/stress-test`);
                 if (response.ok) {
                     const data = await response.json();
                     const container = document.getElementById('stressTests');
@@ -1338,7 +1341,7 @@
 
         async function loadComplianceData() {
             try {
-                const response = await fetch('http://localhost:8080/compliance/report?timeRange=24h');
+                const response = await fetch(`${API_BASE_URL}/compliance/report?timeRange=24h`);
                 if (response.ok) {
                     const data = await response.json();
                     updateComplianceMetrics(data);
@@ -1361,7 +1364,7 @@
 
         async function loadMonitoringData() {
             try {
-                const response = await fetch('http://localhost:8080/monitoring/health');
+                const response = await fetch(`${API_BASE_URL}/monitoring/health`);
                 if (response.ok) {
                     const data = await response.json();
                     updateMonitoringMetrics(data);
@@ -1442,10 +1445,10 @@
         async function loadDashboardData() {
             try {
                 const [analyticsRes, tradesRes, opportunitiesRes, chainsRes] = await Promise.all([
-                    fetch('http://localhost:8080/analytics/total-pnl'),
-                    fetch('http://localhost:8080/trades/executed'),
-                    fetch('http://localhost:8080/opportunities'),
-                    fetch('http://localhost:8080/chains/supported').catch(() => ({ ok: false }))
+                    fetch(`${API_BASE_URL}/analytics/total-pnl`),
+                    fetch(`${API_BASE_URL}/trades/executed`),
+                    fetch(`${API_BASE_URL}/opportunities`),
+                    fetch(`${API_BASE_URL}/chains/supported`).catch(() => ({ ok: false }))
                 ]);
 
                 if (analyticsRes.ok) {

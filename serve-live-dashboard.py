@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Alpha-Orion LIVE Profit Dashboard Server
-Auto-detects free port and serves the real-time profit generation dashboard
+Alpha-Orion Unified Trading Dashboard Server
+Auto-detects free port and serves the unified trading dashboard
 """
 
 import http.server
@@ -12,8 +12,9 @@ import socket
 from datetime import datetime
 import urllib.request
 import urllib.error
+import webbrowser
 
-DASHBOARD_FILE = 'LIVE_PROFIT_DASHBOARD.html'
+DASHBOARD_FILE = 'unified-dashboard.html'
 HARDCODED_PORT = 8888  # Proposed working port
 
 def find_free_port(start_port=8888, max_attempts=100):
@@ -22,13 +23,13 @@ def find_free_port(start_port=8888, max_attempts=100):
     Returns tuple: (port, is_default)
     """
     print()
-    print('🔍 Scanning ports for availability...')
+    print('Scanning ports for availability...')
     print()
     
     for attempt, port in enumerate(range(start_port, start_port + max_attempts), 1):
         # Show progress indicator
-        progress_bar = '█' * (attempt // 4)
-        remaining = '░' * (25 - len(progress_bar))
+        progress_bar = '#' * (attempt // 4)
+        remaining = '-' * (25 - len(progress_bar))
         progress = f'[{progress_bar}{remaining}] {attempt}%'
         
         # Status for current port being checked
@@ -47,9 +48,9 @@ def find_free_port(start_port=8888, max_attempts=100):
             print()
             
             if port == start_port:
-                print(f'✅ Port {port} is AVAILABLE (default)')
+                print(f'Port {port} is AVAILABLE (default)')
             else:
-                print(f'✅ Port {port} is FREE (port {start_port} was occupied)')
+                print(f'Port {port} is FREE (port {start_port} was occupied)')
             
             print()
             return port, (port == start_port)
@@ -60,14 +61,14 @@ def find_free_port(start_port=8888, max_attempts=100):
     
     print()  # Clear progress line
     print()
-    raise RuntimeError(f"❌ No free port found between {start_port} and {start_port + max_attempts}")
+    raise RuntimeError(f"No free port found between {start_port} and {start_port + max_attempts}")
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         """Handle GET requests"""
         if self.path == '/' or self.path == '/dashboard':
-            self.path = '/' + DASHBOARD_FILE
-            return super().do_GET()
+            self.serve_dashboard_with_api_url()
+            return
 
         # API Endpoints - Proxy to Backend
         api_prefixes = ['/analytics', '/trades', '/opportunities', '/mode', '/pimlico', '/health']
@@ -76,6 +77,31 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         return super().do_GET()
+
+    def serve_dashboard_with_api_url(self):
+        """Serve dashboard with injected API URL"""
+        try:
+            with open(DASHBOARD_FILE, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Get API base URL from environment
+            api_base_url = os.environ.get('API_BASE_URL', os.environ.get('BACKEND_URL', 'http://localhost:8080'))
+
+            # Inject API base URL into HTML
+            injection_script = f'<script>window.API_BASE_URL = "{api_base_url}";</script>'
+            # Insert before closing </head> tag
+            content = content.replace('</head>', f'{injection_script}\n</head>')
+
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.send_header('Content-length', len(content.encode('utf-8')))
+            self.end_headers()
+            self.wfile.write(content.encode('utf-8'))
+
+        except FileNotFoundError:
+            self.send_error(404, f"Dashboard file '{DASHBOARD_FILE}' not found")
+        except Exception as e:
+            self.send_error(500, f"Error serving dashboard: {e}")
     
     def handle_api_request(self):
         """Proxy to backend service"""
@@ -117,33 +143,37 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         print(f'[{timestamp}] {format % args}')
 
 def main():
+    # Clear PORT environment variable to allow auto-detection
+    os.environ.pop('PORT', None)
+
     print('\n')
-    print('╔════════════════════════════════════════════════════════════╗')
-    print('║      🚀 ALPHA-ORION LIVE PROFIT DASHBOARD SERVER 🚀        ║')
-    print('║          PROPOSED PORT: 8888 (TESTING AVAILABILITY)        ║')
-    print('╚════════════════════════════════════════════════════════════╝')
+    print('===========================================================')
+    print('      ALPHA-ORION LIVE PROFIT DASHBOARD SERVER        ')
+    print('          PROPOSED PORT: 8888 (TESTING AVAILABILITY)        ')
+    print('===========================================================')
     print()
-    
+
     # Stage 1: Setup
-    print('📋 STAGE 1: INITIALIZATION')
-    print('  ✓ Changing to working directory...')
+    print('STAGE 1: INITIALIZATION')
+    print('  Changing to working directory...')
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    print('  ✓ Working directory set')
+    print('  Working directory set')
     print()
-    
+
     # Stage 2: Port Detection
-    if os.environ.get('PORT'):
-        PORT = int(os.environ.get('PORT'))
-        print('🔍 STAGE 2: PORT CONFIGURATION (ENV DETECTED)')
-        print(f'  ✓ Using environment variable PORT: {PORT}')
+    port_env = os.environ.get('PORT', '').strip()
+    if port_env:
+        PORT = int(port_env)
+        print('STAGE 2: PORT CONFIGURATION (ENV DETECTED)')
+        print(f'  Using environment variable PORT: {PORT}')
     else:
-        print('🔍 STAGE 2: PORT DETECTION (TESTING PORT 8888)')
+        print('STAGE 2: PORT DETECTION (TESTING PORT 8888)')
         try:
             PORT, is_default = find_free_port(start_port=8888, max_attempts=1)
         except RuntimeError as e:
             print(f'{e}')
             print()
-            print('⚠️  Port 8888 not available, will try fallback ports...')
+            print('Port 8888 not available, will try fallback ports...')
             try:
                 PORT, is_default = find_free_port(start_port=9200, max_attempts=100)
             except RuntimeError as e2:
@@ -152,28 +182,28 @@ def main():
     print()
     
     # Stage 3: Configuration
-    print('⚙️  STAGE 3: CONFIGURATION')
-    print(f'  ✓ Dashboard File: {DASHBOARD_FILE}')
-    print(f'  ✓ Server Port: {PORT}')
+    print('STAGE 3: CONFIGURATION')
+    print(f'  Dashboard File: {DASHBOARD_FILE}')
+    print(f'  Server Port: {PORT}')
     print()
-    
+
     # Stage 4: Verification
-    print('✔️  STAGE 4: VERIFICATION')
+    print('STAGE 4: VERIFICATION')
     print()
-    print('═════════════════════════════════════════════════════════════')
+    print('===========================================================')
     print()
-    print('🔗 ACCESS DASHBOARD:')
-    print(f'   👉 http://localhost:{PORT}/')
-    print(f'   👉 http://localhost:{PORT}/dashboard')
+    print('ACCESS DASHBOARD:')
+    print(f'   http://localhost:{PORT}/')
+    print(f'   http://localhost:{PORT}/dashboard')
     print()
-    print('📋 PRODUCTION API:')
-    print('   👉 http://localhost:8080/analytics/total-pnl')
-    print('   👉 http://localhost:8080/trades/executed')
-    print('   👉 http://localhost:8080/opportunities')
+    print('PRODUCTION API:')
+    print('   http://localhost:8080/analytics/total-pnl')
+    print('   http://localhost:8080/trades/executed')
+    print('   http://localhost:8080/opportunities')
     print()
-    print('═════════════════════════════════════════════════════════════')
+    print('===========================================================')
     print()
-    print('💡 SETUP INSTRUCTIONS:')
+    print('SETUP INSTRUCTIONS:')
     print()
     print('1. Terminal 1 - Start Production Service:')
     print('   cd backend-services/services/user-api-service')
@@ -185,49 +215,55 @@ def main():
     print('3. Terminal 3 - Open Dashboard in Browser:')
     print(f'   http://localhost:{PORT}')
     print()
-    print('═════════════════════════════════════════════════════════════')
+    print('===========================================================')
     print()
-    
     # Stage 5: Server Startup
-    print('🚀 STAGE 5: SERVER STARTUP')
-    print(f'  ✓ Binding to port {PORT}...')
-    
+    print('STAGE 5: SERVER STARTUP')
+    print(f'  Binding to port {PORT}...')
+
     try:
         with socketserver.TCPServer(('', PORT), DashboardHandler) as httpd:
-            print(f'  ✓ Server bound successfully')
-            print(f'  ✓ Started at {datetime.now().strftime("%H:%M:%S")}')
+            print(f'  Server bound successfully')
+            print(f'  Started at {datetime.now().strftime("%H:%M:%S")}')
             print()
-            
+
+
             # Stage 6: Saving Configuration
-            print('💾 STAGE 6: SAVING CONFIGURATION')
+            print('STAGE 6: SAVING CONFIGURATION')
             with open('dashboard_port.txt', 'w') as f:
                 f.write(str(PORT))
-            print(f'  ✓ Port {PORT} saved to dashboard_port.txt')
+            print(f'  Port {PORT} saved to dashboard_port.txt')
             print()
-            
+
             # Stage 7: Ready for Connections
-            print('✅ STAGE 7: READY FOR CONNECTIONS')
-            print(f'  ✓ Dashboard accessible at: http://localhost:{PORT}/')
-            print(f'  ✓ Listening on: http://0.0.0.0:{PORT}')
-            print(f'  ✓ API base: http://localhost:8080')
+            print('STAGE 7: READY FOR CONNECTIONS')
+            print(f'  Dashboard accessible at: http://localhost:{PORT}/')
+            print(f'  Listening on: http://0.0.0.0:{PORT}')
+            print(f'  API base: http://localhost:8080')
             print()
-            print('═════════════════════════════════════════════════════════════')
+            print('===========================================================')
             print()
-            print(f'🎉 DEPLOYMENT COMPLETE - Server online at port {PORT}')
-            print('📊 Real-time metrics active')
-            print('💰 Profit tracking enabled')
-            print('⏸️  Press Ctrl+C to stop')
+            print(f'DEPLOYMENT COMPLETE - Server online at port {PORT}')
+            print('Real-time metrics active')
+            print('Profit tracking enabled')
+            print('Press Ctrl+C to stop')
+            print()
+
+            # Auto-open browser
+            print('Opening dashboard in browser...')
+            webbrowser.open(f'http://localhost:{PORT}/')
+            print('Browser opened')
             print()
             
             try:
                 httpd.serve_forever()
             except KeyboardInterrupt:
                 print()
-                print('🛑 Shutdown signal received...')
-                print('📊 Dashboard server stopped')
+                print('Shutdown signal received...')
+                print('Dashboard server stopped')
                 sys.exit(0)
     except OSError as e:
-        print(f'❌ Failed to bind to port {PORT}: {e}')
+        print(f'Failed to bind to port {PORT}: {e}')
         sys.exit(1)
 
 if __name__ == '__main__':

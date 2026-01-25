@@ -5,6 +5,7 @@ FROM python:3.9-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
+ENV API_BASE_URL=https://user-api-service-uc.a.run.app
 
 # Set the working directory
 WORKDIR /app
