@@ -1,0 +1,13 @@
+{
+  "name": "alpha-orion-root",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root deployment configuration for Render",
+  "scripts": {
+    "build": "cd backend-services/services/user-api-service && npm install",
+    "start": "cd backend-services/services/user-api-service && npm start"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
