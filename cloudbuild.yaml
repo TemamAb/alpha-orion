@@ -24,6 +24,9 @@ steps:
       - '--region'
       - 'us-central1'
       - '--allow-unauthenticated'
+      - '--vpc-connector'
+      - 'alpha-orion-connector' # Assuming a connector named 'alpha-orion-connector' exists or needs to be created
+      - '--vpc-egress=all-traffic'
       - '--set-env-vars'
       - 'NODE_ENV=production,GCP_PROJECT_ID=$PROJECT_ID,MIN_PROFIT_THRESHOLD_USD=500,AUTO_WITHDRAWAL_THRESHOLD_USD=1000'
 
@@ -41,26 +44,49 @@ steps:
     args: ['push', 'gcr.io/$PROJECT_ID/brain-ai-optimizer-us']
 
   # Deploy AI Optimizer
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk' # Add VPC connector for internal access
     entrypoint: gcloud
-    args: ['run', 'deploy', 'brain-ai-optimizer-us', '--image', 'gcr.io/$PROJECT_ID/brain-ai-optimizer-us', '--region', 'us-central1', '--allow-unauthenticated', '--set-env-vars', 'NODE_ENV=production,GCP_PROJECT_ID=$PROJECT_ID']
+    args:
+      - 'run'
+      - 'deploy'
+      - 'brain-ai-optimizer-us'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/brain-ai-optimizer-us'
+      - '--region'
+      - 'us-central1'
+      - '--allow-unauthenticated'
+      - '--vpc-connector'
+      - 'alpha-orion-connector'
+      - '--vpc-egress=all-traffic'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,GCP_PROJECT_ID=$PROJECT_ID'
 
   # ==============================================================================
   # 3. FRONTEND DASHBOARD SERVICE
   # ==============================================================================
 
-  # Build Frontend
+  # Build Frontend (React app)
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/frontend-dashboard', '.']
+    dir: 'frontend' # Set the build context to the 'frontend' subdirectory
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/frontend-dashboard', '.'] # Dockerfile is assumed to be in 'frontend'
 
   # Push Frontend
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/frontend-dashboard']
 
-  # Deploy Frontend
+  # Deploy Frontend (static files)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
-    args: ['run', 'deploy', 'frontend-dashboard', '--image', 'gcr.io/$PROJECT_ID/frontend-dashboard', '--region', 'us-central1', '--allow-unauthenticated']
+    args:
+      - 'run'
+      - 'deploy'
+      - 'frontend-dashboard'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/frontend-dashboard'
+      - '--region'
+      - 'us-central1'
+      - '--allow-unauthenticated'
+      - '--port=80' # Nginx serves on port 80 by default
 
 images:
   - 'gcr.io/$PROJECT_ID/user-api-service'

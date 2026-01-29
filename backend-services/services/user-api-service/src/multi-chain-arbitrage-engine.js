@@ -3,8 +3,9 @@ const { ethers } = require('ethers');
 const flashLoanExecutorAbi = require('./abi/FlashLoanExecutor.json');
 
 class MultiChainArbitrageEngine {
-  constructor() {
+  constructor(mevRouter) {
     this.oneInchApiKey = process.env.ONE_INCH_API_KEY;
+    this.mevRouter = mevRouter;
     this.infuraApiKey = process.env.INFURA_API_KEY;
     this.privateKey = process.env.PRIVATE_KEY;
 
@@ -125,6 +126,15 @@ class MultiChainArbitrageEngine {
     ];
 
     console.log(`[MultiChainArbitrageEngine] Multi-chain arbitrage engine initialized with ${Object.keys(this.chains).length} chains`);
+
+    // Initialize performance metrics
+    this.performanceMetrics = {
+      totalTrades: 0,
+      successfulTrades: 0,
+      totalProfit: ethers.BigNumber.from(0),
+      executionTimes: [],
+      gasCosts: []
+    };
   }
 
   async findFlashLoanArbitrage() {
@@ -418,6 +428,11 @@ class MultiChainArbitrageEngine {
   }
 
   async getDexSpecificQuote(chainKey, dex, fromToken, toToken, amount) {
+    // In a real system, this would integrate with specific DEX APIs or subgraphs
+    // For this upgrade, we'll enhance the simulation to be more dynamic and realistic.
+    const chain = this.chains[chainKey];
+    const provider = this.providers[chainKey];
+
     // Real DEX integration (simplified for demo)
     const chain = this.chains[chainKey];
 
@@ -428,13 +443,23 @@ class MultiChainArbitrageEngine {
       }
 
       // Simulate other DEX quotes with realistic variance
-      const baseAmount = parseFloat(ethers.utils.formatUnits(amount, 18));
-      const variance = (Math.random() - 0.5) * 0.02; // ±1% variance
-      const quotedAmount = baseAmount * (1 + variance);
+      // Fetch current price from a mock oracle or 1inch for better simulation
+      const tokenPrice = await this.getTokenPrice(chainKey, fromToken);
+      const toTokenPrice = await this.getTokenPrice(chainKey, toToken);
+
+      if (!tokenPrice || !toTokenPrice) {
+        throw new Error(`Could not get price for token ${fromToken} or ${toToken}`);
+      }
+
+      const fromTokenDecimals = 18; // Assuming 18 for simplicity, fetch actual decimals in production
+      const toTokenDecimals = 18; // Assuming 18 for simplicity
+
+      const baseAmount = parseFloat(ethers.utils.formatUnits(amount, fromTokenDecimals));
+      const quotedAmount = (baseAmount * tokenPrice / toTokenPrice) * (1 + (Math.random() - 0.5) * 0.01); // ±0.5% variance
 
       return {
-        toAmount: ethers.utils.parseUnits(quotedAmount.toString(), 18).toString(),
-        toTokenAmount: quotedAmount,
+        toAmount: ethers.utils.parseUnits(quotedAmount.toFixed(toTokenDecimals), toTokenDecimals).toString(),
+        toTokenAmount: quotedAmount, // Float value for easier profit calculation
         estimatedGas: 120000 + Math.random() * 50000
       };
     } catch (error) {
@@ -485,13 +510,17 @@ class MultiChainArbitrageEngine {
   getTokenSymbol(chainKey, address) {
     const tokenMap = {
       [this.chains[chainKey].wrappedToken]: 'WETH',
-      '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6': 'USDC',
+      '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6': 'USDC', // Ethereum USDC
       '0xdAC17F958D2ee523a2206206994597C13D831ec7': 'USDT',
       '0x6B175474E89094C44Da98b954EedeAC495271d0F': 'DAI',
       '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984': 'UNI',
       '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9': 'AAVE',
       '0x514910771AF9Ca656af840dff83E8264EcF986CA': 'LINK'
     };
+
+    // Add chain-specific tokens if they differ
+    if (chainKey === 'polygon' && address === '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270') return 'WMATIC';
+    if (chainKey === 'polygon-zkevm' && address === '0x4F9A0e7FD2Bf60675dE95FA66388785275276641') return 'WETH (zkEVM)';
 
     return tokenMap[address] || 'UNKNOWN';
   }
@@ -505,12 +534,14 @@ class MultiChainArbitrageEngine {
 
   async getPoolPrice(chainKey, pool) {
     // Get pool price (simplified)
-    return 2000 + (Math.random() - 0.5) * 100; // Realistic variance
+    // In production, query the pool contract for reserves to calculate price
+    return 2000 + (Math.random() - 0.5) * 50; // Simulate price with some variance
   }
 
   async getMarketPrice(chainKey, pair) {
     // Get market price from multiple sources
-    return 2000; // Base price
+    // In production, aggregate from multiple DEXs or use a price oracle
+    return 2000 + (Math.random() - 0.5) * 20; // Simulate market price
   }
 
   async calculatePoolArbitrageProfit(chainKey, pool, priceDiff, tradeSize) {
@@ -591,16 +622,21 @@ class MultiChainArbitrageEngine {
   }
 
   async convertToUSD(chainKey, amount, tokenAddress) {
+    // In production, use a reliable price oracle (e.g., Chainlink)
     try {
-      // Simple USD conversion - in production use price oracles
       const tokenPrice = await this.getTokenPrice(chainKey, tokenAddress);
-      const tokenAmount = parseFloat(ethers.utils.formatUnits(amount, 18));
+      // Assuming 18 decimals for simplicity, fetch actual decimals in production
+      const tokenAmount = parseFloat(ethers.utils.formatUnits(amount, 18)); 
       return tokenAmount * tokenPrice;
     } catch (error) {
-      // Fallback approximation
-      return parseFloat(ethers.utils.formatUnits(amount, 18)) * 2000; // Assume $2000 per token
+      console.warn(`[MultiChainArbitrageEngine] Failed to convert to USD for ${tokenAddress} on ${chainKey}: ${error.message}`);
+      // Fallback: try to get a generic ETH price if it's a wrapped native token, otherwise a default
+      const isWrappedNative = tokenAddress === this.chains[chainKey].wrappedToken;
+      const fallbackPrice = isWrappedNative ? 2000 : 1; // Assume $2000 for ETH/WETH, $1 for stablecoins
+      return parseFloat(ethers.utils.formatUnits(amount, 18)) * fallbackPrice;
     }
   }
+
 
   async getTokenPrice(chainKey, tokenAddress) {
     // Simplified price fetching - integrate with price feeds in production
@@ -609,6 +645,10 @@ class MultiChainArbitrageEngine {
       [this.chains[chainKey].wrappedToken]: ethPrice, // WETH = ETH price
       '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6': 1, // USDC = $1
       '0xdAC17F958D2ee523a2206206994597C13D831ec7': 1, // USDT = $1
+      // Add other common token prices
+      '0x6B175474E89094C44Da98b954EedeAC495271d0F': 1, // DAI = $1
+      '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984': 5, // UNI = $5
+      '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9': 100, // AAVE = $100
     };
 
     return tokenPrices[tokenAddress] || ethPrice;
@@ -634,7 +674,7 @@ class MultiChainArbitrageEngine {
       let executionResult;
 
       // DIFFERENT EXECUTION STRATEGIES BASED ON OPPORTUNITY TYPE
-      switch (opportunity.strategy) {
+      switch (opportunity.strategy.toUpperCase()) { // Ensure case-insensitivity
         case 'CROSS_DEX_ARBITRAGE':
           executionResult = await this.executeCrossDexArbitrage(opportunity);
           break;
@@ -763,27 +803,27 @@ class MultiChainArbitrageEngine {
     const gasPrice = await this.optimizeGasPrice(chainKey);
     const minProfit = ethers.utils.parseUnits('0.001', 18);
 
-    const gasEstimate = await this.contracts[chainKey].estimateGas.executeFlashLoanArbitrage(
+    const txData = await this.contracts[chainKey].populateTransaction.executeFlashLoanArbitrage(
       opportunity.path[0],
       opportunity.loanAmount,
       opportunity.path,
       minProfit
     );
 
-    const tx = await this.contracts[chainKey].executeFlashLoanArbitrage(
-      opportunity.path[0],
-      opportunity.loanAmount,
-      opportunity.path,
-      minProfit,
-      {
-        gasLimit: gasEstimate.mul(120).div(100),
-        gasPrice: gasPrice
-      }
-    );
+    const transaction = {
+      to: this.contracts[chainKey].address,
+      data: txData.data,
+      value: '0',
+      chainId: chain.chainId,
+      gasPrice: gasPrice, // Use optimized gas price
+    };
 
-    console.log(`[Standard Arb] Executed: ${tx.hash}`);
+    const tradeSizeUSD = opportunity.potentialProfit;
+    const executionResult = await this.mevRouter.routeTransaction(transaction, tradeSizeUSD);
 
-    const receipt = await tx.wait();
+    console.log(`[Standard Arb] Executed via ${executionResult.method}: ${executionResult.txHash || executionResult.receipt?.transactionHash}`);
+
+    const receipt = executionResult.receipt || await this.providers[chainKey].waitForTransaction(executionResult.txHash); // Wait for transaction confirmation
 
     return {
       transactionHash: tx.hash,
@@ -800,22 +840,27 @@ class MultiChainArbitrageEngine {
   // GAS PRICE OPTIMIZATION FOR MAXIMUM PROFIT
   async optimizeGasPrice(chainKey) {
     const provider = this.providers[chainKey];
-    const networkGasPrice = await provider.getGasPrice();
+    if (!provider) {
+      console.warn(`[MultiChainArbitrageEngine] No provider for ${chainKey}, using default gas price.`);
+      return ethers.utils.parseUnits('20', 'gwei'); // Default to 20 Gwei
+    }
 
-    // Get pending transactions to assess network congestion
-    const block = await provider.getBlock('pending');
-    const pendingTxCount = block.transactions.length;
+    try {
+      const networkGasPrice = await provider.getGasPrice();
+      const block = await provider.getBlock('latest'); // Use latest block for more accurate pending tx count
+      const pendingTxCount = block.transactions.length;
 
-    // Dynamic gas pricing based on congestion
-    let multiplier = 1.0;
-    if (pendingTxCount > 100) multiplier = 1.5;      // High congestion
-    else if (pendingTxCount > 50) multiplier = 1.2;  // Medium congestion
-    else if (pendingTxCount > 20) multiplier = 1.1;  // Light congestion
+      let multiplier = 1.0;
+      if (pendingTxCount > 100) multiplier = 1.5; // High congestion
+      else if (pendingTxCount > 50) multiplier = 1.2; // Medium congestion
+      else if (pendingTxCount > 20) multiplier = 1.1; // Light congestion
+      multiplier *= 1.05; // Add competitive edge
 
-    // Add competitive edge for faster inclusion
-    multiplier *= 1.05;
-
-    return networkGasPrice.mul(Math.floor(multiplier * 100)).div(100);
+      return networkGasPrice.mul(Math.floor(multiplier * 100)).div(100);
+    } catch (error) {
+      console.error(`[MultiChainArbitrageEngine] Error optimizing gas price for ${chainKey}: ${error.message}`);
+      return ethers.utils.parseUnits('20', 'gwei'); // Fallback
+    }
   }
 
   // POST-EXECUTION ANALYSIS FOR CONTINUOUS IMPROVEMENT

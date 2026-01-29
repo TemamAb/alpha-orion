@@ -1,0 +1,20 @@
+"Authorize Gemini AI Assist to fully plan and implement 
+the creation of a Google Cloud Monitoring dashboard on 
+the Google Cloud server. The dashboard must precisely 
+mirror the design specified by the configuration found 
+within the directory path: /home/iamtemam/alpha-orion/frontend/src/pages/ .
+
+Gemini AI Assist should analyze the contents 
+of this directory to extract the dashboard's layout, widgets, 
+and metric configurations. If the design is not in a directly 
+importable Google Cloud Monitoring JSON format, Gemini AI Assist 
+is empowered to perform the necessary conversion, extraction, or 
+interpretation to recreate the dashboard's visual and functional
+ specifications accurately.
+
+Ensure the implemented dashboard for the 'alpha-orion' arbitrage 
+flash loan application includes all key performance indicators, 
+with particular emphasis on profit metrics 
+and transaction success rates. Assume my 
+application is already configured to 
+emit these custom metrics to Cloud Monitoring."

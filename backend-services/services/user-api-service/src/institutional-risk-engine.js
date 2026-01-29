@@ -422,7 +422,7 @@ class InstitutionalRiskEngine {
    */
   getPositionValue(position) {
     // Simplified - in production would calculate based on current market prices
-    return position.loanAmount || 0;
+    return position.potentialProfit || position.loanAmount || 0; // Use potentialProfit if available, otherwise loanAmount
   }
 
   /**

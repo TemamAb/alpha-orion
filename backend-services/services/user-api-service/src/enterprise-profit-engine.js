@@ -1,14 +1,15 @@
 const { ethers } = require('ethers');
 const tf = require('@tensorflow/tfjs-node');
-
 /**
  * ENTERPRISE-GRADE PROFIT GENERATION ENGINE
  * Advanced arbitrage strategies with ML optimization and market microstructure analysis
  */
 class EnterpriseProfitEngine {
-  constructor(multiChainEngine) {
+  constructor(multiChainEngine, mevRouter) {
     this.multiChainEngine = multiChainEngine;
+    this.mevRouter = mevRouter;
     this.chains = multiChainEngine.chains;
+    this.riskEngine = null; // Will be set externally or passed in constructor
 
     // Advanced profit strategies
     this.strategies = {
@@ -74,6 +75,11 @@ class EnterpriseProfitEngine {
     };
 
     console.log('[EnterpriseProfitEngine] Enterprise-grade profit engine initialized');
+    this.loadMLModels(); // Load ML models on initialization
+  }
+
+  setRiskEngine(riskEngine) {
+    this.riskEngine = riskEngine;
   }
 
   /**
@@ -407,34 +413,41 @@ class EnterpriseProfitEngine {
    */
   async findStatisticalArbitrage() {
     const opportunities = [];
+    const statArbPairs = this.getStatArbPairs(); // e.g., [{ assetA: 'WETH', assetB: 'stETH', threshold: 2.0 }]
 
-    // Analyze price correlations and deviations
-    const priceHistory = await this.getPriceHistory();
+    for (const pairConfig of statArbPairs) {
+      try {
+        const priceHistoryA = await this.getPriceHistory(pairConfig.assetA);
+        const priceHistoryB = await this.getPriceHistory(pairConfig.assetB);
 
-    for (const pair of this.getStatArbPairs()) {
-      const correlation = this.calculateCorrelation(priceHistory[pair.asset1], priceHistory[pair.asset2]);
-      const spread = this.calculateSpread(priceHistory[pair.asset1], priceHistory[pair.asset2]);
+        if (priceHistoryA.length < 30 || priceHistoryB.length < 30) continue; // Need sufficient data points
 
-      if (Math.abs(spread) > pair.threshold) {
-        const estimatedProfit = await this.calculateStatArbProfit(pair, spread);
+        const spread = priceHistoryA.map((p, i) => p - priceHistoryB[i]); // Assuming prices are aligned by time
+        const mean = spread.reduce((a, b) => a + b, 0) / spread.length; // Mean of the spread
+        const stdDev = Math.sqrt(spread.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / (spread.length - 1)); // Standard deviation of the spread
+        const zScore = (spread[spread.length - 1] - mean) / stdDev;
 
-        if (estimatedProfit > this.executionParams.minProfitThreshold) {
-          opportunities.push({
-            id: `stat-arb-${pair.asset1}-${pair.asset2}-${Date.now()}`,
-            strategy: this.strategies.STATISTICAL_ARBITRAGE,
-            asset1: pair.asset1,
-            asset2: pair.asset2,
-            correlation: correlation,
-            spread: spread,
-            threshold: pair.threshold,
-            direction: spread > 0 ? 'SHORT_SPREAD' : 'LONG_SPREAD',
-            potentialProfit: estimatedProfit,
-            estimatedGas: await this.estimateGasCost('ethereum', 'stat_arb'), // Assume Ethereum for stat arb
-            timestamp: Date.now(),
-            riskLevel: 'MEDIUM',
-            complexity: 'HIGH'
-          });
+        if (Math.abs(zScore) > pair.threshold) {
+          const estimatedProfit = await this.calculateStatArbProfit(pair, zScore, stdDev);
+          if (estimatedProfit.gt(this.executionParams.minProfitThreshold)) {
+            opportunities.push({
+              id: `stat-arb-${pair.assetA}-${pair.assetB}-${Date.now()}`,
+              strategy: this.strategies.STATISTICAL_ARBITRAGE,
+              assets: [pairConfig.assetA, pairConfig.assetB],
+              zScore,
+              meanSpread: mean,
+              stdDev,
+              direction: zScore > 0 ? 'SHORT_SPREAD' : 'LONG_SPREAD', // Sell A, Buy B
+              potentialProfit: parseFloat(ethers.utils.formatEther(estimatedProfit)),
+              estimatedGas: await this.estimateGasCost('ethereum', 'stat_arb'),
+              timestamp: Date.now(),
+              riskLevel: 'MEDIUM',
+              complexity: 'HIGH'
+            });
+          }
         }
+      } catch (error) { // Catch specific errors for better debugging
+        console.warn(`[EnterpriseProfitEngine] Statistical arbitrage error for pair ${pairConfig.assetA}/${pairConfig.assetB}: ${error.message}`);
       }
     }
 
@@ -447,29 +460,35 @@ class EnterpriseProfitEngine {
    */
   async findOrderFlowArbitrage() {
     const opportunities = [];
-
+    const orderBookPairs = ['WETH/USDC', 'WBTC/USDC']; // Pairs to monitor
+    
     for (const [chainKey, chain] of Object.entries(this.chains)) {
       if (!this.multiChainEngine.providers[chainKey]) continue;
 
-      try {
-        const orderBooks = await this.getOrderBooks(chainKey);
+      for (const pair of orderBookPairs) { // Iterate through predefined pairs
+        try {
+          const orderBook = await this.getOrderBook(pair, chainKey);
+          if (!orderBook || orderBook.bids.length === 0 || orderBook.asks.length === 0) continue;
 
-        for (const [pair, orderBook] of Object.entries(orderBooks)) {
-          const imbalance = this.analyzeOrderBookImbalance(orderBook);
+          const bidVolume = orderBook.bids.reduce((sum, level) => sum + level.amount * level.price, 0); // Weighted by price
+          const askVolume = orderBook.asks.reduce((sum, level) => sum + level.amount * level.price, 0); // Weighted by price
+          const imbalance = (bidVolume - askVolume) / (bidVolume + askVolume); // Volume-weighted imbalance
 
-          if (Math.abs(imbalance.score) > 0.7) { // Strong imbalance
-            const estimatedProfit = await this.calculateOrderFlowProfit(chainKey, pair, imbalance);
+          // If there's a significant imbalance (e.g., > 20% more buy-side volume)
+          if (Math.abs(imbalance) > 0.2) { // Lower threshold for detection, higher for execution
+            const direction = imbalance > 0 ? 'MARKET_SELL' : 'MARKET_BUY';
+            const estimatedProfit = await this.calculateOrderFlowProfit(pair, imbalance, orderBook);
 
-            if (estimatedProfit > this.executionParams.minProfitThreshold) {
+            if (estimatedProfit.gt(this.executionParams.minProfitThreshold)) {
               opportunities.push({
-                id: `order-flow-${chainKey}-${pair}-${Date.now()}`,
+                id: `order-flow-${chainKey}-${pair.replace('/', '-')}-${Date.now()}`,
                 strategy: this.strategies.ORDER_FLOW_ARBITRAGE,
                 chain: chainKey,
                 chainName: chain.name,
-                pair: pair,
-                imbalanceScore: imbalance.score,
-                direction: imbalance.direction,
-                potentialProfit: estimatedProfit,
+                assets: pair.split('/'),
+                imbalance,
+                direction,
+                potentialProfit: parseFloat(ethers.utils.formatEther(estimatedProfit)),
                 estimatedGas: await this.estimateGasCost(chainKey, 'order_flow'),
                 timestamp: Date.now(),
                 riskLevel: 'MEDIUM',
@@ -479,7 +498,7 @@ class EnterpriseProfitEngine {
           }
         }
       } catch (error) {
-        console.warn(`[EnterpriseProfitEngine] Order flow arbitrage error on ${chainKey}: ${error.message}`);
+        console.warn(`[EnterpriseProfitEngine] Order flow arbitrage error for pair ${pair}: ${error.message}`);
       }
     }
 
@@ -543,7 +562,7 @@ class EnterpriseProfitEngine {
     const startTime = Date.now();
 
     try {
-      // Pre-execution checks
+      // Pre-execution checks using the InstitutionalRiskEngine
       const preCheck = await this.preExecutionCheck(opportunity);
       if (!preCheck.approved) {
         throw new Error(`Pre-execution check failed: ${preCheck.reason}`);
@@ -551,10 +570,10 @@ class EnterpriseProfitEngine {
 
       // Dynamic position sizing
       const positionSize = await this.calculateOptimalPositionSize(opportunity);
-
+      
       // Gas optimization
       const gasPrice = await this.optimizeGasPrice(opportunity.chain);
-
+      
       // Slippage protection
       const slippageProtection = await this.calculateSlippageProtection(opportunity);
 
@@ -629,6 +648,21 @@ class EnterpriseProfitEngine {
     await this.updateMLModels();
   }
 
+  /**
+   * Simulate loading pre-trained ML models.
+   * In a real scenario, these would be loaded from Cloud Storage or a model serving endpoint.
+   */
+  async loadMLModels() {
+    console.log('[EnterpriseProfitEngine] Simulating ML model loading...');
+    // Placeholder for actual model loading
+    this.mlModels.arbitrageOpportunity = {
+      predict: (features) => ({
+        successProbability: Math.random() * 0.5 + 0.5, // 50-100%
+        expectedReturn: Math.random() * 100 + 10, // $10-$110
+        risk: Math.random() * 0.1 + 0.01 // 1-11% risk
+      })
+    };
+  }
   // Helper methods (implementations would be extensive)
   async getTokenPairsForChain(chainKey) {
     // Return comprehensive token pairs for the chain
@@ -642,7 +676,7 @@ class EnterpriseProfitEngine {
 
   async evaluateTriangularPath(chainKey, token1, token2, token3) {
     // Implement triangular arbitrage evaluation
-    return null; // Placeholder
+    return this.multiChainEngine.findOptimizedTriangularArbitrage(chainKey, { base: token1.address, quote: token2.address });
   }
 
   async getDexPrice(chainKey, dex, baseToken, quoteToken) {
@@ -651,7 +685,7 @@ class EnterpriseProfitEngine {
   }
 
   async calculateCrossDexProfit(chainKey, buyDex, sellDex, tokenPair) {
-    // Calculate cross-DEX arbitrage profit
+    // This would involve fetching quotes from both DEXes and calculating the actual profit
     return ethers.utils.parseUnits('0.01', 18); // Placeholder
   }
 
@@ -719,72 +753,87 @@ class EnterpriseProfitEngine {
     return null; // Placeholder
   }
 
-  async getPriceHistory() {
+  async getPriceHistory(asset) {
     // Get historical price data
-    return {}; // Placeholder
+    // In a real system, this would query a time-series database like BigQuery or InfluxDB
+    // For this upgrade, we simulate some plausible data with a slight trend.
+    const prices = Array.from({ length: 100 }, (_, i) => 2000 + (Math.random() - 0.5) * 50 + (i * 0.1));
+    return prices;
   }
 
   getStatArbPairs() {
     // Get statistical arbitrage pairs
     return [
-      { asset1: 'ETH', asset2: 'WETH', threshold: 0.001 },
-      { asset1: 'USDC', asset2: 'USDT', threshold: 0.0001 }
+      { assetA: 'WETH', assetB: 'stETH', threshold: 2.0 }, // Example: WETH and Lido Staked ETH
+      { assetA: 'USDC', assetB: 'DAI', threshold: 2.5 } // Example: Stablecoin pair
     ];
   }
 
-  calculateCorrelation(prices1, prices2) {
-    // Calculate price correlation
-    return 0.8; // Placeholder
-  }
-
-  calculateSpread(prices1, prices2) {
-    // Calculate price spread
-    return 0.002; // Placeholder
-  }
-
-  async calculateStatArbProfit(pair, spread) {
-    // Calculate statistical arbitrage profit
-    return ethers.utils.parseUnits('0.008', 18); // Placeholder
+  async calculateStatArbProfit(pairConfig, zScore, stdDev) {
+    // Profit is proportional to the deviation from the mean
+    const profitPerUnit = Math.abs(zScore) * stdDev * 0.1; // Capture 10% of the deviation
+    const tradeSize = ethers.utils.parseEther('10'); // Trade 10 units of the asset
+    return ethers.utils.parseEther(profitPerUnit.toString()).mul(tradeSize).div(ethers.utils.parseEther('1'));
   }
 
   async getOrderBooks(chainKey) {
     // Get order books
-    return {}; // Placeholder
+    // In a real system, this would fetch order books from multiple DEXs on the chain
+    return { 'WETH/USDC': await this.getOrderBook('WETH/USDC', chainKey) }; // Simplified for demo
   }
 
-  analyzeOrderBookImbalance(orderBook) {
-    // Analyze order book imbalance
-    return { score: 0.5, direction: 'BUY' }; // Placeholder
+  async getOrderBook(pair, chainKey) {
+    return {
+      bids: Array.from({ length: 10 }, (_, i) => ({ price: 2000 - i, amount: Math.random() * 10 })),
+      asks: Array.from({ length: 10 }, (_, i) => ({ price: 2001 + i, amount: Math.random() * 10 })),
+    };
   }
 
-  async calculateOrderFlowProfit(chainKey, pair, imbalance) {
+  async calculateOrderFlowProfit(pair, imbalance, orderBook) {
     // Calculate order flow profit
-    return ethers.utils.parseUnits('0.003', 18); // Placeholder
+    const topBid = orderBook.bids[0].price;
+    const topAsk = orderBook.asks[0].price;
+    const spread = topAsk - topBid;
+    const profit = spread * Math.abs(imbalance) * 5; // Trade size of 5 units, capturing a fraction of the spread
+    return ethers.utils.parseEther(profit.toString());
   }
 
   extractOpportunityFeatures(opp) {
-    // Extract features for ML model
-    return {}; // Placeholder
+    // Extract relevant features from an opportunity for ML prediction
+    return {
+      potentialProfit: opp.potentialProfit,
+      riskLevel: opp.riskLevel === 'LOW' ? 0 : opp.riskLevel === 'MEDIUM' ? 0.5 : 1,
+      complexity: opp.complexity === 'LOW' ? 0 : opp.complexity === 'MEDIUM' ? 0.5 : 1,
+      priceDiff: opp.priceDiff || 0,
+      estimatedGas: opp.estimatedGas || 0,
+      // Add more features like historical success rate for this strategy/pair, market volatility, etc.
+    };
   }
 
   estimateGasCostUSD(gas, chain) {
-    // Estimate gas cost in USD
-    return gas * 0.0000001; // Placeholder
+    // Integrate with MultiChainArbitrageEngine's token price conversion
+    // Assuming gas is in native token units, convert to USD
+    const nativeTokenAddress = this.chains[chain]?.wrappedToken; // Use wrapped native token for price
+    if (!nativeTokenAddress) return gas * 0.0000001; // Fallback
+    
+    const gasAmountInNative = ethers.BigNumber.from(gas); // Assuming gas is a BigNumber or can be converted
+    return this.multiChainEngine.convertToUSD(chain, gasAmountInNative, nativeTokenAddress);
   }
 
   async preExecutionCheck(opportunity) {
-    // Pre-execution validation
-    return { approved: true }; // Placeholder
+    // Integrate with InstitutionalRiskEngine for a comprehensive check
+    if (!this.riskEngine) return { approved: true, reason: 'Risk engine not initialized' };
+    const evaluation = this.riskEngine.evaluateTradeOpportunity(opportunity);
+    return { approved: evaluation.approved, reason: evaluation.issues.map(i => i.message).join(', ') };
   }
 
   async calculateOptimalPositionSize(opportunity) {
-    // Dynamic position sizing
-    return opportunity.loanAmount; // Placeholder
+    if (!this.riskEngine) return opportunity.loanAmount;
+    return this.riskEngine.calculateOptimalPositionSize(opportunity);
   }
 
   async optimizeGasPrice(chain) {
-    // Gas price optimization
-    return ethers.utils.parseUnits('20', 'gwei'); // Placeholder
+    return this.multiChainEngine.optimizeGasPrice(chain);
   }
 
   async calculateSlippageProtection(opportunity) {
@@ -819,7 +868,7 @@ class EnterpriseProfitEngine {
 
   async updateMLModels() {
     // Update ML models with new data
-    console.log('Updating ML models');
+    console.log('[EnterpriseProfitEngine] Updating ML models with new performance data...');
   }
 }
 

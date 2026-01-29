@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha-Orion Static Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.css" integrity="sha512-A3g0S2LMSUq4L5y3K0Z2iP43+dGqIe2S/9r3L2k/s1r1sT2v/9Xz3T4Y5Z6A7B8C9D0E1F2G3H4I5J6K7L8M9N0O=" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel { background-color: rgba(22, 33, 54, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 2px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200">
+    <div class="flex h-screen bg-slate-950 overflow-hidden text-slate-200 font-sans">
+        <!-- Sidebar -->
+        <aside class="w-80 glass-panel border-r border-slate-800 flex flex-col overflow-hidden transition-all duration-300">
+            <div class="flex-1 overflow-y-auto custom-scrollbar">
+                <div class="p-6">
+                    <div class="flex items-center gap-3 text-indigo-500 mb-10 px-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="fill-current text-indigo-400 shadow-indigo-500/20"><path d="M12 3L2 9l10 6 10-6-10-6z"/><path d="M2 17l10 6 10-6"/><path d="M2 11l10 6 10-6"/></svg>
+                        <h1 class="text-lg font-black tracking-tight text-white uppercase italic">ARBINEXUS</h1>
+                    </div>
+
+                    <!-- Metrics Navigation -->
+                    <div class="space-y-6">
+                        <div>
+                            <p class="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">Metrics Dashboard</p>
+                            <nav class="space-y-1">
+                                <!-- Metric Buttons will be here -->
+                            </nav>
+                        </div>
+
+                        <!-- Wallet & Engine Controls -->
+                        <div class="pt-6 border-t border-slate-900">
+                            <p class="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">Engine Control</p>
+                            <div class="space-y-2">
+                                <!-- Engine Control Buttons will be here -->
+                            </div>
+                        </div>
+
+                        <!-- Live Stats -->
+                        <div class="pt-6 border-t border-slate-900">
+                            <p class="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">Live Blockchain Data</p>
+                            <div class="px-4 space-y-2">
+                                <div class="flex justify-between text-[8px]">
+                                    <span class="text-slate-500 font-bold uppercase">Block</span>
+                                    <span class="text-emerald-400 font-mono">#123456</span>
+                                </div>
+                                <div class="flex justify-between text-[8px]">
+                                    <span class="text-slate-500 font-bold uppercase">Gas</span>
+                                    <span class="text-amber-400 font-mono">15.23 Gwei</span>
+                                </div>
+                                <div class="flex justify-between text-[8px]">
+                                    <span class="text-slate-500 font-bold uppercase">Pairs</span>
+                                    <span class="text-indigo-400 font-mono">128</span>
+                                </div>
+                                <div class="flex justify-between text-[8px]">
+                                    <span class="text-slate-500 font-bold uppercase">Validated TX</span>
+                                    <span class="text-cyan-400 font-mono">42</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t border-slate-900 bg-black/20">
+                <div class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full animate-pulse bg-emerald-500"></div>
+                    <div class="flex-1">
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">
+                            Engine Running
+                        </span>
+                        <span class="text-[7px] font-bold text-slate-600 uppercase block mt-1">
+                            0x21e6...993a
+                        </span>
+                    </div>
+                </div>
+                <p class="text-[8px] font-bold text-slate-600 uppercase mt-2">Enterprise Logic v4.2</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-slate-950/50">
+            <!-- Header -->
+            <header class="h-14 glass-panel border-b border-slate-900 flex items-center justify-between px-8">
+                <div class="flex items-center gap-4">
+                    <button class="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    <h2 class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                        Core Metrics
+                    </h2>
+                </div>
+                <div class="flex items-center gap-6">
+                    <span class="text-[8px] text-indigo-400 font-black animate-pulse uppercase tracking-[0.2em]">AI Syncing Discovery...</span>
+                    <div class="relative w-2 h-2 rounded-full bg-emerald-500 transition-opacity duration-300 opacity-100">
+                        <div class="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[9px] text-slate-600 uppercase font-black">Validated Profit</span>
+                        <p class="text-emerald-400 font-black text-xs leading-none">$5,847.00 USDC</p>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dynamic Content Area -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-8">
+                <div class="animate-in fade-in duration-500">
+                    <div class="bg-gray-800/30 border border-gray-700 p-8 rounded-2xl">
+                        <div class="flex items-center gap-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                            <h3 class="text-xl font-semibold text-white">Core Metrics</h3>
+                        </div>
+                        <p class="mt-4 text-gray-400">
+                            This is a placeholder for the Core Metrics view. Real-time data and visualizations for this metric will be displayed here.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
