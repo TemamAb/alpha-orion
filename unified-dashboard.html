@@ -281,7 +281,10 @@
                     <i data-lucide="target" class="w-5 h-5 mr-3"></i>
                     Opportunities
                 </a>
-                <a href="#services" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
+                <a href="#flash-loan" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="zap" class="w-5 h-5 mr-3"></i>
+                    Flash Loans
+                </a><a href="#services" class="nav-link flex items-center p-3 rounded-lg hover:bg-gray-700">
                     <i data-lucide="server" class="w-5 h-5 mr-3"></i>
                     Services
                 </a>
@@ -860,6 +863,44 @@
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
+
+        // API Configuration - Alpha-Orion Arbitrage Flash Loan System
+        const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8080';
+
+        // Service endpoints for Alpha-Orion Arbitrage Flash Loan System
+        const ENDPOINTS = {
+            // Brain Strategy Engine - Core AI Trading Strategies
+            strategy: ${API_BASE_URL}/strategy,
+            statisticalArbitrage: ${API_BASE_URL}/strategy/statistical-arbitrage,
+            parallelStrategies: ${API_BASE_URL}/strategy/parallel,
+            correlations: ${API_BASE_URL}/strategy/correlations,
+            strategyHealth: ${API_BASE_URL}/health,
+
+            // Flash Loan Executor - DeFi Arbitrage Execution
+            flashLoan: ${API_BASE_URL}/flash-loan,
+            flashLoanStats: ${API_BASE_URL}/flash-loan/stats,
+            flashLoanHealth: ${API_BASE_URL}/health,
+
+            // Market Data Ingestion - Real-time Blockchain Data
+            marketData: ${API_BASE_URL}/market-data,
+            exchanges: ${API_BASE_URL}/exchanges,
+            marketDataHealth: ${API_BASE_URL}/health,
+
+            // Analytics & Performance
+            analytics: ${API_BASE_URL}/analytics/total-pnl,
+            trades: ${API_BASE_URL}/trades/executed,
+            opportunities: ${API_BASE_URL}/opportunities,
+
+            // Risk Management - Institutional Grade
+            risk: ${API_BASE_URL}/risk/portfolio,
+            stressTest: ${API_BASE_URL}/risk/stress-test,
+
+            // Compliance - Regulatory Requirements
+            compliance: ${API_BASE_URL}/compliance/report,
+
+            // Monitoring - Enterprise Observability
+            monitoring: ${API_BASE_URL}/monitoring/health
+        };
 
         // API Configuration - can be overridden by environment
         const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8080';
@@ -1511,3 +1552,4 @@
     </script>
 </body>
 </html>
+
