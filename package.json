@@ -3,6 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "description": "Root for Alpha-Orion monorepo, deployed on Google Cloud",
+  "scripts": {
+    "build": "echo 'No build step required for Node.js API'"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
