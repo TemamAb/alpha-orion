@@ -6,10 +6,14 @@ WORKDIR /app
 
 # Install production dependencies
 # We copy package.json first to leverage Docker cache
-COPY package*.json ./
+COPY package.json ./
 
 # Install dependencies including redis for state management
 RUN npm install --production && npm install redis
+
+# Diagnostic: Verify OpenTelemetry modules are installed
+RUN npm list @google-cloud/opentelemetry-cloud-trace-exporter || echo "WARNING: @google-cloud/opentelemetry-cloud-trace-exporter not found"
+RUN npm list @opentelemetry/api || echo "WARNING: @opentelemetry/api not found"
 
 # Copy source code
 COPY . .
