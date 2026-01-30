@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Root for Alpha-Orion monorepo, deployed on Google Cloud",
   "scripts": {
-    "build": "echo 'No build step required for Node.js API'"
+    "build": "echo 'No build step required for Node.js API'",
+    "start": "node backend-services/services/user-api-service/src/index.js"
   },
   "engines": {
     "node": ">=18.0.0"
