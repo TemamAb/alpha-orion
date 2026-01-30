@@ -18,13 +18,44 @@ services:
       timeout: 10s
       retries: 3
 
-  # Redis
-  redis:
+  # Redis Cluster for Horizontal Scaling (Enterprise)
+  redis-master:
     image: redis:7-alpine
     ports:
       - "3008:6379"
     volumes:
-      - redis_data:/data
+      - redis_master_data:/data
+    command: redis-server --appendonly yes --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis-slave-1:
+    image: redis:7-alpine
+    ports:
+      - "30081:6379"
+    volumes:
+      - redis_slave1_data:/data
+    command: redis-server --appendonly yes --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --slaveof redis-master 6379
+    depends_on:
+      - redis-master
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis-slave-2:
+    image: redis:7-alpine
+    ports:
+      - "30082:6379"
+    volumes:
+      - redis_slave2_data:/data
+    command: redis-server --appendonly yes --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --slaveof redis-master 6379
+    depends_on:
+      - redis-master
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -326,4 +357,6 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
+  redis_master_data:
+  redis_slave1_data:
+  redis_slave2_data:

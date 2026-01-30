@@ -365,12 +365,16 @@ module "strategy-engine-service" {
   cloud_run_deletion_protection = false
   enable_prometheus_sidecar     = true
   volumes                       = []
+  # Enterprise: 99.99% uptime - Always running minimum instances
   service_scaling = {
-    min_instance_count = 0
+    min_instance_count = 3  # Enterprise: Always 3 instances running
   }
   template_scaling = {
-    max_instance_count = 10
-    min_instance_count = 1
+    max_instance_count = 100  # Enterprise: Scale to 100 instances for high load
+    min_instance_count = 3    # Enterprise: Minimum 3 instances always running
+    cpu_utilization_percent = 70
+    memory_utilization_percent = 80
+    max_concurrency = 1000
   }
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
@@ -892,12 +896,13 @@ module "benchmarking-scraper-service-eu" {
   cloud_run_deletion_protection = false
   enable_prometheus_sidecar     = true
   volumes                       = []
+  # Enterprise: 99.99% uptime - Always running minimum instances
   service_scaling = {
-    min_instance_count = 2  # Enterprise: Always running minimum instances
+    min_instance_count = 5  # Enterprise: Always 5 instances running for data ingestion
   }
   template_scaling = {
-    max_instance_count = 100  # Enterprise: Higher scaling capacity
-    min_instance_count = 5    # Enterprise: Higher minimum instances
+    max_instance_count = 200  # Enterprise: Scale to 200 instances for high throughput
+    min_instance_count = 5    # Enterprise: Minimum 5 instances always running
     cpu_utilization_percent = 70
     memory_utilization_percent = 80
     max_concurrency = 1000
