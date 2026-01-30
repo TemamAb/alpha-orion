@@ -65,6 +65,33 @@ async function executeGaslessWithdrawal(amount, destinationAddress) {
       timestamp: Date.now()
     });
 
+    // Publish withdrawal event to Pub/Sub
+    const topicPath = pubsub.topicPath(GCP_PROJECT_ID, 'withdrawal-events');
+    const data = JSON.stringify({
+      event_type: 'withdrawal_completed',
+      amount,
+      recipient: destinationAddress,
+      txHash: result.userOpHash,
+      gasless: true,
+      timestamp: Date.now()
+    });
+    await pubsub.topic(topicPath).publishMessage({data: Buffer.from(data)});
+
+    // Log to BigQuery
+    const tableId = `${GCP_PROJECT_ID}.withdrawals.withdrawal_logs`;
+    const rows = [{
+      timestamp: new Date().toISOString(),
+      service: 'withdrawal-service',
+      event_type: 'withdrawal_completed',
+      data: JSON.stringify({
+        amount,
+        recipient: destinationAddress,
+        txHash: result.userOpHash,
+        gasless: true
+      })
+    }];
+    await bigquery.dataset('withdrawals').table('withdrawal_logs').insert(rows);
+
     console.log(`[WITHDRAWAL] ✅ Confirmed (Gasless)`);
     return result;
 
@@ -164,15 +191,94 @@ app.get('/auto-withdrawal', (req, res) => {
 /**
  * Health check
  */
-app.get('/health', (req, res) => {
-  res.json({
+app.get('/health', async (req, res) => {
+  const health_status = {
     status: 'ok',
+    service: 'withdrawal-service',
     mode: 'GASLESS_VIA_PIMLICO',
     network: 'Polygon zkEVM',
-    pimlico: !!process.env.PIMLICO_API_KEY,
-    gasless: true,
-    gasCost: '$0.00'
-  });
+    gcp_services: {},
+    dependencies: {}
+  };
+
+  // Check database connectivity
+  try {
+    const db = pool;
+    await db.query('SELECT 1');
+    health_status.gcp_services['alloydb'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['alloydb'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check Redis connectivity
+  try {
+    await redisClient.ping();
+    health_status.gcp_services['redis'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['redis'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check GCP Secret Manager connectivity
+  try {
+    await secretManager.listSecrets({
+      parent: `projects/${GCP_PROJECT_ID}`
+    });
+    health_status.gcp_services['secretmanager'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['secretmanager'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check GCP Logging connectivity
+  try {
+    await gcpLog.write(gcpLog.entry({
+      severity: 'DEBUG',
+      resource: { type: 'global' }
+    }, { message: 'Health check test', service: 'withdrawal-service' }));
+    health_status.gcp_services['logging'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['logging'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check GCP Monitoring connectivity
+  try {
+    await monitoring.listMetricDescriptors({
+      name: monitoring.projectPath(GCP_PROJECT_ID)
+    });
+    health_status.gcp_services['monitoring'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['monitoring'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check Pub/Sub connectivity
+  try {
+    const [topics] = await pubsub.getTopics();
+    health_status.gcp_services['pubsub'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['pubsub'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check BigQuery connectivity
+  try {
+    await bigquery.query('SELECT 1');
+    health_status.gcp_services['bigquery'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['bigquery'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check Pimlico API key availability
+  health_status.dependencies['pimlico'] = !!process.env.PIMLICO_API_KEY ? 'configured' : 'missing';
+
+  // Check gasless engine status
+  health_status.dependencies['gasless_engine'] = gaslessEngine ? 'initialized' : 'not_initialized';
+
+  res.json(health_status);
 });
 
 /**

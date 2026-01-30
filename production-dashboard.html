@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Alpha-Orion Enterprise Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <style>
+        /* Grafana-inspired Elite Theme */
+        :root {
+            --grafana-bg-primary: #0f0f0f;
+            --grafana-bg-secondary: #1a1a1a;
+            --grafana-bg-tertiary: #2a2a2a;
+            --grafana-border: #333333;
+            --grafana-text-primary: #ffffff;
+            --grafana-text-secondary: #cccccc;
+            --grafana-text-muted: #888888;
+            --grafana-blue: #0066cc;
+            --grafana-green: #10b981;
+            --grafana-orange: #f59e0b;
+            --grafana-red: #ef4444;
+            --grafana-purple: #8b5cf6;
+            --panel-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            --panel-border-radius: 6px;
+        }
+
+        /* Ash Theme Variables */
+        [data-theme="ash"] {
+            --grafana-bg-primary: #1a1a1a;
+            --grafana-bg-secondary: #2a2a2a;
+            --grafana-bg-tertiary: #3a3a3a;
+            --grafana-border: #555555;
+            --grafana-text-secondary: #aaaaaa;
+            --grafana-text-muted: #777777;
+        }
+
+        /* Black Theme Variables */
+        [data-theme="black"] {
+            --grafana-bg-primary: #000000;
+            --grafana-bg-secondary: #111111;
+        }
+        .scroll-area::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scroll-area::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+        }
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .status-active { background: #10b981; }
+        .status-pending { background: #f59e0b; }
+        .status-error { background: #ef4444; }
+        .hidden { display: none; }
+        .loading { opacity: 0.6; pointer-events: none; }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold flex items-center">
+                <span class="live-badge"></span>
+                🚀 Alpha-Orion Production Dashboard
+            </h1>
+            <div class="flex items-center space-x-4">
+                <div id="modeIndicator" class="flex items-center space-x-2 px-3 py-1 bg-blue-900/30 border border-blue-600 rounded-md">
+                    <i data-lucide="check-circle" class="w-4 h-4 text-blue-400"></i>
+                    <span class="text-xs font-bold text-blue-400">SIMULATION MODE</span>
+                </div>
+                <button id="modeSwitchBtn" class="px-3 py-1 bg-blue-700 text-white rounded-md hover:bg-blue-600">
+                    Switch to Live
+                </button>
+                <button id="currencyBtn" class="px-3 py-1 bg-gray-700 text-white rounded-md hover:bg-gray-600">
+                    USD
+                </button>
+                <button id="settingsBtn" class="p-2 bg-gray-700 text-white rounded-md hover:bg-gray-600">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Metrics Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="metric-card p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">💰 Total PnL</p>
+                        <p class="text-2xl font-bold" id="totalPnl">$0.00</p>
+                        <p class="text-xs text-green-400" id="pnlChange">+0.0% today</p>
+                    </div>
+                    <i data-lucide="dollar-sign" class="w-8 h-8 text-white/70"></i>
+                </div>
+            </div>
+
+            <div class="metric-card p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">📊 Total Trades</p>
+                        <p class="text-2xl font-bold" id="totalTrades">0</p>
+                        <p class="text-xs text-white/50">Executed</p>
+                    </div>
+                    <i data-lucide="activity" class="w-8 h-8 text-white/70"></i>
+                </div>
+            </div>
+
+            <div class="metric-card p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">🎯 Live Opportunities</p>
+                        <p class="text-2xl font-bold" id="liveOpportunities">0</p>
+                        <p class="text-xs text-white/50">Active scans</p>
+                    </div>
+                    <i data-lucide="zap" class="w-8 h-8 text-white/70"></i>
+                </div>
+            </div>
+
+            <div class="metric-card p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">⚙️ Services Online</p>
+                        <p class="text-2xl font-bold" id="servicesOnline">0 / 0</p>
+                        <p class="text-xs text-white/50">System status</p>
+                    </div>
+                    <i data-lucide="server" class="w-8 h-8 text-white/70"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- PnL Chart -->
+            <div class="card p-6">
+                <h3 class="text-xl font-bold mb-4">📈 Profit & Loss Over Time</h3>
+                <canvas id="pnlChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- Opportunities Chart -->
+            <div class="card p-6">
+                <h3 class="text-xl font-bold mb-4">🎯 Trading Opportunities</h3>
+                <canvas id="opportunitiesChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Services Status -->
+        <div class="card p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4">🔧 System Services Status</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="servicesList">
+                <div class="text-center text-gray-400 py-8">Loading services...</div>
+            </div>
+        </div>
+
+        <!-- Withdrawal System -->
+        <div class="card p-6 mb-8">
+            <h3 class="text-xl font-bold mb-6">💰 Profit Withdrawal System</h3>
+
+            <!-- Mode Selection -->
+            <div class="flex gap-3 mb-6">
+                <button id="manualModeBtn" class="flex-1 p-3 rounded-lg font-semibold bg-blue-600 text-white">
+                    👤 MANUAL WITHDRAWAL
+                </button>
+                <button id="autoModeBtn" class="flex-1 p-3 rounded-lg font-semibold bg-gray-600 text-white">
+                    🤖 AUTO WITHDRAWAL (DISABLED)
+                </button>
+            </div>
+
+            <!-- Manual Withdrawal Form -->
+            <div id="manualForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Amount (USD)</label>
+                        <input
+                            type="number"
+                            id="withdrawalAmount"
+                            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter amount"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Wallet Address</label>
+                        <input
+                            type="text"
+                            id="withdrawalAddress"
+                            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="0x..."
+                        />
+                    </div>
+                </div>
+                <button
+                    id="withdrawBtn"
+                    class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    💸 Withdraw Profits
+                </button>
+            </div>
+
+            <!-- Auto Withdrawal Form (Hidden by default) -->
+            <div id="autoForm" class="space-y-4 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Auto Threshold (USD)</label>
+                        <input
+                            type="number"
+                            id="autoThreshold"
+                            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="1000"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Wallet Address</label>
+                        <input
+                            type="text"
+                            id="autoWalletAddress"
+                            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="0x..."
+                        />
+                    </div>
+                </div>
+                <div class="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4 mb-4">
+                    <p class="text-yellow-400 text-sm">
+                        ⚠️ <strong>Auto-withdrawal is DISABLED for safety.</strong> Manual withdrawal only.
+                    </p>
+                </div>
+                <button
+                    id="setupAutoBtn"
+                    class="w-full px-4 py-2 bg-gray-600 text-white rounded-md cursor-not-allowed"
+                    disabled
+                >
+                    🚫 Auto-Withdrawal Disabled
+                </button>
+            </div>
+
+            <div id="withdrawalResult" class="mt-4 text-center hidden">
+                <p class="text-green-400">Withdrawal processed successfully!</p>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settingsPanel" class="card p-6 mb-8 hidden">
+            <h3 class="text-xl font-bold mb-6">⚙️ System Settings</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Reinvestment Rate (%)</label>
+                    <input
+                        type="number"
+                        id="reinvestmentRate"
+                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="50"
+                        min="0"
+                        max="100"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Wallet Address</label>
+                    <input
+                        type="text"
+                        id="walletAddress"
+                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0x..."
+                    />
+                </div>
+            </div>
+
+            <div class="flex justify-center mt-6">
+                <button
+                    id="saveSettingsBtn"
+                    class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                    💾 Save Settings
+                </button>
+            </div>
+
+            <div id="settingsResult" class="mt-4 text-center hidden">
+                <p class="text-green-400">Settings saved successfully!</p>
+            </div>
+        </div>
+
+        <!-- System Log -->
+        <div class="card p-6">
+            <h3 class="text-xl font-bold mb-4">📋 System Activity Log</h3>
+            <div class="scroll-area bg-black/30 rounded p-4" id="systemLog">
+                <div class="text-gray-400">Initializing Alpha-Orion Production Dashboard...</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 text-gray-500">
+            <p>🚀 Alpha-Orion Production Dashboard - 2026 | Powered by Enterprise GCP Infrastructure</p>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentMode = 'sim';
+        let currency = 'USD';
+        let isProductionMode = false;
+        let withdrawalMode = 'manual';
+
+        // API endpoints
+        const API_BASE = 'http://localhost:8080';
+        const WITHDRAWAL_API = 'http://localhost:8081';
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Chart instances
+        let pnlChart, opportunitiesChart;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            setupEventListeners();
+            startDataPolling();
+            loadSettings();
+            logMessage('🚀 Alpha-Orion Production Dashboard initialized');
+        });
+
+        function initializeCharts() {
+            // PnL Chart
+            const pnlCtx = document.getElementById('pnlChart').getContext('2d');
+            pnlChart = new Chart(pnlCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Total PnL ($)',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        }
+                    }
+                }
+            });
+
+            // Opportunities Chart
+            const oppCtx = document.getElementById('opportunitiesChart').getContext('2d');
+            opportunitiesChart = new Chart(oppCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active', 'Pending', 'Completed'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#10b981', '#f59e0b', '#6b7280']
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
+        }
+
+        function setupEventListeners() {
+            // Mode switching
+            document.getElementById('modeSwitchBtn').addEventListener('click', switchMode);
+
+            // Currency toggle
+            document.getElementById('currencyBtn').addEventListener('click', toggleCurrency);
+
+            // Settings panel
+            document.getElementById('settingsBtn').addEventListener('click', toggleSettings);
+
+            // Withdrawal modes
+            document.getElementById('manualModeBtn').addEventListener('click', () => setWithdrawalMode('manual'));
+            document.getElementById('autoModeBtn').addEventListener('click', () => setWithdrawalMode('auto'));
+
+            // Withdrawal actions
+            document.getElementById('withdrawBtn').addEventListener('click', processWithdrawal);
+            document.getElementById('setupAutoBtn').addEventListener('click', setupAutoWithdrawal);
+
+            // Settings
+            document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+        }
+
+        function startDataPolling() {
+            // Poll for data every 5 seconds
+            setInterval(fetchDashboardData, 5000);
+            // Initial fetch
+            fetchDashboardData();
+        }
+
+        async function fetchDashboardData() {
+            try {
+                // Fetch analytics data
+                const response = await fetch(`${API_BASE}/analytics/summary`);
+                if (response.ok) {
+                    const data = await response.json();
+                    updateMetrics(data);
+                    updateCharts(data);
+                }
+
+                // Fetch services status
+                const servicesResponse = await fetch(`${API_BASE}/services/status`);
+                if (servicesResponse.ok) {
+                    const servicesData = await servicesResponse.json();
+                    updateServices(servicesData.services);
+                }
+
+                // Fetch mode status
+                const modeResponse = await fetch(`${API_BASE}/mode/status`);
+                if (modeResponse.ok) {
+                    const modeData = await modeResponse.json();
+                    updateModeIndicator(modeData.mode);
+                }
+
+            } catch (error) {
+                logMessage(`❌ API Error: ${error.message}`);
+            }
+        }
+
+        function updateMetrics(data) {
+            document.getElementById('totalPnl').textContent = `$${data.totalPnl?.toFixed(2) || '0.00'}`;
+            document.getElementById('totalTrades').textContent = data.totalTrades || 0;
+            document.getElementById('liveOpportunities').textContent = data.opportunities || 0;
+            document.getElementById('servicesOnline').textContent = `${data.onlineServices || 0} / ${data.totalServices || 0}`;
+        }
+
+        function updateCharts(data) {
+            // Update PnL chart
+            if (data.pnlHistory) {
+                pnlChart.data.labels = data.pnlHistory.map(d => d.time);
+                pnlChart.data.datasets[0].data = data.pnlHistory.map(d => d.value);
+                pnlChart.update();
+            }
+
+            // Update opportunities chart
+            if (data.opportunityStats) {
+                opportunitiesChart.data.datasets[0].data = [
+                    data.opportunityStats.active || 0,
+                    data.opportunityStats.pending || 0,
+                    data.opportunityStats.completed || 0
+                ];
+                opportunitiesChart.update();
+            }
+        }
+
+        function updateServices(services) {
+            const servicesList = document.getElementById('servicesList');
+            if (!services || services.length === 0) {
+                servicesList.innerHTML = '<div class="text-center text-gray-400 py-8">No services available</div>';
+                return;
+            }
+
+            servicesList.innerHTML = services.map(service => `
+                <div class="flex items-center space-x-3 p-3 rounded-lg ${service.status === 'online' ? 'bg-green-900/20' : 'bg-red-900/20'}">
+                    <span class="status-indicator ${service.status === 'online' ? 'status-active' : 'status-error'}"></span>
+                    <div>
+                        <p class="font-semibold">${service.name}</p>
+                        <p class="text-xs text-gray-400">${service.status}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateModeIndicator(mode) {
+            const indicator = document.getElementById('modeIndicator');
+            const switchBtn = document.getElementById('modeSwitchBtn');
+
+            if (mode === 'live') {
+                indicator.className = 'flex items-center space-x-2 px-3 py-1 bg-red-900/30 border border-red-600 rounded-md';
+                indicator.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4 text-red-400"></i><span class="text-xs font-bold text-red-400">LIVE MODE</span>';
+                switchBtn.textContent = 'Switch to Sim';
+                isProductionMode = true;
+            } else {
+                indicator.className = 'flex items-center space-x-2 px-3 py-1 bg-blue-900/30 border border-blue-600 rounded-md';
+                indicator.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-blue-400"></i><span class="text-xs font-bold text-blue-400">SIMULATION MODE</span>';
+                switchBtn.textContent = 'Switch to Live';
+                isProductionMode = false;
+            }
+
+            currentMode = mode;
+            lucide.createIcons();
+        }
+
+        async function switchMode() {
+            const newMode = currentMode === 'sim' ? 'live' : 'sim';
+
+            try {
+                const response = await fetch(`${API_BASE}/mode/switch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: newMode, confirmation: true })
+                });
+
+                if (response.ok) {
+                    logMessage(`✅ Mode switched to ${newMode.toUpperCase()}`);
+                    updateModeIndicator(newMode);
+                } else {
+                    const error = await response.json();
+                    logMessage(`❌ Mode switch failed: ${error.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                logMessage(`❌ Mode switch error: ${error.message}`);
+            }
+        }
+
+        function toggleCurrency() {
+            currency = currency === 'USD' ? 'ETH' : 'USD';
+            document.getElementById('currencyBtn').textContent = currency;
+            logMessage(`💱 Currency switched to ${currency}`);
+        }
+
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        function setWithdrawalMode(mode) {
+            withdrawalMode = mode;
+            const manualBtn = document.getElementById('manualModeBtn');
+            const autoBtn = document.getElementById('autoModeBtn');
+            const manualForm = document.getElementById('manualForm');
+            const autoForm = document.getElementById('autoForm');
+
+            if (mode === 'manual') {
+                manualBtn.className = 'flex-1 p-3 rounded-lg font-semibold bg-blue-600 text-white';
+                autoBtn.className = 'flex-1 p-3 rounded-lg font-semibold bg-gray-600 text-white';
+                manualForm.classList.remove('hidden');
+                autoForm.classList.add('hidden');
+            } else {
+                manualBtn.className = 'flex-1 p-3 rounded-lg font-semibold bg-gray-600 text-white';
+                autoBtn.className = 'flex-1 p-3 rounded-lg font-semibold bg-red-600 text-white';
+                manualForm.classList.add('hidden');
+                autoForm.classList.remove('hidden');
+            }
+        }
+
+        async function processWithdrawal() {
+            const amount = document.getElementById('withdrawalAmount').value;
+            const address = document.getElementById('withdrawalAddress').value;
+
+            if (!amount || !address) {
+                showWithdrawalResult('Please fill in all fields', false);
+                return;
+            }
+
+            if (!isValidWalletAddress(address)) {
+                showWithdrawalResult('Invalid wallet address format', false);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${WITHDRAWAL_API}/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: 'manual',
+                        amount: parseFloat(amount),
+                        address: address
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showWithdrawalResult(`Withdrawal successful! ${data.txHash ? `TxHash: ${data.txHash}` : ''}`, true);
+                    document.getElementById('withdrawalAmount').value = '';
+                    document.getElementById('withdrawalAddress').value = '';
+                } else {
+                    showWithdrawalResult(data.message || 'Withdrawal failed', false);
+                }
+            } catch (error) {
+                showWithdrawalResult('Network error during withdrawal', false);
+            }
+        }
+
+        function setupAutoWithdrawal() {
+            // Auto-withdrawal is disabled for safety
+            showWithdrawalResult('Auto-withdrawal is disabled for safety reasons', false);
+        }
+
+        function showWithdrawalResult(message, success) {
+            const resultDiv = document.getElementById('withdrawalResult');
+            const resultP = resultDiv.querySelector('p');
+
+            resultP.textContent = message;
+            resultP.className = success ? 'text-green-400' : 'text-red-400';
+            resultDiv.classList.remove('hidden');
+
+            setTimeout(() => {
+                resultDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        function isValidWalletAddress(address) {
+            return /^0x[a-fA-F0-9]{40}$/.test(address);
+        }
+
+        function saveSettings() {
+            const reinvestmentRate = document.getElementById('reinvestmentRate').value;
+            const walletAddress = document.getElementById('walletAddress').value;
+
+            // Save to localStorage
+            localStorage.setItem('reinvestmentRate', reinvestmentRate);
+            localStorage.setItem('walletAddress', walletAddress);
+            localStorage.setItem('currency', currency);
+
+            showSettingsResult('Settings saved successfully!', true);
+            logMessage('⚙️ Settings updated');
+        }
+
+        function showSettingsResult(message, success) {
+            const resultDiv = document.getElementById('settingsResult');
+            const resultP = resultDiv.querySelector('p');
+
+            resultP.textContent = message;
+            resultP.className = success ? 'text-green-400' : 'text-red-400';
+            resultDiv.classList.remove('hidden');
+
+            setTimeout(() => {
+                resultDiv.classList.add('hidden');
+            }, 3000);
+        }
+
+        function loadSettings() {
+            const savedRate = localStorage.getItem('reinvestmentRate') || '50';
+            const savedWallet = localStorage.getItem('walletAddress') || '';
+            const savedCurrency = localStorage.getItem('currency') || 'USD';
+
+            document.getElementById('reinvestmentRate').value = savedRate;
+            document.getElementById('walletAddress').value = savedWallet;
+            currency = savedCurrency;
+            document.getElementById('currencyBtn').textContent = currency;
+        }
+
+        function logMessage(message) {
+            const logDiv = document.getElementById('systemLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'text-sm text-gray-300 py-1';
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+
+            // Auto-scroll to bottom
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Initial log
+        setTimeout(() => {
+            logMessage('🔗 Connected to API endpoints');
+            logMessage('📊 Dashboard ready for real-time updates');
+        }, 1000);
+    </script>
+</body>
+</html>

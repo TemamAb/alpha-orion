@@ -1231,13 +1231,88 @@ app.post('/simulate/market-event', (req, res) => {
   });
 });
 
-app.get('/health', (req, res) => {
-  res.json({
+app.get('/health', async (req, res) => {
+  const health_status = {
     status: 'ok',
+    service: 'user-api-service',
     mode: 'PRODUCTION',
-    pimlico: !!PIMLICO_API_KEY,
-    mocks: false
-  });
+    gcp_services: {},
+    dependencies: {}
+  };
+
+  // Check database connectivity
+  try {
+    const db = get_db_connection();
+    await db.query('SELECT 1');
+    health_status.gcp_services['alloydb'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['alloydb'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check Redis connectivity
+  try {
+    await redisClient.ping();
+    health_status.gcp_services['redis'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['redis'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check GCP Secret Manager connectivity
+  try {
+    const secretManager = new SecretManagerServiceClient();
+    await secretManager.listSecrets({
+      parent: `projects/${GCP_PROJECT_ID}`
+    });
+    health_status.gcp_services['secretmanager'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['secretmanager'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check GCP Logging connectivity
+  try {
+    await gcpLog.write(gcpLog.entry({
+      severity: 'DEBUG',
+      resource: { type: 'global' }
+    }, { message: 'Health check test', service: 'user-api-service' }));
+    health_status.gcp_services['logging'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['logging'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check GCP Monitoring connectivity
+  try {
+    await monitoring.listMetricDescriptors({
+      name: monitoring.projectPath(GCP_PROJECT_ID)
+    });
+    health_status.gcp_services['monitoring'] = 'connected';
+  } catch (e) {
+    health_status.gcp_services['monitoring'] = `error: ${e.message}`;
+    health_status.status = 'degraded';
+  }
+
+  // Check Pimlico API key availability
+  health_status.dependencies['pimlico'] = !!PIMLICO_API_KEY ? 'configured' : 'missing';
+
+  // Check arbitrage engine status
+  health_status.dependencies['arbitrage_engine'] = arbitrageEngine ? 'initialized' : 'not_initialized';
+
+  // Check risk engine status
+  health_status.dependencies['risk_engine'] = riskEngine ? 'initialized' : 'not_initialized';
+
+  // Check compliance engine status
+  health_status.dependencies['compliance_engine'] = complianceEngine ? 'initialized' : 'not_initialized';
+
+  // Check monitoring engine status
+  health_status.dependencies['monitoring_engine'] = monitoringEngine ? 'initialized' : 'not_initialized';
+
+  // Check profit engine status
+  health_status.dependencies['profit_engine'] = profitEngine ? 'initialized' : 'not_initialized';
+
+  res.json(health_status);
 });
 
 // ============================================

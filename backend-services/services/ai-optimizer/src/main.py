@@ -227,11 +227,53 @@ def optimize():
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({
+    health_status = {
         'status': 'ok',
+        'service': 'ai-optimizer',
         'gemini_api': 'available' if gemini_available else 'unavailable',
-        'gcp_services': 'available' if gcp_available else 'unavailable'
-    })
+        'gcp_services': {}
+    }
+
+    if gcp_available:
+        # Check database connectivity
+        try:
+            db_conn = get_db_connection()
+            db_conn.cursor().execute('SELECT 1')
+            health_status['gcp_services']['alloydb'] = 'connected'
+        except Exception as e:
+            health_status['gcp_services']['alloydb'] = f'error: {str(e)}'
+            health_status['status'] = 'degraded'
+
+        # Check Redis connectivity
+        try:
+            redis_conn = get_redis_connection()
+            redis_conn.ping()
+            health_status['gcp_services']['redis'] = 'connected'
+        except Exception as e:
+            health_status['gcp_services']['redis'] = f'error: {str(e)}'
+            health_status['status'] = 'degraded'
+
+        # Check Pub/Sub connectivity
+        try:
+            topic_path = publisher.topic_path(project_id, 'optimization-results')
+            publisher.get_topic(request={'topic': topic_path})
+            health_status['gcp_services']['pubsub'] = 'connected'
+        except Exception as e:
+            health_status['gcp_services']['pubsub'] = f'error: {str(e)}'
+            health_status['status'] = 'degraded'
+
+        # Check BigQuery connectivity
+        try:
+            query = f'SELECT 1 FROM `{project_id}.flash_loan_historical_data.ai_optimizations` LIMIT 1'
+            bigquery_client.query(query).result()
+            health_status['gcp_services']['bigquery'] = 'connected'
+        except Exception as e:
+            health_status['gcp_services']['bigquery'] = f'error: {str(e)}'
+            health_status['status'] = 'degraded'
+    else:
+        health_status['gcp_services'] = 'unavailable (local development)'
+
+    return jsonify(health_status)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)

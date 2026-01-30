@@ -17,6 +17,7 @@ from google.cloud import bigtable
 from google.cloud import secretmanager
 from sqlalchemy import create_engine
 import redis
+from google.cloud import logging as cloud_logging
 
 app = Flask(__name__)
 CORS(app)
@@ -206,6 +207,202 @@ def assess_overall_risk(risk_metrics):
     else:
         return 'High'
 
+def calculate_market_impact(trade_size, avg_daily_volume, current_price, slippage_model='square_root'):
+    """Calculate market impact for large trades"""
+    if avg_daily_volume <= 0:
+        return 0
+
+    # Trade size as percentage of daily volume
+    participation_rate = trade_size / avg_daily_volume
+
+    if slippage_model == 'square_root':
+        # Square root model: impact ∝ √(participation_rate)
+        impact = 0.1 * np.sqrt(participation_rate)  # 10 basis points base impact
+    elif slippage_model == 'linear':
+        # Linear model: impact ∝ participation_rate
+        impact = 0.05 * participation_rate
+    else:
+        # Exponential model for very large trades
+        impact = 0.01 * np.exp(participation_rate * 2)
+
+    # Adjust for current market conditions (simplified)
+    volatility_adjustment = np.random.uniform(0.8, 1.2)  # Market volatility factor
+    impact *= volatility_adjustment
+
+    return min(impact, 0.5)  # Cap at 50% impact
+
+def calculate_optimal_position_size(capital, win_rate, avg_win, avg_loss, risk_per_trade=0.02):
+    """Calculate optimal position size using Kelly Criterion"""
+    if win_rate <= 0 or win_rate >= 1 or avg_loss == 0:
+        return capital * 0.01  # Conservative fallback
+
+    # Kelly Criterion: f = (bp - q) / b
+    # where b = odds (avg_win/avg_loss), p = win_rate, q = loss_rate
+    b = avg_win / avg_loss
+    kelly_fraction = (win_rate * b - (1 - win_rate)) / b
+
+    # Apply risk management constraints
+    kelly_fraction = max(0, min(kelly_fraction, 0.25))  # Cap at 25%
+
+    # Use half-Kelly for safety
+    optimal_size = capital * kelly_fraction * 0.5
+
+    # Apply maximum risk per trade limit
+    max_risk_amount = capital * risk_per_trade
+    risk_constrained_size = max_risk_amount / (avg_loss * (1 - win_rate))
+
+    return min(optimal_size, risk_constrained_size)
+
+def calculate_risk_parity_weights(assets, covariance_matrix, target_risk):
+    """Calculate risk parity portfolio weights"""
+    n_assets = len(assets)
+
+    if n_assets == 0 or covariance_matrix is None:
+        return {asset: 1.0/n_assets for asset in assets}
+
+    # Risk parity: equal risk contribution from each asset
+    try:
+        # Simplified risk parity calculation
+        volatilities = np.sqrt(np.diag(covariance_matrix))
+        inv_volatilities = 1.0 / volatilities
+
+        # Normalize weights
+        weights = inv_volatilities / np.sum(inv_volatilities)
+
+        # Scale to target risk level
+        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(covariance_matrix, weights)))
+        if portfolio_volatility > 0:
+            weights *= target_risk / portfolio_volatility
+
+        return dict(zip(assets, weights))
+
+    except:
+        # Fallback to equal weighting
+        return {asset: 1.0/n_assets for asset in assets}
+
+def calculate_beta(asset_returns, market_returns):
+    """Calculate beta relative to market"""
+    if len(asset_returns) < 10 or len(market_returns) < 10:
+        return 1.0
+
+    try:
+        covariance = np.cov(asset_returns, market_returns)[0, 1]
+        market_variance = np.var(market_returns)
+
+        if market_variance == 0:
+            return 1.0
+
+        return covariance / market_variance
+
+    except:
+        return 1.0
+
+def assess_liquidity_risk(position_size, avg_daily_volume, bid_ask_spread):
+    """Assess liquidity risk for a position"""
+    if avg_daily_volume <= 0:
+        return 'High'
+
+    # Turnover ratio (how many days to liquidate position)
+    turnover_ratio = position_size / avg_daily_volume
+
+    # Spread cost
+    spread_cost = bid_ask_spread / 2  # Half-spread as transaction cost
+
+    risk_score = 0
+
+    if turnover_ratio > 1:  # Takes more than 1 day to liquidate
+        risk_score += 2
+    elif turnover_ratio > 0.1:  # Takes more than 10% of daily volume
+        risk_score += 1
+
+    if spread_cost > 0.005:  # Spread > 50 basis points
+        risk_score += 2
+    elif spread_cost > 0.002:  # Spread > 20 basis points
+        risk_score += 1
+
+    if risk_score <= 1:
+        return 'Low'
+    elif risk_score <= 3:
+        return 'Medium'
+    else:
+        return 'High'
+
+def monitor_large_positions():
+    """Monitor positions for risk thresholds and generate alerts"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get all open positions
+        cursor.execute("""
+            SELECT
+                position_id,
+                token_pair,
+                position_size,
+                entry_price,
+                current_price,
+                unrealized_pnl,
+                timestamp
+            FROM positions
+            WHERE status = 'open'
+            ORDER BY position_size DESC
+        """)
+
+        positions = cursor.fetchall()
+        alerts = []
+
+        for position in positions:
+            position_id, token_pair, size, entry_price, current_price, pnl, timestamp = position
+
+            # Calculate position metrics
+            position_value = size * current_price
+            pnl_percentage = (pnl / (size * entry_price)) if (size * entry_price) > 0 else 0
+
+            # Risk thresholds
+            large_position_threshold = 100000  # $100K
+            high_pnl_threshold = 0.10  # 10%
+            low_pnl_threshold = -0.05  # -5%
+
+            if position_value > large_position_threshold:
+                alerts.append({
+                    'type': 'large_position',
+                    'position_id': position_id,
+                    'token_pair': token_pair,
+                    'position_value': position_value,
+                    'threshold': large_position_threshold,
+                    'severity': 'Medium',
+                    'message': f'Large position detected: ${position_value:,.0f} in {token_pair}'
+                })
+
+            if pnl_percentage > high_pnl_threshold:
+                alerts.append({
+                    'type': 'high_pnl',
+                    'position_id': position_id,
+                    'token_pair': token_pair,
+                    'pnl_percentage': pnl_percentage,
+                    'threshold': high_pnl_threshold,
+                    'severity': 'Low',
+                    'message': f'High P&L position: {pnl_percentage:.1%} in {token_pair}'
+                })
+
+            if pnl_percentage < low_pnl_threshold:
+                alerts.append({
+                    'type': 'low_pnl',
+                    'position_id': position_id,
+                    'token_pair': token_pair,
+                    'pnl_percentage': pnl_percentage,
+                    'threshold': low_pnl_threshold,
+                    'severity': 'High',
+                    'message': f'Loss position: {pnl_percentage:.1%} in {token_pair}'
+                })
+
+        cursor.close()
+        return alerts
+
+    except Exception as e:
+        print(f"Position monitoring error: {e}")
+        return []
+
 @app.route('/risk', methods=['GET'])
 @limiter.limit("100 per minute")
 @cache.cached(timeout=300)
@@ -310,9 +507,340 @@ def generate_stress_recommendations(scenario, params):
 
     return recommendations
 
+@app.route('/risk/monitor', methods=['GET'])
+@limiter.limit("30 per minute")
+def risk_monitor():
+    """Real-time risk monitoring for large positions"""
+    alerts = monitor_large_positions()
+
+    # Get current risk metrics
+    risk_metrics = get_portfolio_risk_metrics()
+    overall_risk = assess_overall_risk(risk_metrics)
+
+    # Check for portfolio-level alerts
+    if risk_metrics['var_95'] > 0.08:  # 8% VaR threshold
+        alerts.append({
+            'type': 'portfolio_var',
+            'severity': 'High',
+            'message': f'Portfolio VaR exceeded threshold: {risk_metrics["var_95"]:.1%}',
+            'metric': 'var_95',
+            'value': risk_metrics['var_95'],
+            'threshold': 0.08
+        })
+
+    if risk_metrics['max_drawdown'] > 0.25:  # 25% drawdown threshold
+        alerts.append({
+            'type': 'portfolio_drawdown',
+            'severity': 'Critical',
+            'message': f'Portfolio drawdown exceeded threshold: {risk_metrics["max_drawdown"]:.1%}',
+            'metric': 'max_drawdown',
+            'value': risk_metrics['max_drawdown'],
+            'threshold': 0.25
+        })
+
+    return jsonify({
+        'alerts': alerts,
+        'alert_count': len(alerts),
+        'risk_level': overall_risk,
+        'last_check': datetime.utcnow().isoformat(),
+        'monitoring_active': True
+    })
+
+@app.route('/risk/market-impact', methods=['POST'])
+@limiter.limit("50 per minute")
+def market_impact_analysis():
+    """Analyze market impact for large trades"""
+    data = request.get_json()
+
+    trade_size = data.get('trade_size', 0)
+    token_pair = data.get('token_pair', '')
+    avg_daily_volume = data.get('avg_daily_volume', 1000000)
+    current_price = data.get('current_price', 1.0)
+    slippage_model = data.get('slippage_model', 'square_root')
+
+    if trade_size <= 0 or avg_daily_volume <= 0:
+        return jsonify({'error': 'Invalid trade parameters'}), 400
+
+    # Calculate market impact
+    impact_percentage = calculate_market_impact(trade_size, avg_daily_volume, current_price, slippage_model)
+
+    # Calculate slippage cost
+    slippage_cost = trade_size * current_price * impact_percentage
+
+    # Estimate execution time based on market conditions
+    participation_rate = trade_size / avg_daily_volume
+    if participation_rate > 0.1:  # Large trade
+        execution_time_minutes = 30 + (participation_rate * 120)  # 30min to 2.5 hours
+    elif participation_rate > 0.01:  # Medium trade
+        execution_time_minutes = 5 + (participation_rate * 300)  # 5min to 30min
+    else:  # Small trade
+        execution_time_minutes = 1 + (participation_rate * 60)  # 1min to 5min
+
+    # Risk assessment
+    risk_level = 'Low'
+    if impact_percentage > 0.05:  # >5% impact
+        risk_level = 'High'
+    elif impact_percentage > 0.02:  # >2% impact
+        risk_level = 'Medium'
+
+    recommendations = []
+    if risk_level == 'High':
+        recommendations.extend([
+            'Split trade into smaller orders',
+            'Use time-weighted average price (TWAP) execution',
+            'Consider alternative trading venues',
+            'Reduce position size by 50%'
+        ])
+    elif risk_level == 'Medium':
+        recommendations.extend([
+            'Monitor order book depth',
+            'Use limit orders instead of market orders',
+            'Consider iceberg orders for large trades'
+        ])
+
+    return jsonify({
+        'token_pair': token_pair,
+        'trade_size': trade_size,
+        'market_impact_percentage': impact_percentage,
+        'slippage_cost_usd': slippage_cost,
+        'estimated_execution_time_minutes': execution_time_minutes,
+        'risk_level': risk_level,
+        'recommendations': recommendations,
+        'participation_rate': participation_rate,
+        'slippage_model_used': slippage_model
+    })
+
+@app.route('/risk/position-sizing', methods=['POST'])
+@limiter.limit("20 per minute")
+def position_sizing():
+    """Calculate optimal position sizes using advanced algorithms"""
+    data = request.get_json()
+
+    capital = data.get('capital', 100000)
+    strategy = data.get('strategy', 'arbitrage')
+    risk_tolerance = data.get('risk_tolerance', 0.02)  # 2% risk per trade
+
+    # Get historical performance data
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get strategy-specific performance
+        cursor.execute("""
+            SELECT pnl, strategy_type
+            FROM trade_history
+            WHERE strategy_type = %s AND timestamp >= NOW() - INTERVAL '90 days'
+            ORDER BY timestamp DESC
+        """, (strategy,))
+
+        trades = cursor.fetchall()
+        cursor.close()
+
+        if len(trades) < 10:
+            # Use default parameters if insufficient data
+            win_rate = 0.65
+            avg_win = 0.03  # 3% average win
+            avg_loss = 0.015  # 1.5% average loss
+        else:
+            pnls = [trade[0] for trade in trades]
+            win_rate = len([p for p in pnls if p > 0]) / len(pnls)
+            winning_trades = [p for p in pnls if p > 0]
+            losing_trades = [abs(p) for p in pnls if p < 0]
+
+            avg_win = np.mean(winning_trades) if winning_trades else 0.03
+            avg_loss = np.mean(losing_trades) if losing_trades else 0.015
+
+    except Exception as e:
+        # Fallback to conservative defaults
+        win_rate = 0.60
+        avg_win = 0.025
+        avg_loss = 0.0125
+
+    # Calculate position sizes using different methods
+    kelly_size = calculate_optimal_position_size(capital, win_rate, avg_win, avg_loss, risk_tolerance)
+
+    # Fixed percentage method (conservative)
+    fixed_percentage_size = capital * risk_tolerance
+
+    # Volatility-adjusted size (simplified)
+    volatility = np.std([avg_win, avg_loss]) if avg_loss > 0 else 0.02
+    vol_adjusted_size = capital * risk_tolerance / (1 + volatility * 2)
+
+    # Risk parity weights (simplified example)
+    assets = ['BTC', 'ETH', 'USDC', 'ARB']
+    # Mock covariance matrix
+    cov_matrix = np.array([
+        [0.04, 0.02, 0.01, 0.015],
+        [0.02, 0.05, 0.005, 0.02],
+        [0.01, 0.005, 0.001, 0.002],
+        [0.015, 0.02, 0.002, 0.03]
+    ])
+    risk_parity_weights = calculate_risk_parity_weights(assets, cov_matrix, risk_tolerance)
+
+    return jsonify({
+        'strategy': strategy,
+        'capital': capital,
+        'risk_tolerance': risk_tolerance,
+        'position_sizes': {
+            'kelly_criterion': kelly_size,
+            'fixed_percentage': fixed_percentage_size,
+            'volatility_adjusted': vol_adjusted_size,
+            'recommended': min(kelly_size, fixed_percentage_size)  # Conservative approach
+        },
+        'performance_metrics': {
+            'win_rate': win_rate,
+            'avg_win': avg_win,
+            'avg_loss': avg_loss,
+            'profit_factor': (win_rate * avg_win) / ((1 - win_rate) * avg_loss) if avg_loss > 0 else 0
+        },
+        'risk_parity_weights': risk_parity_weights,
+        'calculation_timestamp': datetime.utcnow().isoformat()
+    })
+
+@app.route('/risk/advanced-metrics', methods=['GET'])
+@limiter.limit("10 per minute")
+@cache.cached(timeout=600)  # Cache for 10 minutes
+def advanced_risk_metrics():
+    """Calculate advanced risk metrics including beta, correlation risk, and liquidity risk"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get asset returns for beta calculation
+        cursor.execute("""
+            SELECT
+                token_pair,
+                pnl,
+                timestamp
+            FROM trade_history
+            WHERE timestamp >= NOW() - INTERVAL '30 days'
+            ORDER BY token_pair, timestamp
+        """)
+
+        data = cursor.fetchall()
+        cursor.close()
+
+        if len(data) < 20:
+            return jsonify({'error': 'Insufficient data for advanced metrics'}), 400
+
+        # Process data into returns by asset
+        asset_returns = {}
+        for token_pair, pnl, timestamp in data:
+            if token_pair not in asset_returns:
+                asset_returns[token_pair] = []
+            asset_returns[token_pair].append(pnl)
+
+        # Calculate market returns (simplified as average of all assets)
+        all_returns = []
+        for returns in asset_returns.values():
+            all_returns.extend(returns)
+        market_returns = np.array(all_returns)
+
+        # Calculate advanced metrics for each asset
+        advanced_metrics = {}
+        for asset, returns in asset_returns.items():
+            if len(returns) < 10:
+                continue
+
+            returns_array = np.array(returns)
+
+            # Beta calculation
+            beta = calculate_beta(returns_array, market_returns)
+
+            # Liquidity risk (mock data - would need real volume data)
+            avg_daily_volume = np.random.uniform(500000, 5000000)  # Mock volume
+            bid_ask_spread = np.random.uniform(0.0001, 0.01)  # Mock spread
+            liquidity_risk = assess_liquidity_risk(
+                position_size=np.mean(np.abs(returns_array)),
+                avg_daily_volume=avg_daily_volume,
+                bid_ask_spread=bid_ask_spread
+            )
+
+            # Correlation risk (simplified)
+            correlations = {}
+            for other_asset, other_returns in asset_returns.items():
+                if other_asset != asset and len(other_returns) > 5:
+                    corr = np.corrcoef(returns_array[:min(len(returns_array), len(other_returns))],
+                                      other_returns[:min(len(returns_array), len(other_returns))])[0, 1]
+                    correlations[other_asset] = corr if not np.isnan(corr) else 0
+
+            advanced_metrics[asset] = {
+                'beta': beta,
+                'liquidity_risk': liquidity_risk,
+                'correlation_risk': {
+                    'max_correlation': max(correlations.values()) if correlations else 0,
+                    'avg_correlation': np.mean(list(correlations.values())) if correlations else 0,
+                    'correlations': correlations
+                },
+                'tail_risk': calculate_expected_shortfall(returns_array, calculate_var(returns_array, 0.95)),
+                'concentration_risk': len([r for r in returns if abs(r) > np.std(returns) * 2]) / len(returns)
+            }
+
+        # Portfolio-level advanced metrics
+        portfolio_beta = np.mean([metrics['beta'] for metrics in advanced_metrics.values()])
+        portfolio_liquidity_risk = max([metrics['liquidity_risk'] for metrics in advanced_metrics.values()],
+                                     key=lambda x: {'Low': 1, 'Medium': 2, 'High': 3}[x])
+
+        return jsonify({
+            'portfolio_level': {
+                'beta': portfolio_beta,
+                'liquidity_risk': portfolio_liquidity_risk,
+                'diversification_ratio': len(advanced_metrics) / (1 + portfolio_beta)
+            },
+            'asset_level': advanced_metrics,
+            'calculation_timestamp': datetime.utcnow().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Advanced metrics calculation failed: {str(e)}'}), 500
+
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok'})
+    health_status = {
+        'status': 'ok',
+        'service': 'brain-risk-management',
+        'gcp_services': {}
+    }
+
+    # Check database connectivity
+    try:
+        db_conn = get_db_connection()
+        db_conn.cursor().execute('SELECT 1')
+        health_status['gcp_services']['alloydb'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['alloydb'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    # Check Redis connectivity
+    try:
+        redis_conn = get_redis_connection()
+        redis_conn.ping()
+        health_status['gcp_services']['redis'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['redis'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    # Check Pub/Sub connectivity
+    try:
+        topic_path = publisher.topic_path(project_id, 'risk-alerts')
+        # Just check if we can get topic info
+        publisher.get_topic(request={'topic': topic_path})
+        health_status['gcp_services']['pubsub'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['pubsub'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    # Check BigQuery connectivity
+    try:
+        # Simple query to check connectivity
+        query = f'SELECT 1 FROM `{project_id}.risk.risk_metrics` LIMIT 1'
+        bigquery_client.query(query).result()
+        health_status['gcp_services']['bigquery'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['bigquery'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    return jsonify(health_status)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)

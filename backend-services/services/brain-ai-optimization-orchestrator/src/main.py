@@ -36,6 +36,20 @@ monitoring_client = monitoring_v3.MetricServiceClient()
 db_conn = None
 redis_conn = None
 
+def get_secret(secret_name):
+    """Retrieve secret from Google Secret Manager"""
+    try:
+        name = secret_client.secret_version_path(project_id, secret_name, 'latest')
+        response = secret_client.access_secret_version(request={'name': name})
+        return response.payload.data.decode('UTF-8')
+    except Exception as e:
+        logger.log_struct({
+            'severity': 'ERROR',
+            'message': f'Failed to retrieve secret {secret_name}: {str(e)}',
+            'service': 'brain-ai-optimization-orchestrator'
+        })
+        return None
+
 def record_metric(metric_name, value):
     series = monitoring_v3.TimeSeries()
     series.metric.type = f'custom.googleapis.com/{metric_name}'
@@ -78,6 +92,22 @@ def orchestrate():
         trade_success_rate = random.uniform(0.8, 1.0)
         record_metric('pnl_tracking', pnl_value)
         record_metric('trade_success_rate', trade_success_rate)
+
+        # Publish orchestration event to Pub/Sub
+        topic_path = publisher.topic_path(project_id, 'orchestration-events')
+        data = json.dumps(orchestration).encode('utf-8')
+        publisher.publish(topic_path, data)
+
+        # Log to BigQuery
+        table_id = f'{project_id}.orchestration.orchestration_logs'
+        rows_to_insert = [{
+            'timestamp': json.dumps({'timestamp': {'seconds': int(time.time()), 'nanos': 0}}),
+            'service': 'brain-ai-optimization-orchestrator',
+            'event_type': 'orchestration_completed',
+            'data': json.dumps(orchestration)
+        }]
+        bigquery_client.insert_rows_json(table_id, rows_to_insert)
+
         logger.log_text(f'Orchestration completed: {orchestration}', severity='INFO')
         return jsonify(orchestration)
     except Exception as e:

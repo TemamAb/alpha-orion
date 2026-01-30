@@ -8,6 +8,7 @@ from google.cloud import storage
 from google.cloud import bigquery
 from google.cloud import bigtable
 from google.cloud import secretmanager
+from google.cloud import logging as cloud_logging
 import psycopg2
 import redis
 
@@ -93,11 +94,71 @@ def simulate():
         'pnl': pnl,
         'confidence': confidence
     }
+
+    # Publish simulation result to Pub/Sub
+    topic_path = publisher.topic_path(project_id, 'simulation-results')
+    data = json.dumps(simulation).encode('utf-8')
+    publisher.publish(topic_path, data)
+
+    # Log to BigQuery
+    table_id = f'{project_id}.simulation.simulation_logs'
+    rows_to_insert = [{
+        'timestamp': json.dumps({'timestamp': {'seconds': int(os.times()[4]), 'nanos': 0}}),
+        'service': 'brain-simulation',
+        'event_type': 'simulation_completed',
+        'data': json.dumps(simulation)
+    }]
+    bigquery_client.insert_rows_json(table_id, rows_to_insert)
+
     return jsonify(simulation)
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok'})
+    health_status = {
+        'status': 'ok',
+        'service': 'brain-simulation',
+        'gcp_services': {}
+    }
+
+    # Check database connectivity
+    try:
+        db_conn = get_db_connection()
+        db_conn.cursor().execute('SELECT 1')
+        health_status['gcp_services']['alloydb'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['alloydb'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    # Check Redis connectivity
+    try:
+        redis_conn = get_redis_connection()
+        redis_conn.ping()
+        health_status['gcp_services']['redis'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['redis'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    # Check Pub/Sub connectivity
+    try:
+        topic_path = publisher.topic_path(project_id, 'simulation-results')
+        # Just check if we can get topic info
+        publisher.get_topic(request={'topic': topic_path})
+        health_status['gcp_services']['pubsub'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['pubsub'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    # Check BigQuery connectivity
+    try:
+        # Simple query to check connectivity
+        query = f'SELECT 1 FROM `{project_id}.simulation.simulation_logs` LIMIT 1'
+        bigquery_client.query(query).result()
+        health_status['gcp_services']['bigquery'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['bigquery'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    return jsonify(health_status)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)

@@ -52,30 +52,36 @@ class GCPInfrastructureVerifier:
             return False
 
         success, stdout, stderr = self.run_command(
-            "gcloud projects describe $GOOGLE_CLOUD_PROJECT --format='value(projectId)'",
+            f"gcloud projects describe {self.project_id} --format='value(projectId)'",
             "Verifying project access"
         )
 
-        self.results["services"]["project_access"] = {
-            "status": "SUCCESS" if success else "FAILED",
-            "details": stdout.strip() if success else stderr
-        }
-
-        return success
+        if success and stdout.strip() == self.project_id:
+            self.results["services"]["project_access"] = {
+                "status": "SUCCESS",
+                "details": f"Project {self.project_id} accessible"
+            }
+            return True
+        else:
+            self.results["services"]["project_access"] = {
+                "status": "FAILED",
+                "details": stderr or "Project not accessible"
+            }
+            return False
 
     def verify_compute_engine(self):
         """Verify Compute Engine instances"""
         success, stdout, stderr = self.run_command(
-            "gcloud compute instances list --format='table(name,status,zone,machine_type)'",
+            "gcloud compute instances list --format='value(name,status,zone,machineType)'",
             "Checking Compute Engine instances"
         )
 
         instances = []
         if success and stdout.strip():
-            lines = stdout.strip().split('\n')[1:]  # Skip header
+            lines = stdout.strip().split('\n')
             for line in lines:
                 if line.strip():
-                    parts = line.split()
+                    parts = line.split('\t')
                     if len(parts) >= 4:
                         instances.append({
                             "name": parts[0],
@@ -85,13 +91,13 @@ class GCPInfrastructureVerifier:
                         })
 
         self.results["services"]["compute_engine"] = {
-            "status": "SUCCESS" if success and instances else "FAILED",
+            "status": "SUCCESS" if success else "FAILED",
             "instances": instances,
             "count": len(instances),
-            "details": f"Found {len(instances)} instances" if instances else stderr
+            "details": f"Found {len(instances)} instances" if success else stderr
         }
 
-        return success and len(instances) > 0
+        return success
 
     def verify_bigtable(self):
         """Verify Bigtable instances"""

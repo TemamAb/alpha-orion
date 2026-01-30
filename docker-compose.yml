@@ -1,90 +1,6 @@
 version: '3.8'
 
 services:
-  # Frontend - Auto-detected port: 3000
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:80"
-    environment:
-      - REACT_APP_API_URL=http://localhost:3001
-    depends_on:
-      - user-api-service
-
-  # Main API Gateway - Auto-detected port: 3001
-  user-api-service:
-    build:
-      context: ./backend-services/services/user-api-service
-      dockerfile: Dockerfile
-    ports:
-      - "3001:8080"
-    environment:
-      - NODE_ENV=development
-      - AI_OPTIMIZER_URL=http://ai-optimizer:8080
-      - ORDER_MANAGEMENT_URL=http://order-management-service:8080
-    depends_on:
-      - ai-optimizer
-      - order-management-service
-
-  # AI Services
-  ai-optimizer:
-    build:
-      context: ./backend-services/services/ai-optimizer
-      dockerfile: Dockerfile
-    ports:
-      - "3002:8080"
-    environment:
-      - PROJECT_ID=alpha-orion
-      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
-      - REDIS_URL=redis://redis:6379
-
-  ai-agent-service:
-    build:
-      context: ./backend-services/services/ai-agent-service
-      dockerfile: Dockerfile
-    ports:
-      - "3003:8080"
-    environment:
-      - PROJECT_ID=alpha-orion
-      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
-      - REDIS_URL=redis://redis:6379
-
-  # Core Services
-  order-management-service:
-    build:
-      context: ./backend-services/services/order-management-service
-      dockerfile: Dockerfile
-    ports:
-      - "3004:8080"
-    environment:
-      - PROJECT_ID=alpha-orion
-      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
-      - REDIS_URL=redis://redis:6379
-
-  brain-orchestrator:
-    build:
-      context: ./backend-services/services/brain-orchestrator
-      dockerfile: Dockerfile
-    ports:
-      - "3005:8080"
-    environment:
-      - PROJECT_ID=alpha-orion
-      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
-      - REDIS_URL=redis://redis:6379
-
-  eye-scanner:
-    build:
-      context: ./backend-services/services/eye-scanner
-      dockerfile: Dockerfile
-    ports:
-      - "3006:8080"
-    environment:
-      - PROJECT_ID=alpha-orion
-      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
-      - REDIS_URL=redis://redis:6379
-
   # Database
   db:
     image: postgres:13
@@ -96,6 +12,11 @@ services:
       - POSTGRES_PASSWORD=password
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d alpha_orion"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Redis
   redis:
@@ -104,6 +25,304 @@ services:
       - "3008:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+    depends_on:
+      - user-api-service
+
+  # Main API Gateway
+  user-api-service:
+    build:
+      context: ./backend-services/services/user-api-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:8080"
+    environment:
+      - NODE_ENV=development
+      - GCP_PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Withdrawal Service
+  withdrawal-service:
+    build:
+      context: ./backend-services/services/withdrawal-service
+      dockerfile: Dockerfile
+    ports:
+      - "3009:8081"
+    environment:
+      - GCP_PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # AI Services
+  ai-optimizer:
+    build:
+      context: ./backend-services/services/ai-optimizer
+      dockerfile: Dockerfile
+    ports:
+      - "3010:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ai-agent-service:
+    build:
+      context: ./backend-services/services/ai-agent-service
+      dockerfile: Dockerfile
+    ports:
+      - "3011:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  benchmarking-scraper-service:
+    build:
+      context: ./backend-services/services/benchmarking-scraper-service
+      dockerfile: Dockerfile
+    ports:
+      - "3012:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Brain Services
+  brain-ai-optimization-orchestrator:
+    build:
+      context: ./backend-services/services/brain-ai-optimization-orchestrator
+      dockerfile: Dockerfile
+    ports:
+      - "3013:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  brain-risk-management:
+    build:
+      context: ./backend-services/services/brain-risk-management
+      dockerfile: Dockerfile
+    ports:
+      - "3014:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  brain-simulation:
+    build:
+      context: ./backend-services/services/brain-simulation
+      dockerfile: Dockerfile
+    ports:
+      - "3015:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  brain-strategy-engine:
+    build:
+      context: ./backend-services/services/brain-strategy-engine
+      dockerfile: Dockerfile
+    ports:
+      - "3016:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Compliance & Data Services
+  compliance-engine:
+    build:
+      context: ./backend-services/services/compliance-engine
+      dockerfile: Dockerfile
+    ports:
+      - "3017:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  dataflow-cep:
+    build:
+      context: ./backend-services/services/dataflow-cep
+      dockerfile: Dockerfile
+    ports:
+      - "3018:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  dataflow-market-data-ingestion:
+    build:
+      context: ./backend-services/services/dataflow-market-data-ingestion
+      dockerfile: Dockerfile
+    ports:
+      - "3019:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Execution Services
+  executor:
+    build:
+      context: ./backend-services/services/executor
+      dockerfile: Dockerfile
+    ports:
+      - "3020:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  flash-loan-executor:
+    build:
+      context: ./backend-services/services/flash-loan-executor
+      dockerfile: Dockerfile
+    ports:
+      - "3021:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Hand Services
+  hand-blockchain-proxy:
+    build:
+      context: ./backend-services/services/hand-blockchain-proxy
+      dockerfile: Dockerfile
+    ports:
+      - "3022:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  hand-smart-order-router:
+    build:
+      context: ./backend-services/services/hand-smart-order-router
+      dockerfile: Dockerfile
+    ports:
+      - "3023:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Order Management
+  order-management-service:
+    build:
+      context: ./backend-services/services/order-management-service
+      dockerfile: Dockerfile
+    ports:
+      - "3004:8080"
+    environment:
+      - PROJECT_ID=alpha-orion
+      - DATABASE_URL=postgresql://user:password@db:5432/alpha_orion
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

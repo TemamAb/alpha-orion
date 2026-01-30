@@ -86,6 +86,20 @@ def get_redis_connection():
         redis_conn = redis.from_url(redis_url)
     return redis_conn
 
+def get_secret(secret_name):
+    """Retrieve secret from Google Secret Manager"""
+    try:
+        name = secret_client.secret_version_path(project_id, secret_name, 'latest')
+        response = secret_client.access_secret_version(request={'name': name})
+        return response.payload.data.decode('UTF-8')
+    except Exception as e:
+        logger.log_struct({
+            'severity': 'ERROR',
+            'message': f'Failed to retrieve secret {secret_name}: {str(e)}',
+            'service': 'ai-agent-service'
+        })
+        return None
+
 @app.route('/agent', methods=['GET'])
 @role_required(['admin', 'trader'])
 def agent():
@@ -116,7 +130,51 @@ def agent():
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok'})
+    health_status = {
+        'status': 'ok',
+        'service': 'ai-agent-service',
+        'gcp_services': {}
+    }
+
+    # Check database connectivity
+    try:
+        db_conn = get_db_connection()
+        db_conn.cursor().execute('SELECT 1')
+        health_status['gcp_services']['alloydb'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['alloydb'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    # Check Redis connectivity
+    try:
+        redis_conn = get_redis_connection()
+        redis_conn.ping()
+        health_status['gcp_services']['redis'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['redis'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    # Check Pub/Sub connectivity
+    try:
+        topic_path = publisher.topic_path(project_id, 'agent-actions')
+        # Just check if we can get topic info
+        publisher.get_topic(request={'topic': topic_path})
+        health_status['gcp_services']['pubsub'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['pubsub'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    # Check BigQuery connectivity
+    try:
+        # Simple query to check connectivity
+        query = f'SELECT 1 FROM `{project_id}.arbitrage.agent_decisions` LIMIT 1'
+        bigquery_client.query(query).result()
+        health_status['gcp_services']['bigquery'] = 'connected'
+    except Exception as e:
+        health_status['gcp_services']['bigquery'] = f'error: {str(e)}'
+        health_status['status'] = 'degraded'
+
+    return jsonify(health_status)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
