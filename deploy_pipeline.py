@@ -285,6 +285,14 @@ def main():
             print(f"\n{Colors.WARNING}=== SKIPPING PHASE 2: LOCAL DOCKER VERIFICATION (Configured to Skip) ==={Colors.ENDC}")
         phase_3_git_deploy()
         print(f"\n{Colors.GREEN}{Colors.BOLD}DEPLOYMENT PIPELINE COMPLETED SUCCESSFULLY.{Colors.ENDC}")
+        
+        # Phase 4: Local Server Startup
+        print(f"\n{Colors.HEADER}=== PHASE 4: LOCAL SERVER STARTUP ==={Colors.ENDC}")
+        log_info("Starting local dashboard server on port 8080...")
+        env = os.environ.copy()
+        env["PORT"] = "8080"
+        subprocess.run([sys.executable, os.path.join(PROJECT_ROOT, "serve-live-dashboard.py")], env=env)
+        
     except KeyboardInterrupt:
         print("\nDeployment cancelled by user.")
         sys.exit(1)
