@@ -3,7 +3,10 @@ import sys
 import time
 import subprocess
 import shutil
-import signal
+import json
+
+# 1. Force UTF-8 for Windows Consoles to prevent crashes
+sys.stdout.reconfigure(encoding='utf-8')
 
 # Configuration
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -15,84 +18,109 @@ LOG_DASH = os.path.join(PROJECT_ROOT, "pilot_logs_dashboard.txt")
 def log(msg):
     timestamp = time.strftime("%H:%M:%S")
     print(f"[{timestamp}] 🤖 {msg}")
-    with open(LOG_SYSTEM, "a", encoding="utf-8") as f:
-        f.write(f"[{timestamp}] {msg}\n")
+    try:
+        with open(LOG_SYSTEM, "a", encoding="utf-8") as f:
+            f.write(f"[{timestamp}] {msg}\n")
+    except:
+        pass # Ignore log write errors if file is locked
 
 def run_cmd(cmd, cwd=None, background=False, outfile=None):
     if background:
-        with open(outfile, "w", encoding="utf-8") as out:
-            return subprocess.Popen(cmd, cwd=cwd, shell=True, stdout=out, stderr=subprocess.STDOUT)
+        # Open file in append mode to avoid locking issues
+        out = open(outfile, "w", encoding="utf-8")
+        return subprocess.Popen(cmd, cwd=cwd, shell=True, stdout=out, stderr=subprocess.STDOUT)
     else:
-        return subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True)
+        return subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True, encoding='utf-8')
 
 def kill_port(port):
-    log(f"🔧 FIX: Clearing port {port}...")
+    # log(f"🔧 Maintenance: Clearing port {port}...")
     subprocess.run(f"for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :{port}') do taskkill /F /PID %a >nul 2>&1", shell=True)
 
-def fix_dependencies():
-    log("🔧 FIX: Corrupted dependencies detected. Reinstalling...")
-    node_modules = os.path.join(API_DIR, "node_modules")
-    lock_file = os.path.join(API_DIR, "package-lock.json")
-    
-    if os.path.exists(node_modules):
-        try:
-            shutil.rmtree(node_modules)
-        except Exception as e:
-            log(f"⚠️ Warning: Could not fully delete node_modules: {e}")
-            
-    if os.path.exists(lock_file):
-        os.remove(lock_file)
+def patch_package_json():
+    """Autonomous Fix: Removes broken dependencies from package.json"""
+    pkg_path = os.path.join(API_DIR, "package.json")
+    if not os.path.exists(pkg_path): return
+
+    try:
+        with open(pkg_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
         
-    log("📦 Installing npm dependencies (this may take a minute)...")
-    result = run_cmd("npm install", cwd=API_DIR)
-    if result.returncode != 0:
-        log(f"❌ npm install failed: {result.stderr}")
-    else:
-        log("✅ Dependencies restored.")
+        changed = False
+        # Remove bad dependency
+        if "@google-cloud/opentelemetry-cloud-trace-exporter" in data.get("dependencies", {}):
+            del data["dependencies"]["@google-cloud/opentelemetry-cloud-trace-exporter"]
+            changed = True
+            log("🔧 FIX: Removed broken '@google-cloud/opentelemetry-cloud-trace-exporter'")
+
+        # Remove overrides
+        if "overrides" in data:
+            del data["overrides"]
+            changed = True
+            log("🔧 FIX: Removed conflicting 'overrides'")
+
+        if changed:
+            with open(pkg_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+            log("✅ package.json patched successfully.")
+            
+            # Remove node_modules to force clean install
+            shutil.rmtree(os.path.join(API_DIR, "node_modules"), ignore_errors=True)
+            if os.path.exists(os.path.join(API_DIR, "package-lock.json")):
+                os.remove(os.path.join(API_DIR, "package-lock.json"))
+
+    except Exception as e:
+        log(f"⚠️ Warning during patch: {e}")
 
 def check_logs_for_errors():
     # Check API Logs
     if os.path.exists(LOG_API):
-        with open(LOG_API, "r", encoding="utf-8", errors="ignore") as f:
-            content = f.read()
-            if "MODULE_NOT_FOUND" in content or "Cannot find module" in content:
-                return "MISSING_MODULE"
-            if "EADDRINUSE" in content:
-                return "PORT_CONFLICT_8080"
+        try:
+            with open(LOG_API, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+                if "MODULE_NOT_FOUND" in content or "Cannot find module" in content:
+                    return "MISSING_MODULE"
+                if "EADDRINUSE" in content:
+                    return "PORT_CONFLICT_8080"
+        except: pass
     
     # Check Dashboard Logs
     if os.path.exists(LOG_DASH):
-        with open(LOG_DASH, "r", encoding="utf-8", errors="ignore") as f:
-            content = f.read()
-            if "WinError 10048" in content or "Address already in use" in content:
-                return "PORT_CONFLICT_DASH"
+        try:
+            with open(LOG_DASH, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+                if "WinError 10048" in content or "Address already in use" in content:
+                    return "PORT_CONFLICT_DASH"
+        except: pass
                 
     return None
 
 def main():
-    os.system("cls")
     print("===================================================")
     print("   GEMINI AUTONOMOUS PILOT - SELF-HEALING ENGINE   ")
     print("===================================================")
     
-    # Initialize Logs
-    with open(LOG_SYSTEM, "w") as f: f.write("--- PILOT START ---\n")
-    with open(LOG_API, "w") as f: f.write("")
-    with open(LOG_DASH, "w") as f: f.write("")
-
-    # Initial Cleanup
+    # 1. Initial Cleanup
+    log("🧹 Performing pre-flight cleanup...")
     kill_port(8080)
     kill_port(8888)
     kill_port(9090)
 
-    # Dependency Check
+    # 2. Auto-Patch Codebase
+    patch_package_json()
+
+    # 3. Dependency Check
     if not os.path.exists(os.path.join(API_DIR, "node_modules")):
-        log("📦 First run detected. Installing dependencies...")
+        log("📦 Installing dependencies (this may take a minute)...")
         run_cmd("npm install", cwd=API_DIR)
 
+    # 4. Continuous Loop
     while True:
         log("🚀 Deploying Services...")
         
+        # Reset Logs
+        open(LOG_API, 'w').close()
+        open(LOG_DASH, 'w').close()
+
         # Start API
         api_proc = run_cmd("npm start", cwd=API_DIR, background=True, outfile=LOG_API)
         
@@ -103,7 +131,7 @@ def main():
         
         # Monitor Loop
         stable_cycles = 0
-        while stable_cycles < 10:
+        while stable_cycles < 120: # Monitor for 10 minutes per cycle
             time.sleep(5)
             error = check_logs_for_errors()
             
@@ -116,19 +144,18 @@ def main():
                 
                 # Apply Fixes
                 if error == "MISSING_MODULE":
-                    fix_dependencies()
-                elif error == "PORT_CONFLICT_8080":
+                    log("🔧 FIX: Re-running npm install...")
+                    run_cmd("npm install", cwd=API_DIR)
+                elif "PORT_CONFLICT" in error:
                     kill_port(8080)
-                elif error == "PORT_CONFLICT_DASH":
                     kill_port(8888)
-                    kill_port(9090)
                 
                 log("🔄 Redeploying solution...")
                 break # Break inner loop to restart deployment
             
             stable_cycles += 1
-            if stable_cycles % 2 == 0:
-                log(f"✅ System Stable... (Cycle {stable_cycles}/10)")
+            if stable_cycles % 6 == 0:
+                log(f"✅ System Stable... (Running for {stable_cycles * 5}s)")
 
 if __name__ == "__main__":
     main()

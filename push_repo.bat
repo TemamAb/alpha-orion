@@ -12,7 +12,6 @@ echo 📁 Adding files...
 git add .
 
 echo 💾 Committing...
-git commit -m "✨ Feature: Added Gemini Autonomous Pilot Engine & Fixed Dependencies"
 git commit -m "🚀 Upgrade: Gemini Pilot v2 - Self-Healing Engine & Dependency Fixes"
 
 for /f "tokens=*" %%i in ('git rev-parse HEAD') do set COMMIT_HASH=%%i
