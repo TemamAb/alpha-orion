@@ -12,8 +12,7 @@ echo 📁 Adding files...
 git add .
 
 echo 💾 Committing...
-git commit -m "🚀 Upgrade: Gemini Pilot v2 - Self-Healing Engine & Dependency Fixes"
-git commit -m "🐛 Fix: Prevented pilot self-termination & added source code auto-patching"
+git commit -m " Fix: Prevented pilot self-termination & added source code auto-patching"
 
 for /f "tokens=*" %%i in ('git rev-parse HEAD') do set COMMIT_HASH=%%i
 

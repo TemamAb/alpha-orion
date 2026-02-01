@@ -71,6 +71,33 @@ def patch_package_json():
     except Exception as e:
         log(f"⚠️ Warning during patch: {e}")
 
+def fix_source_code():
+    """Autonomous Fix: Comments out broken imports in source code"""
+    index_path = os.path.join(API_DIR, "src", "index.js")
+    if not os.path.exists(index_path): return
+
+    try:
+        with open(index_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        
+        changed = False
+        new_lines = []
+        for line in lines:
+            # Comment out the broken trace exporter import
+            if "opentelemetry-cloud-trace-exporter" in line and not line.strip().startswith("//"):
+                new_lines.append(f"// {line}")
+                changed = True
+            else:
+                new_lines.append(line)
+        
+        if changed:
+            with open(index_path, 'w', encoding='utf-8') as f:
+                f.writelines(new_lines)
+            log("🔧 FIX: Commented out broken code in src/index.js")
+            
+    except Exception as e:
+        log(f"⚠️ Warning during code patch: {e}")
+
 def check_logs_for_errors():
     # Check API Logs
     if os.path.exists(LOG_API):
@@ -107,6 +134,7 @@ def main():
 
     # 2. Auto-Patch Codebase
     patch_package_json()
+    fix_source_code()
 
     # 3. Dependency Check
     if not os.path.exists(os.path.join(API_DIR, "node_modules")):
@@ -140,11 +168,13 @@ def main():
                 
                 # Kill processes
                 subprocess.run("taskkill /F /IM node.exe >nul 2>&1", shell=True)
-                subprocess.run("taskkill /F /IM python.exe >nul 2>&1", shell=True)
+                # Kill other python processes (Dashboard) but spare self
+                subprocess.run(f"taskkill /F /FI \"PID ne {os.getpid()}\" /IM python.exe >nul 2>&1", shell=True)
                 
                 # Apply Fixes
                 if error == "MISSING_MODULE":
-                    log("🔧 FIX: Re-running npm install...")
+                    log("🔧 FIX: Patching code and re-running npm install...")
+                    fix_source_code()
                     run_cmd("npm install", cwd=API_DIR)
                 elif "PORT_CONFLICT" in error:
                     kill_port(8080)
