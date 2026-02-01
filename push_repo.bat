@@ -13,6 +13,7 @@ git add .
 
 echo 💾 Committing...
 git commit -m "🔧 Infra: Split log files to fix Windows file locking & verified npm install"
+git commit -m "✨ Feature: Added Gemini Autonomous Pilot Engine & Fixed Dependencies"
 
 for /f "tokens=*" %%i in ('git rev-parse HEAD') do set COMMIT_HASH=%%i
 

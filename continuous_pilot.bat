@@ -18,7 +18,6 @@ type NUL > pilot_logs_dashboard.txt
 REM 2. Check Environment
 if not exist "backend-services\services\user-api-service\package.json" (
     echo [ERROR] Cannot find backend service directory! >> pilot_logs.txt
-    echo [ERROR] Cannot find backend service directory! >> pilot_logs_system.txt
     echo ❌ ERROR: Wrong directory. Run from project root.
     pause
     exit /b
@@ -31,7 +30,6 @@ cmd /c "cd backend-services\services\user-api-service && npm install"
 IF %ERRORLEVEL% NEQ 0 (
     echo [%TIME%] ❌ npm install failed! >> pilot_logs_system.txt
     echo ❌ ERROR: npm install failed. See pilot_logs.txt.
-    echo ❌ ERROR: npm install failed. See pilot_logs_system.txt.
     pause
     exit /b
 )

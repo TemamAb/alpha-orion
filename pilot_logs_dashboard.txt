@@ -1,0 +1,56 @@
+
+
+===========================================================
+      ALPHA-ORION LIVE PROFIT DASHBOARD SERVER        
+          AUTO-DETECTING FREE PORT...                     
+===========================================================
+
+STAGE 1: INITIALIZATION
+  Changing to working directory...
+  Working directory set
+
+STAGE 2: PORT DETECTION
+
+Scanning ports for availability...
+
+  Testing: Port 8888 ... [-------------------------] 1%
+
+Port 8888 is AVAILABLE (default)
+
+
+STAGE 3: CONFIGURATION
+  Dashboard File: LIVE_PROFIT_DASHBOARD.html
+  Server Port: 8888
+
+STAGE 4: VERIFICATION
+
+===========================================================
+
+ACCESS DASHBOARD:
+   http://localhost:8888/
+   http://localhost:8888/dashboard
+
+PRODUCTION API:
+   http://localhost:3001/analytics/total-pnl
+   http://localhost:3001/trades/executed
+   http://localhost:3001/opportunities
+
+===========================================================
+
+SETUP INSTRUCTIONS:
+
+1. Terminal 1 - Start Production Service:
+   cd backend-services/services/user-api-service
+   npm start
+
+2. Terminal 2 - Start Dashboard Server (this script):
+   python serve-live-dashboard.py
+
+3. Terminal 3 - Open Dashboard in Browser:
+   http://localhost:8888
+
+===========================================================
+
+STAGE 5: SERVER STARTUP
+  Binding to port 8888...
+Failed to bind to port 8888: [WinError 10048] Only one usage of each socket address (protocol/network address/port) is normally permitted
