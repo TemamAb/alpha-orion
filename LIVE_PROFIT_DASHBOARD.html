@@ -3,1146 +3,457 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alpha-Orion Enterprise Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
-    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <title>Alpha-Orion Enterprise Terminal</title>
     <style>
-        /* Grafana-inspired Dark Theme */
         :root {
-            --grafana-bg-primary: #181b1f;
-            --grafana-bg-secondary: #212327;
-            --grafana-bg-tertiary: #2a2e33;
-            --grafana-border: #464c54;
-            --grafana-text-primary: #f8f9fa;
-            --grafana-text-secondary: #c7d0d9;
-            --grafana-text-muted: #9fa7b3;
-            --grafana-blue: #33a2e5;
-            --grafana-green: #73bf69;
-            --grafana-orange: #f2cc0c;
-            --grafana-red: #f2495c;
+            --bg-app: #0b0e11;
+            --bg-panel: #151a21;
+            --bg-card: #1e2329;
+            --border-color: #2b3139;
+            --text-primary: #eaecef;
+            --text-secondary: #848e9c;
+            --accent-color: #fcd535;
+            --success-color: #0ecb81;
+            --danger-color: #f6465d;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            background: var(--grafana-bg-primary);
-            color: var(--grafana-text-primary);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        .sidebar {
-            background: var(--grafana-bg-secondary);
-            border-right: 1px solid var(--grafana-border);
-            width: 250px;
-            position: fixed;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            font-family: var(--font-family);
             height: 100vh;
-            left: 0;
-            top: 0;
-            z-index: 1000;
+            overflow: hidden;
+            display: flex;
         }
 
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 0;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            padding: 0 1.5rem 1.5rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+
+        .nav-item {
+            padding: 0.75rem 1.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background-color: rgba(252, 213, 53, 0.1);
+            color: var(--accent-color);
+            border-right: 3px solid var(--accent-color);
+        }
+
+        /* Main Content */
         .main-content {
-            margin-left: 250px;
-            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
 
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-badge {
+            background-color: rgba(14, 203, 129, 0.15);
+            color: var(--success-color);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid rgba(14, 203, 129, 0.3);
+        }
+
+        /* Metrics Grid - 5 to 6 columns per row */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        /* Force at least 5 columns on large screens */
+        @media (min-width: 1400px) {
+            .metrics-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        .metric-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100px; /* Compact height */
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .metric-sub {
+            font-size: 0.8rem;
+            margin-top: auto;
+        }
+
+        .text-green { color: var(--success-color); }
+        .text-red { color: var(--danger-color); }
+
+        /* Complex Layout Row */
+        .dashboard-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        /* 4-Column Grid for specific rows */
+        .grid-row-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .col-span-2 {
+            grid-column: span 2;
+        }
+
+        /* Panels */
         .panel {
-            background: var(--grafana-bg-secondary);
-            border: 1px solid var(--grafana-border);
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1.5rem;
         }
 
         .panel-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--grafana-border);
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
         }
 
         .panel-title {
-            font-size: 14px;
+            font-size: 1rem;
             font-weight: 600;
-            color: var(--grafana-text-primary);
-            margin: 0;
         }
 
-        .metric-value {
-            font-size: 28px;
-            font-weight: 500;
-            color: var(--grafana-green);
-        }
-
-        .metric-label {
-            font-size: 12px;
-            color: var(--grafana-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .status-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-
-        .status-online { background: var(--grafana-green); }
-        .status-warning { background: var(--grafana-orange); }
-        .status-error { background: var(--grafana-red); }
-
-        .grid-layout {
+        /* Withdrawal / Wallet Section - Wide */
+        .wallet-section {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 12px;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
         }
 
-        @media (max-width: 1600px) {
-            .grid-layout {
-                grid-template-columns: repeat(3, 1fr);
-            }
+        .wallet-balance {
+            /* Default span 1 */
         }
 
-        @media (max-width: 1024px) {
-            .grid-layout {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        .wallet-actions {
+            grid-column: span 2;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: flex-end;
         }
 
-        body, .panel-title, .metric-label, .table th, .table td, .btn-primary, .btn-danger, .setting-label, .setting-input, .nav-link {
-            font-size: 12px !important;
-        }
-
-        .metric-value {
-            font-size: 16px !important;
-            font-weight: 600;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 300px;
-        }
-
-        .settings-panel {
-            background: var(--grafana-bg-tertiary);
-            border: 1px solid var(--grafana-border);
-            border-radius: 8px;
-            padding: 20px;
-        }
-
-        .setting-group {
-            margin-bottom: 24px;
-        }
-
-        .setting-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--grafana-text-primary);
-            margin-bottom: 8px;
-        }
-
-        .setting-input {
-            width: 100%;
-            padding: 8px 12px;
-            background: var(--grafana-bg-primary);
-            border: 1px solid var(--grafana-border);
+        .btn {
+            padding: 0.5rem 1.5rem;
             border-radius: 4px;
-            color: var(--grafana-text-primary);
-            font-size: 14px;
-        }
-
-        .setting-input:focus {
-            outline: none;
-            border-color: var(--grafana-blue);
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
         }
 
         .btn-primary {
-            background: var(--grafana-blue);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
+            background-color: var(--accent-color);
+            color: #000;
         }
 
-        .btn-primary:hover {
-            background: #2e94d2;
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
         }
 
-        .btn-danger {
-            background: var(--grafana-red);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-        }
+        .btn:hover { opacity: 0.9; }
 
-        .mode-toggle {
-            display: flex;
-            background: var(--grafana-bg-primary);
-            border-radius: 6px;
-            padding: 2px;
-            margin-bottom: 16px;
-        }
-
-        .mode-btn {
-            flex: 1;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .mode-btn.active {
-            background: var(--grafana-blue);
-            color: white;
-        }
-
-        .mode-btn:not(.active) {
-            color: var(--grafana-text-secondary);
-        }
-
-        .live-badge {
-            display: inline-flex;
-            align-items: center;
-            background: var(--grafana-green);
-            color: var(--grafana-bg-primary);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .live-badge::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            background: var(--grafana-bg-primary);
-            border-radius: 50%;
-            margin-right: 6px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .table {
+        /* Table */
+        .data-table {
             width: 100%;
             border-collapse: collapse;
+            font-size: 0.9rem;
         }
 
-        .table th,
-        .table td {
-            padding: 12px;
+        .data-table th {
             text-align: left;
-            border-bottom: 1px solid var(--grafana-border);
+            color: var(--text-secondary);
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
         }
 
-        .table th {
-            font-weight: 600;
-            color: var(--grafana-text-primary);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .data-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
         }
 
-        .table td {
-            color: var(--grafana-text-secondary);
-            font-size: 14px;
-        }
+        .data-table tr:last-child td { border-bottom: none; }
 
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: var(--grafana-bg-primary);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--grafana-green), var(--grafana-blue));
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-        
-        /* Terminal Style for Logs */
-        .terminal-logs {
-            background: #000;
+        /* Logs Console */
+        .console-output {
+            background-color: #000;
             color: #0f0;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            padding: 10px;
-            height: 300px;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 1rem;
+            height: 200px;
             overflow-y: auto;
+            font-size: 0.8rem;
             border-radius: 4px;
-            border: 1px solid var(--grafana-border);
         }
 
-        .live-indicator {
-            width: 10px;
-            height: 10px;
-            background-color: #00ff00;
-            border-radius: 50%;
-            box-shadow: 0 0 10px #00ff00;
-            animation: pulse 1s infinite;
-        }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="p-6">
-            <h2 class="text-xl font-bold text-white mb-8 flex items-center">
-                <i data-lucide="zap" class="w-6 h-6 mr-2 text-yellow-400"></i>
-                Alpha-Orion
-            </h2>
+    <h1>Alpha-Orion Live Profit Dashboard</h1>
+    <div id="status">System Status: Online</div>
+    <div id="metrics">Waiting for data...</div>
 
-            <nav class="space-y-2">
-                <a href="#settings" class="nav-link active flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="settings" class="w-4 h-4 mr-3"></i>
-                    Settings
-                </a>
-                <a href="#profit-metrics" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="dollar-sign" class="w-4 h-4 mr-3"></i>
-                    Profit Metrics
-                </a>
-                <a href="#latency" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="clock" class="w-4 h-4 mr-3"></i>
-                    Latency
-                </a>
-                <a href="#bot-fleet" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="cpu" class="w-4 h-4 mr-3"></i>
-                    Bot Fleet
-                </a>
-                <a href="#mev-protection" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="shield" class="w-4 h-4 mr-3"></i>
-                    MEV Protection
-                </a>
-                <a href="#flash-loans" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="zap" class="w-4 h-4 mr-3"></i>
-                    Flash Loan Metrics
-                </a>
-                <a href="#arbitrage" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="bar-chart-2" class="w-4 h-4 mr-3"></i>
-                    Arbitrage Analytics
-                </a>
-                <a href="#ai-optimization" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="sparkles" class="w-4 h-4 mr-3"></i>
-                    AI Optimization
-                </a>
-                <a href="#ai-terminal" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="terminal" class="w-4 h-4 mr-3"></i>
-                    AI Terminal
-                </a>
-                <a href="#deploy" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="rocket" class="w-4 h-4 mr-3"></i>
-                    Deploy App
-                </a>
-                <a href="#registry" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="file-text" class="w-4 h-4 mr-3"></i>
-                    Deployment Registry
-                </a>
-                <a href="#live-events" class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white">
-                    <i data-lucide="activity" class="w-4 h-4 mr-3"></i>
-                    Live Events
-                </a>
-            </nav>
-        </div>
-    </div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="brand">ALPHA ORION</div>
+        <nav>
+            <div class="nav-item active">📊 Dashboard</div>
+            <div class="nav-item">⚡ Live Execution</div>
+            <div class="nav-item">💰 Wallet & Funds</div>
+            <div class="nav-item">⚙️ Configuration</div>
+            <div class="nav-item">📝 System Logs</div>
+        </nav>
+    </aside>
 
     <!-- Main Content -->
-    <div class="main-content">
+    <main class="main-content">
+        
         <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
+        <div class="header">
             <div>
-                <h1 class="text-3xl font-bold text-white">Enterprise Dashboard</h1>
-                <p class="text-gray-400 mt-1">Real-time AI-powered arbitrage trading platform</p>
+                <h2 style="font-weight: 400;">Enterprise Terminal <span style="color: var(--text-secondary); font-size: 0.9rem;">v2.0</span></h2>
             </div>
-            <div class="flex items-center space-x-4">
-                <div class="live-badge flex items-center gap-2">
-                    <div class="live-indicator"></div>
-                    INSTITUTIONAL GRADE
-                </div>
-                <div class="text-right">
-                    <div class="text-sm text-gray-400">Session Time</div>
-                    <div class="text-lg font-mono" id="sessionTime">00:00:00</div>
-                </div>
-                <button onclick="handleKillSwitch()" class="btn-danger ml-4">
-                    ⛔ KILL SWITCH
-                </button>
-                <div class="flex bg-gray-800 rounded p-1 ml-4">
-                    <button id="curr-usd" class="px-3 py-1 rounded bg-blue-600 text-white text-xs" onclick="setCurrency('USD')">USD</button>
-                    <button id="curr-eth" class="px-3 py-1 rounded text-gray-400 text-xs hover:text-white" onclick="setCurrency('ETH')">ETH</button>
-                </div>
+            <div class="status-badge" id="system-status">SYSTEM ONLINE</div>
+        </div>
+
+        <!-- Row 1: High Density Metrics (5 Columns) -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Total Net Profit</div>
+                <div class="metric-value text-green" id="total-profit">$0.00</div>
+                <div class="metric-sub text-green">+0.00% today</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Daily Volume</div>
+                <div class="metric-value" id="daily-volume">$0.00</div>
+                <div class="metric-sub">Target: $50M</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Active Opportunities</div>
+                <div class="metric-value" style="color: var(--accent-color);" id="opps-count">0</div>
+                <div class="metric-sub">Scanning...</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Win Rate</div>
+                <div class="metric-value" id="win-rate">0.0%</div>
+                <div class="metric-sub">Last 100 trades</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Gas Spent</div>
+                <div class="metric-value text-red" id="gas-spent">0.00 ETH</div>
+                <div class="metric-sub">Avg: 15 gwei</div>
             </div>
         </div>
 
-        <!-- System Status Bar -->
-        <div class="panel mb-6">
-            <div class="grid grid-cols-4 gap-4">
-                <div class="text-center">
-                    <div class="status-indicator status-online"></div>
-                    <div class="metric-label">Mode</div>
-                    <div class="text-sm font-medium text-green-400" id="systemMode">PRODUCTION</div>
+        <!-- Row 2: Wallet & Withdrawals (Wide Section) -->
+        <div class="grid-row-4">
+            <div class="panel col-span-2">
+            <div class="panel-header">
+                <div class="panel-title">Capital Management & Withdrawals</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">Primary Vault: 0x71C...9A2</div>
+            </div>
+            <div class="wallet-section">
+                <div class="wallet-balance">
+                    <div class="metric-label">Available Liquidity</div>
+                    <div class="metric-value">$0.00</div>
+                    <div class="metric-sub text-secondary">USDC / ETH / WBTC</div>
                 </div>
-                <div class="text-center">
-                    <div class="status-indicator status-online"></div>
-                    <div class="metric-label">Connectivity</div>
-                    <div class="text-sm font-medium" id="networkStatus">Connecting...</div>
+                <div class="wallet-balance">
+                    <div class="metric-label">Pending Settlements</div>
+                    <div class="metric-value">$0.00</div>
                 </div>
-                <div class="text-center">
-                    <div class="status-indicator status-online"></div>
-                    <div class="metric-label">Bundler</div>
-                    <div class="text-sm font-medium" id="bundlerStatus">Pimlico (Gasless)</div>
-                </div>
-                <div class="text-center">
-                    <div class="status-indicator status-online"></div>
-                    <div class="metric-label">AI Status</div>
-                    <div class="text-sm font-medium" id="aiStatus">Optimizing</div>
+                <div class="wallet-actions">
+                    <button class="btn btn-outline">History</button>
+                    <button class="btn btn-outline">Rebalance</button>
+                    <button class="btn btn-primary" style="min-width: 150px;">WITHDRAW PROFIT</button>
                 </div>
             </div>
-        </div>
-
-        <!-- Profit Metrics Section -->
-        <section id="profit-metrics" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Profit Metrics</h2>
-
-            <div class="grid-layout">
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Avg Profit/Trade</h3>
-                    </div>
-                    <div class="metric-value" id="avgProfitTrade">$0.00</div>
-                    <div class="metric-label">Per Execution</div>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Profit/Hour</h3>
-                    </div>
-                    <div class="metric-value text-green-400" id="profitPerHour">$0.00</div>
-                    <div class="metric-label">Current Rate</div>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Trades/Hour</h3>
-                    </div>
-                    <div class="metric-value text-blue-400" id="tradesPerHour">0</div>
-                    <div class="metric-label">Execution Velocity</div>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Total Profit Balance</h3>
-                    </div>
-                    <div class="metric-value text-cyan-400" id="totalPnl">$0.00</div>
-                    <div class="metric-label">Accumulated</div>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Realized Profit</h3>
-                    </div>
-                    <div class="metric-value text-green-400" id="realizedProfit">$0.00</div>
-                    <div class="metric-label">Confirmed On-Chain</div>
-                </div>
-
-                <!-- P&L Chart -->
-                <div class="panel col-span-5">
-                    <div class="panel-header">
-                        <h3 class="panel-title">P&L Performance</h3>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="pnlChart"></canvas>
-                    </div>
-                </div>
             </div>
-        </section>
-
-        <!-- Deploy App Section -->
-        <section id="deploy" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Deploy App (Automated)</h2>
             
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Controls -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Mission Control</h3>
-                    </div>
-                    
-                    <div class="space-y-6">
-                        <!-- Step 1 -->
-                        <div class="p-4 border border-gray-700 rounded bg-gray-800/30">
-                            <h4 class="font-bold text-sm mb-2 text-white">1. Local Validation</h4>
-                            <p class="text-xs text-gray-400 mb-3">Run containerized simulation locally.</p>
-                            <button onclick="startLocalValidation()" class="btn-primary w-full">Initiate Validation</button>
-                            <div id="validation-status" class="hidden mt-2 text-xs"></div>
-                        </div>
-
-                        <!-- Step 2 -->
-                        <div class="p-4 border border-gray-700 rounded bg-gray-800/30">
-                            <h4 class="font-bold text-sm mb-2 text-white">2. Cloud Deployment</h4>
-                            <p class="text-xs text-gray-400 mb-3">Deploy to Google Cloud Run.</p>
-                            <input type="text" id="gcp-project-id" placeholder="Enter GCP Project ID" class="setting-input mb-3">
-                            
-                            <div class="flex gap-2">
-                                <button id="btn-deploy" onclick="deployToCloud()" class="btn-primary flex-1" disabled>Deploy</button>
-                                <button id="btn-stop-deploy" onclick="stopDeployment()" class="btn-danger hidden">Stop</button>
-                                <button id="btn-restart-deploy" onclick="restartDeployment()" class="btn-primary hidden" style="background-color: var(--grafana-orange);">Restart</button>
-                            </div>
-
-                            <!-- Progress Bar -->
-                            <div id="deploy-progress-container" class="hidden mt-4">
-                                <div class="flex justify-between text-xs text-gray-400 mb-1">
-                                    <span>Build Progress</span>
-                                    <span id="deploy-progress-text">0%</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div id="deploy-progress-bar" class="progress-fill" style="width: 0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <!-- System Controls & Network Panel (Fills remaining 2 columns) -->
+            <div class="panel col-span-2">
+                <div class="panel-header">
+                    <div class="panel-title">Network & Controls</div>
+                    <div class="status-badge" style="background: rgba(53, 162, 235, 0.15); color: #35a2eb; border-color: rgba(53, 162, 235, 0.3);">LATENCY: 12ms</div>
                 </div>
-
-                <!-- Logs -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3 class="panel-title">System Logs</h3>
-                        <button onclick="clearLogs()" class="text-xs text-gray-400 hover:text-white">Clear</button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center;">
+                    <div>
+                        <div class="metric-label">Active RPC</div>
+                        <div style="font-family: monospace; font-size: 0.85rem; margin-bottom: 0.5rem;">wss://arb1.arbitrum.io/feed</div>
+                        <div class="metric-label">Gas Price</div>
+                        <div style="color: var(--accent-color); font-weight: 600;">0.1 Gwei <span style="color: var(--text-secondary); font-weight: 400;">(L2)</span></div>
                     </div>
-                    <div id="mission-logs" class="terminal-logs">
-                        <div class="text-gray-500 italic">Ready for commands...</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button class="btn btn-outline" style="width: 100%; border-color: var(--danger-color); color: var(--danger-color); font-size: 0.8rem;">⛔ EMERGENCY STOP</button>
+                        <button class="btn btn-outline" style="width: 100%; font-size: 0.8rem;">♻️ FORCE REBALANCE</button>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Bot Fleet Section -->
-        <section id="bot-fleet" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Bot Fleet Statistics</h2>
-
+        <!-- Row 3: Live Trades & Logs -->
+        <div class="dashboard-row">
+            <!-- Live Trades Table -->
             <div class="panel">
-                <div class="grid-layout">
-                    <div class="p-4 border border-gray-700 rounded bg-gray-800/30">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="font-bold text-blue-400">Scanner Bot</h3>
-                            <span class="text-xs bg-green-900 text-green-300 px-2 py-1 rounded">ACTIVE</span>
-                        </div>
-                        <div class="text-sm text-gray-400">Role: Mempool Monitoring</div>
-                        <div class="text-sm text-gray-400">Uptime: 99.99%</div>
-                        <div class="mt-2 text-xs font-mono text-gray-500">Last Action: Scanning block #18452930</div>
-                    </div>
-                    <div class="p-4 border border-gray-700 rounded bg-gray-800/30">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="font-bold text-purple-400">Orchestrator Bot</h3>
-                            <span class="text-xs bg-green-900 text-green-300 px-2 py-1 rounded">ACTIVE</span>
-                        </div>
-                        <div class="text-sm text-gray-400">Role: Strategy Decision</div>
-                        <div class="text-sm text-gray-400">Latency: 12ms</div>
-                        <div class="mt-2 text-xs font-mono text-gray-500">Last Action: Validating arb path</div>
-                    </div>
-                    <div class="p-4 border border-gray-700 rounded bg-gray-800/30">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="font-bold text-orange-400">Executor Bot</h3>
-                            <span class="text-xs bg-green-900 text-green-300 px-2 py-1 rounded">ACTIVE</span>
-                        </div>
-                        <div class="text-sm text-gray-400">Role: Trade Execution</div>
-                        <div class="text-sm text-gray-400">Gas Saved: $0.00</div>
-                        <div class="mt-2 text-xs font-mono text-gray-500">Last Action: Ready for signal</div>
-                    </div>
-                    <div class="p-4 border border-gray-700 rounded bg-gray-800/30">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="font-bold text-gray-400">Active Bots</h3>
-                        </div>
-                        <div class="text-2xl font-bold text-white">3</div>
-                    </div>
-                    <div class="p-4 border border-gray-700 rounded bg-gray-800/30">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="font-bold text-gray-400">Dormant Bots</h3>
-                        </div>
-                        <div class="text-2xl font-bold text-gray-500">0</div>
-                    </div>
+                <div class="panel-header">
+                    <div class="panel-title">Live Execution Feed</div>
                 </div>
-            </div>
-        </section>
-
-        <!-- AI Terminal Section -->
-        <section id="ai-terminal" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Alpha-Orion AI Terminal</h2>
-            <div class="panel h-96 flex flex-col">
-                <div class="flex-1 terminal-logs mb-4" id="ai-output">
-                    <div class="text-green-400">Welcome to Alpha-Orion AI Terminal v2.0</div>
-                    <div class="text-gray-500">Connected to Gemini Pro 3 Model...</div>
-                    <div class="text-gray-500">System Status: OPTIMAL</div>
-                </div>
-                <div class="flex gap-2">
-                    <span class="text-green-400 font-bold">></span>
-                    <input type="text" class="flex-1 bg-transparent border-none outline-none text-white font-mono" placeholder="Ask AI about market conditions or system status..." onkeydown="handleAIInput(event)">
-                </div>
-            </div>
-        </section>
-
-        <!-- Live Events Section -->
-        <section id="live-events" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Live Blockchain Events</h2>
-            <div class="panel">
-                <div class="h-64 overflow-y-auto terminal-logs" id="blockchain-events">
-                    <div class="text-gray-500">Connecting to Polygon zkEVM node...</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Settings Section -->
-        <section id="settings" class="view-section mb-8">
-            <h2 class="text-xl font-bold text-white mb-4">Settings</h2>
-            <div class="settings-panel">
-                <div class="setting-group">
-                    <label class="setting-label">Refresh Interval (seconds)</label>
-                    <input type="number" id="refreshInterval" value="5" min="1" max="30" class="setting-input">
-                </div>
-                <div class="setting-group">
-                    <label class="setting-label">Profit Withdrawal Mode</label>
-                    <div class="mode-toggle">
-                        <button id="withdrawManual" class="mode-btn active">Manual</button>
-                        <button id="withdrawAuto" class="mode-btn">Auto</button>
-                    </div>
-                </div>
-                <div class="setting-group">
-                    <label class="setting-label">Profit Reinvestment Rate (%)</label>
-                    <input type="range" id="reinvestmentRate" min="0" max="100" value="0" class="setting-input">
-                    <div class="text-right text-xs text-gray-400" id="reinvestmentValue">0%</div>
-                </div>
-                <button class="btn-primary w-full" onclick="runDiagnostics()">Run System Diagnostics</button>
-            </div>
-        </section>
-
-        <!-- Latency Section -->
-        <section id="latency" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Execution Latency</h2>
-            <div class="grid-layout">
-                <div class="panel text-center">
-                    <div class="text-4xl font-bold text-green-400">45ms</div>
-                    <div class="text-sm text-gray-400">End-to-End Latency</div>
-                </div>
-                <div class="panel text-center">
-                    <div class="text-4xl font-bold text-blue-400">12ms</div>
-                    <div class="text-sm text-gray-400">Scanner Latency</div>
-                </div>
-                <div class="panel text-center">
-                    <div class="text-4xl font-bold text-purple-400">8ms</div>
-                    <div class="text-sm text-gray-400">Decision Engine</div>
-                </div>
-                <div class="panel text-center">
-                    <div class="text-4xl font-bold text-orange-400">25ms</div>
-                    <div class="text-sm text-gray-400">Executor Latency</div>
-                </div>
-                <div class="panel text-center">
-                    <div class="text-4xl font-bold text-gray-400">15ms</div>
-                    <div class="text-sm text-gray-400">Network Latency</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- MEV Protection Section -->
-        <section id="mev-protection" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">MEV Protection</h2>
-            <div class="grid-layout">
-                <div class="panel text-center"><div class="metric-value text-green-400">142</div><div class="metric-label">Attacks Blocked</div></div>
-                <div class="panel text-center"><div class="metric-value text-blue-400">89</div><div class="metric-label">Frontrunning Evaded</div></div>
-                <div class="panel text-center"><div class="metric-value text-purple-400">1,204</div><div class="metric-label">Stealth TXs</div></div>
-                <div class="panel text-center"><div class="metric-value text-orange-400">$450</div><div class="metric-label">Gas Saved</div></div>
-                <div class="panel text-center"><div class="metric-value text-green-400">99%</div><div class="metric-label">Protection Score</div></div>
-            </div>
-        </section>
-
-        <!-- Flash Loan Metrics Section -->
-        <section id="flash-loans" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Flash Loan Metrics</h2>
-            <div class="grid-layout">
-                <div class="panel text-center"><div class="metric-value text-blue-400">$5.2M</div><div class="metric-label">Total Borrowed</div></div>
-                <div class="panel text-center"><div class="metric-value text-red-400">$4,500</div><div class="metric-label">Fees Paid</div></div>
-                <div class="panel text-center"><div class="metric-value text-green-400">1,250</div><div class="metric-label">Successful Loans</div></div>
-                <div class="panel text-center"><div class="metric-value text-yellow-400">12</div><div class="metric-label">Failed Loans</div></div>
-                <div class="panel text-center"><div class="metric-value text-white">Aave V3</div><div class="metric-label">Top Provider</div></div>
-            </div>
-        </section>
-
-        <!-- Arbitrage Analytics Section -->
-        <section id="arbitrage" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Arbitrage Analytics</h2>
-            <div class="grid-layout">
-                <div class="panel text-center"><div class="metric-value text-green-400">1250/1500</div><div class="metric-label">Executed / Detected</div></div>
-                <div class="panel text-center"><div class="metric-value text-blue-400">$12,500</div><div class="metric-label">Profit by Strategy</div></div>
-                <div class="panel text-center"><div class="metric-value text-purple-400">$8,200</div><div class="metric-label">Profit by Chain</div></div>
-                <div class="panel text-center"><div class="metric-value text-orange-400">$4,300</div><div class="metric-label">Profit by Pair</div></div>
-                <div class="panel text-center"><div class="metric-value text-white">Triangular</div><div class="metric-label">Top Strategy</div></div>
-            </div>
-        </section>
-
-        <!-- AI Optimization Section -->
-        <section id="ai-optimization" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Post Deployment AI Optimization</h2>
-            <div class="grid-layout">
-                <div class="panel text-center"><div class="metric-value text-green-400">+15%</div><div class="metric-label">Delta Gained</div></div>
-                <div class="panel text-center"><div class="metric-value text-blue-400">450</div><div class="metric-label">Cycles / Minute</div></div>
-                <div class="panel text-center"><div class="metric-value text-purple-400">98%</div><div class="metric-label">Model Confidence</div></div>
-                <div class="panel text-center"><div class="metric-value text-orange-400">9.2/10</div><div class="metric-label">Optimization Score</div></div>
-                <div class="panel text-center"><div class="metric-value text-green-400">100%</div><div class="metric-label">Uptime (24/7)</div></div>
-            </div>
-        </section>
-
-        <!-- Deployment Registry Section -->
-        <section id="registry" class="view-section mb-8 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Deployment Registry</h2>
-            <div class="panel">
-                <table class="table">
+                <table class="data-table">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Version</th>
-                            <th>Timestamp</th>
+                            <th>Time</th>
+                            <th>Pair</th>
+                            <th>Strategy</th>
+                            <th>Profit</th>
                             <th>Status</th>
-                            <th>Region</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="trades-body">
                         <tr>
-                            <td>dep-001</td>
-                            <td>v2.0.0</td>
-                            <td>2026-01-29 05:30:00</td>
-                            <td class="text-green-400">Active</td>
-                            <td>us-central1</td>
+                            <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 2rem;">Waiting for execution events...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-        </section>
-    </div>
+
+            <!-- System Logs -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">System Logs</div>
+                </div>
+                <div class="console-output" id="console-logs">
+                    > System initialized...<br>
+                    > Connecting to Flashbots RPC...<br>
+                    > Mempool scanner active.<br>
+                </div>
+            </div>
+        </div>
+
+    </main>
 
     <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
+        // Use injected API URL or default
+        const API_BASE = window.API_BASE_URL || 'http://localhost:8080';
 
-        // Configuration
-        const API_URL = window.API_BASE_URL || 'http://localhost:8080';
-        const ETH_PRICE = 2500; // Mock price for conversion
-        let currentCurrency = 'USD';
-        
-        // Socket Connection
-        let socket;
-        try {
-            socket = io(API_URL);
-        } catch (e) {
-            console.error("Socket.io failed to initialize", e);
-        }
-
-        // State
-        let missionStep = 'IDLE';
-        let pnlData = [];
-        let pnlLabels = [];
-        let renderedLogCount = 0;
-        let sessionStart = Date.now();
-        
-        // Chart Setup
-        const ctx = document.getElementById('pnlChart').getContext('2d');
-        const pnlChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: pnlLabels,
-                datasets: [{
-                    label: 'Total P&L ($)',
-                    data: pnlData,
-                    borderColor: '#73bf69',
-                    backgroundColor: 'rgba(115, 191, 105, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { display: false },
-                    y: { grid: { color: '#464c54' }, ticks: { color: '#c7d0d9' } }
-                }
-            }
-        });
-
-        // Navigation Logic
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                // Update active state
-                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active', 'text-white'));
-                document.querySelectorAll('.nav-link').forEach(l => l.classList.add('text-gray-300'));
-                link.classList.add('active', 'text-white');
-                link.classList.remove('text-gray-300');
-                
-                // Show/Hide sections
-                const target = link.getAttribute('href').substring(1);
-                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-                const targetEl = document.getElementById(target);
-                if(targetEl) targetEl.classList.remove('hidden');
-            });
-        });
-
-        // Socket Event Listeners
-        if (socket) {
-            socket.on('connect', () => {
-                logHandler({level: 'SUCCESS', message: 'Connected to Real-Time Data Stream'});
-                document.getElementById('networkStatus').innerHTML = '<span class="text-green-400">ONLINE</span>';
-            });
-
-            socket.on('disconnect', () => {
-                logHandler({level: 'ERROR', message: 'Lost connection to Data Stream'});
-                document.getElementById('networkStatus').innerHTML = '<span class="text-red-400">OFFLINE</span>';
-            });
-
-            socket.on('dashboard:update', (data) => {
-                updateMetrics(data);
-            });
-
-            socket.on('trade:executed', (trade) => {
-                // Add to trade list
-                const list = document.getElementById('tradesList');
-                const item = document.createElement('div');
-                item.className = "flex justify-between p-3 border-b border-gray-700 animate-pulse";
-                item.innerHTML = `
-                    <div>
-                        <div class="font-medium text-white">${trade.pair}</div>
-                        <div class="text-xs text-gray-400">#${trade.number}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-green-400">+$${trade.profit?.toFixed(2)}</div>
-                        <div class="text-xs text-green-400">CONFIRMED</div>
-                    </div>
-                `;
-                list.insertBefore(item, list.firstChild);
-                if (list.children.length > 50) list.removeChild(list.lastChild);
-            });
-        }
-
-        // Polling Data
-        // setInterval(fetchData, 5000); // Socket handles metrics now
-        setInterval(updateSessionTime, 1000);
-        setInterval(pollLogs, 2000);
-
-        function setCurrency(currency) {
-            currentCurrency = currency;
-            document.getElementById('curr-usd').className = currency === 'USD' ? 'px-3 py-1 rounded bg-blue-600 text-white text-xs' : 'px-3 py-1 rounded text-gray-400 text-xs hover:text-white';
-            document.getElementById('curr-eth').className = currency === 'ETH' ? 'px-3 py-1 rounded bg-blue-600 text-white text-xs' : 'px-3 py-1 rounded text-gray-400 text-xs hover:text-white';
-            // Trigger update to refresh values
-            // In a real app, this would trigger a re-render of all currency fields
-        }
-
-        function formatCurrency(value) {
-            if (currentCurrency === 'ETH') {
-                return 'Ξ' + (value / ETH_PRICE).toFixed(4);
-            }
-            return '$' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        }
-
-        function updateMetrics(data) {
-            document.getElementById('totalPnl').innerText = formatCurrency(data.totalPnl || 0);
-            document.getElementById('realizedProfit').innerText = formatCurrency(data.realizedProfit || 0);
-            document.getElementById('totalTrades').innerText = data.totalTrades || 0;
-            document.getElementById('activeOpportunities').innerText = data.activeOpportunities || 0;
-            
-            // Derived metrics
-            const profit = data.totalPnl || 0;
-            const trades = data.totalTrades || 1;
-            const durationHours = (Date.now() - sessionStart) / 3600000;
-            
-            if(document.getElementById('avgProfitTrade')) document.getElementById('avgProfitTrade').innerText = formatCurrency(profit / trades);
-            if(document.getElementById('profitPerHour')) document.getElementById('profitPerHour').innerText = formatCurrency(profit / Math.max(durationHours, 0.01));
-            if(document.getElementById('tradesPerHour')) document.getElementById('tradesPerHour').innerText = (trades / Math.max(durationHours, 0.01)).toFixed(1);
-
-            // Update Chart
-            const now = new Date().toLocaleTimeString();
-            pnlLabels.push(now);
-            pnlData.push(data.totalPnl || 0);
-            if (pnlLabels.length > 20) { pnlLabels.shift(); pnlData.shift(); }
-            pnlChart.update();
-        }
-
-        function updateOpportunities(data) {
-            // Logic to update opportunities table if needed
-        }
-
-        function updateSessionTime() {
-            const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
-            const h = Math.floor(elapsed / 3600).toString().padStart(2, '0');
-            const m = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
-            const s = (elapsed % 60).toString().padStart(2, '0');
-            document.getElementById('sessionTime').innerText = `${h}:${m}:${s}`;
-        }
-
-        function handleAIInput(e) {
-            if (e.key === 'Enter') {
-                const input = e.target.value;
-                const output = document.getElementById('ai-output');
-                output.innerHTML += `<div class="text-white">> ${input}</div>`;
-                output.innerHTML += `<div class="text-blue-400">AI Analyzing: ${input}...</div>`;
-                e.target.value = '';
-                output.scrollTop = output.scrollHeight;
-                
-                setTimeout(() => {
-                    output.innerHTML += `<div class="text-green-400">AI: Optimization complete. Strategy adjusted for current volatility.</div>`;
-                    output.scrollTop = output.scrollHeight;
-                }, 1000);
-            }
-        }
-
-        // --- DEPLOYMENT LOGIC ---
-
-        function logHandler(log) {
-            const logs = document.getElementById('mission-logs');
-            const entry = document.createElement('div');
-            entry.className = 'mb-1 break-all font-mono text-xs';
-            
-            if (typeof log === 'string') {
-                entry.innerText = log;
-                entry.className += ' text-gray-400';
-            } else {
-                const level = log.level || 'INFO';
-                const msg = log.message || '';
-                const ts = log.timestamp || new Date().toLocaleTimeString();
-                
-                let colorClass = 'text-blue-400'; // INFO
-                let icon = 'ℹ️';
-                
-                if (level === 'SUCCESS') { colorClass = 'text-green-400'; icon = '✅'; }
-                else if (level === 'WARNING') { colorClass = 'text-yellow-400'; icon = '⚠️'; }
-                else if (level === 'ERROR') { colorClass = 'text-red-400'; icon = '❌'; }
-                else if (level === 'ACTION') { colorClass = 'text-purple-400'; icon = '🚀'; }
-                else if (level === 'HEAL') { colorClass = 'text-cyan-400'; icon = '🚑'; }
-                
-                entry.innerHTML = `<span class="text-gray-500">[${ts}]</span> <span class="${colorClass}">${icon} ${msg}</span>`;
-            }
-            
-            logs.appendChild(entry);
-            logs.scrollTop = logs.scrollHeight;
-        }
-
-        function clearLogs() {
-            document.getElementById('mission-logs').innerHTML = '<div class="text-gray-500 italic">Logs cleared...</div>';
-        }
-
-        async function pollLogs() {
-            try {
-                const res = await fetch('/api/deploy/logs');
-                const logs = await res.json();
-                if (logs.length > renderedLogCount) {
-                    for (let i = renderedLogCount; i < logs.length; i++) {
-                        const log = logs[i];
-                        logHandler(log);
-                        
-                        // Progress Bar Logic
-                        const match = log.message.match(/Building Container\.\.\. (\d+)%/);
-                        if (match) {
-                            const pct = match[1];
-                            document.getElementById('deploy-progress-bar').style.width = pct + '%';
-                            document.getElementById('deploy-progress-text').innerText = pct + '%';
-                        }
-
-                        if (log.message.includes("Local instance running")) onDockerSuccess({url: 'http://localhost:8080'});
-                        if (log.message.includes("System is 100% Functional")) onGCPSuccess({url: 'Cloud Run'});
-                        if (log.message.includes("Deployment process halted")) onGCPError("Deployment stopped by user");
+        function updateMetrics() {
+            // Fetch Profit
+            fetch(`${API_BASE}/analytics/total-pnl`)
+                .then(r => r.json())
+                .then(data => {
+                    if(data.total_profit) {
+                        document.getElementById('total-profit').innerText = `$${parseFloat(data.total_profit).toFixed(2)}`;
                     }
-                    renderedLogCount = logs.length;
-                }
-            } catch (e) {}
-        }
+                }).catch(e => console.log('Metrics offline'));
 
-        function onDockerSuccess(data) {
-            setMissionStep('VALIDATED');
-            logHandler({level: 'SUCCESS', message: `Local Validation Complete. App running at ${data.url}`});
-            document.getElementById('validation-status').innerHTML = `<span class="text-green-400">✅ Validated</span>`;
-            document.getElementById('validation-status').classList.remove('hidden');
-            document.getElementById('gcp-project-id').disabled = false;
-            updateDeployButton();
-        }
-
-        function onGCPSuccess(data) {
-            setMissionStep('LIVE');
-            logHandler({level: 'SUCCESS', message: `DEPLOYMENT SUCCESSFUL! System is Live.`});
-            document.getElementById('deploy-progress-bar').style.width = '100%';
-            document.getElementById('deploy-progress-bar').style.background = 'var(--grafana-green)';
-            updateDeployButton();
-        }
-
-        function setMissionStep(step) {
-            missionStep = step;
-            updateDeployButton();
-        }
-
-        function onGCPError(err) {
-            setMissionStep('DEPLOYMENT_FAILED');
-            logHandler({level: 'ERROR', message: `DEPLOYMENT FAILED: ${err}`});
-            
-            const bar = document.getElementById('deploy-progress-bar');
-            bar.classList.remove('bg-[#3274D9]', 'bg-[#56A64B]');
-            bar.classList.add('bg-[#E02F44]');
-            
-            updateDeployButton();
-        }
-
-        function startLocalValidation() {
-            setMissionStep('VALIDATING');
-            // Use fetch instead of socket
-            fetch('/api/deploy/local', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => logHandler({level: 'ACTION', message: `Validation started: ${data.status}`}))
-                .catch(err => {
-                    logHandler({level: 'ERROR', message: `Failed to start validation: ${err}`});
-                });
-        }
-
-        function deployToCloud() {
-            const projectId = document.getElementById('gcp-project-id').value;
-            if (!projectId) return;
-            
-            setMissionStep('DEPLOYING');
-            
-            // Reset and show progress bar
-            document.getElementById('deploy-progress-bar').style.width = '0%';
-            document.getElementById('deploy-progress-text').innerText = '0%';
-            document.getElementById('deploy-progress-container').classList.remove('hidden');
-            
-            // Use fetch instead of socket
-            fetch('/api/deploy/cloud', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => logHandler({level: 'ACTION', message: `Cloud deployment started: ${data.status}`}))
-                .catch(err => {
-                    logHandler({level: 'ERROR', message: `Failed to start deployment: ${err}`});
-                });
-        }
-
-        function stopDeployment() {
-            fetch('/api/deploy/stop', { method: 'POST' })
-                .then(res => res.json())
+            // Fetch Trades
+            fetch(`${API_BASE}/trades/executed`)
+                .then(r => r.json())
                 .then(data => {
-                    logHandler({level: 'WARNING', message: `Stop requested...`});
-                })
-                .catch(err => {
-                    logHandler({level: 'ERROR', message: `Failed to stop: ${err}`});
-                });
-        }
-
-        function restartDeployment() {
-            fetch('/api/deploy/restart', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    logHandler({level: 'ACTION', message: `Restart requested...`});
-                    setMissionStep('DEPLOYING');
+                    const trades = Array.isArray(data) ? data : (data.trades || []);
+                    const tbody = document.getElementById('trades-body');
                     
-                    document.getElementById('deploy-progress-bar').style.width = '0%';
-                    document.getElementById('deploy-progress-bar').style.background = 'linear-gradient(90deg, var(--grafana-green), var(--grafana-blue))';
-                    document.getElementById('deploy-progress-text').innerText = '0%';
-                    document.getElementById('deploy-progress-container').classList.remove('hidden');
-                })
-                .catch(err => {
-                    logHandler({level: 'ERROR', message: `Failed to restart: ${err}`});
-                });
+                    if (trades.length > 0) {
+                        tbody.innerHTML = trades.slice(0, 5).map(t => `
+                            <tr>
+                                <td>${t.timestamp || new Date().toLocaleTimeString()}</td>
+                                <td>${t.pair || 'ETH/USDC'}</td>
+                                <td>${t.strategy || 'Arbitrage'}</td>
+                                <td class="text-green">+$${parseFloat(t.profit || 0).toFixed(2)}</td>
+                                <td><span class="status-badge">CONFIRMED</span></td>
+                            </tr>
+                        `).join('');
+                    }
+                }).catch(e => {});
+
+            // Fetch Opportunities
+            fetch(`${API_BASE}/opportunities`)
+                .then(r => r.json())
+                .then(data => {
+                    const count = Array.isArray(data) ? data.length : 0;
+                    document.getElementById('opps-count').innerText = count;
+                }).catch(e => {});
         }
 
-        function runDiagnostics() {
-            logHandler({level: 'ACTION', message: "Running system diagnostics..."});
-            setTimeout(() => logHandler({level: 'SUCCESS', message: "P&L Stream: Active"}), 500);
-            setTimeout(() => logHandler({level: 'SUCCESS', message: "Trade Feed: Connected"}), 1000);
-            setTimeout(() => logHandler({level: 'SUCCESS', message: "Latency: 45ms (Optimal)"}), 1500);
-        }
-
-        // Settings listeners
-        document.getElementById('reinvestmentRate').addEventListener('input', (e) => {
-            document.getElementById('reinvestmentValue').textContent = e.target.value + '%';
-        });
-        document.getElementById('withdrawManual').addEventListener('click', () => {
-            document.getElementById('withdrawManual').classList.add('active');
-            document.getElementById('withdrawAuto').classList.remove('active');
-        });
-        document.getElementById('withdrawAuto').addEventListener('click', () => {
-            document.getElementById('withdrawAuto').classList.add('active');
-            document.getElementById('withdrawManual').classList.remove('active');
-        });
-
-        function updateDeployButton() {
-            const btn = document.getElementById('btn-deploy');
-            const projectId = document.getElementById('gcp-project-id').value;
-            const input = document.getElementById('gcp-project-id');
-            const stopBtn = document.getElementById('btn-stop-deploy');
-            const restartBtn = document.getElementById('btn-restart-deploy');
-            
-            // Logic for button state
-            if (missionStep === 'DEPLOYING') {
-                btn.innerText = "DEPLOYING...";
-                btn.className = "btn-primary flex-1 opacity-75 cursor-wait";
-                btn.disabled = true;
-                input.disabled = true;
-                stopBtn.classList.remove('hidden');
-                restartBtn.classList.remove('hidden');
-            } else if (missionStep === 'DEPLOYMENT_FAILED') {
-                btn.innerText = "RETRY DEPLOYMENT";
-                btn.className = "btn-danger flex-1";
-                btn.disabled = false;
-                input.disabled = false;
-                stopBtn.classList.add('hidden');
-                restartBtn.classList.remove('hidden');
-            } else if (['VALIDATED', 'DEPLOYMENT_FAILED'].includes(missionStep)) {
-                btn.innerText = "DEPLOY TO PRODUCTION";
-                if (projectId) {
-                    btn.className = "btn-primary flex-1";
-                    btn.disabled = false;
-                } else {
-                    btn.className = "btn-primary flex-1 opacity-50 cursor-not-allowed";
-                    btn.disabled = true;
-                }
-                input.disabled = false;
-                stopBtn.classList.add('hidden');
-                restartBtn.classList.add('hidden');
-            } else {
-                // IDLE, VALIDATING, VALIDATION_FAILED
-                btn.innerText = "DEPLOY TO PRODUCTION";
-                if (projectId) {
-                    btn.className = "btn-primary flex-1";
-                    btn.disabled = false;
-                } else {
-                    btn.className = "btn-primary flex-1 opacity-50 cursor-not-allowed";
-                    btn.disabled = true;
-                }
-                input.disabled = false;
-                stopBtn.classList.add('hidden');
-                restartBtn.classList.add('hidden');
-            }
-        }
-
-        function handleKillSwitch() {
-            if (confirm("⚠️ EMERGENCY: Are you sure you want to STOP all trading?")) {
-                alert("System Halted. Manual intervention required.");
-            }
-        }
-
-        // Input listener for project ID
-        document.getElementById('gcp-project-id').addEventListener('input', updateDeployButton);
+        // Update every 2 seconds
+        setInterval(updateMetrics, 2000);
+        updateMetrics();
     </script>
 </body>
 </html>

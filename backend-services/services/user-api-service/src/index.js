@@ -9,7 +9,7 @@ require('dotenv').config();
 const { NodeSDK } = require('@opentelemetry/sdk-node');
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
 const { JaegerExporter } = require('@opentelemetry/exporter-jaeger');
-const { CloudTraceExporter } = require('@google-cloud/opentelemetry-cloud-trace-exporter');
+// const { CloudTraceExporter } = require('@google-cloud/opentelemetry-cloud-trace-exporter');
 
 // Configure tracing exporters
 const jaegerExporter = new JaegerExporter({

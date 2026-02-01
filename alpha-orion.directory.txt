@@ -1,0 +1,76 @@
+alpha-orion/
+├── backend-services/
+│   └── services/
+│       ├── brain-orchestrator/
+│       ├── brain-risk-management/
+│       ├── brain-strategy-engine/
+│       ├── executor/
+│       ├── user-api-service/
+│       ├── flash-loan-executor/
+│       ├── dataflow-market-data-ingestion/
+│       ├── ai-agent-service/
+│       ├── ai-optimizer/
+│       ├── benchmarking-scraper-service/
+│       ├── brain-ai-optimization-orchestrator/
+│       ├── brain-simulation/
+│       ├── hand-smart-order-router/
+│       ├── order-management-service/
+│       └── withdrawal-service/
+├── config/
+│   ├── development.yaml
+│   └── production.yaml
+├── contracts/
+│   └── FlashLoanExecutor.sol
+├── docs/
+│   ├── architecture.md
+│   └── runbooks.md
+├── frontend/
+│   ├── .dockerignore
+│   ├── Analytics.tsx
+│   ├── App.tsx
+│   ├── app.yaml
+│   ├── ArbitrageExecutor.sol
+│   ├── ArbitrageExecutor.test.ts
+│   ├── cypress.config.js
+│   ├── Dashboard.tsx
+│   ├── Dockerfile
+│   ├── Executor.sol
+│   ├── FlashLoan.sol
+│   ├── FlashLoan.ts
+│   ├── hardhat.config.ts
+│   ├── ILendingPool.sol
+│   ├── index.html
+│   ├── index.js
+│   ├── IPool.sol
+│   ├── IUniswapV2Router02.sol
+│   ├── launch.json
+│   ├── Layout.tsx
+│   ├── LiveEventFeed.tsx
+│   ├── metadata.json
+│   ├── nginx.conf
+│   ├── Opportunities.tsx
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── requirements.txt
+│   ├── Services.tsx
+│   ├── Settings.tsx
+│   ├── Strategies.tsx
+│   ├── Terminal.tsx
+│   ├── Treasury.sol
+│   ├── TreasuryPage.tsx
+│   ├── cypress/
+│   ├── public/
+│   └── src/
+├── infrastructure/
+│   └── enterprise-gcp-upgrades.tf
+├── tests/
+├── .dockerignore
+├── .gitignore
+├── Dockerfile
+├── README.md
+├── cloudbuild-enterprise.yaml
+├── docker-compose.yml
+├── main.tf
+├── package.json
+├── package-lock.json
+└── config/production.yaml

@@ -19,7 +19,10 @@ import time
 
 # Try to import deployment engine
 try:
-    import deployment_autopilot
+    try:
+        import unified_gcp_deployer as deployment_autopilot
+    except ImportError:
+        import deployment_autopilot
 except ImportError:
     deployment_autopilot = None
 

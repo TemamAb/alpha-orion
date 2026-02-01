@@ -1,17 +1,19 @@
-# Stage 1: Build the React frontend
-FROM node:18-alpine AS build
-WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm install
-COPY . .
-RUN npm run build
+# Use Python 3.9 slim image
+FROM python:3.9-slim
 
-# Stage 2: Create the production image
-FROM node:18-alpine
+# Set working directory
 WORKDIR /app
-COPY backend/package.json backend/package-lock.json* ./
-RUN npm install --production
-COPY backend/. .
-COPY --from=build /app/dist ./dist
+
+# Copy all files from current directory
+COPY . .
+
+# Install dependencies (requests is commonly used in helper scripts)
+RUN pip install --no-cache-dir requests
+
+# Expose port 8080 and set environment variable
+ENV PORT=8080
+ENV PYTHONUNBUFFERED=1
 EXPOSE 8080
-CMD [ "node", "server.js" ]
+
+# Run the dashboard script
+CMD [ "python", "serve-live-dashboard.py" ]

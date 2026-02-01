@@ -370,11 +370,11 @@ module "strategy-engine-service" {
     min_instance_count = 3  # Enterprise: Always 3 instances running
   }
   template_scaling = {
-    max_instance_count = 100  # Enterprise: Scale to 100 instances for high load
-    min_instance_count = 3    # Enterprise: Minimum 3 instances always running
+    max_instance_count = 500  # Upgraded: Scale to 500 instances for $100M+ volume
+    min_instance_count = 10   # Upgraded: Minimum 10 instances always running
     cpu_utilization_percent = 70
     memory_utilization_percent = 80
-    max_concurrency = 1000
+    max_concurrency = 2000    # Upgraded: Higher concurrency for volume
   }
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
@@ -962,7 +962,12 @@ module "alloydb-primary-us" {
     time_based_retention_count = "604800s"
   }
   primary_instance = {
-    instance_id = "flash-loan-db-us-primary-instance"
+    instance_id       = "flash-loan-db-us-primary-instance"
+    instance_type     = "PRIMARY"  # Upgraded for $100M+ volume
+    machine_cpu_count = 32         # Upgraded: 32 vCPU for high throughput
+    database_flags = {
+      max_connections = "10000"    # Upgraded: Support 10K concurrent connections
+    }
   }
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
@@ -988,17 +993,17 @@ module "redis-cache-us" {
   project_id              = "alpha-orion"
   region                  = "us-central1"
   name                    = "flash-loan-redis-us"
-  memory_size_gb          = 16
+  memory_size_gb          = 64  # Upgraded: 64GB for $100M+ volume caching
   redis_version           = "REDIS_7_2"
   connect_mode            = "DIRECT_PEERING"
   read_replicas_mode      = "READ_REPLICAS_ENABLED"
-  replica_count           = 1
+  replica_count           = 3  # Upgraded: 3 read replicas for high throughput
   auth_enabled            = true
   transit_encryption_mode = "DISABLED"
   customer_managed_key    = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
   persistence_config = {
     persistence_mode    = "RDB"
-    rdb_snapshot_period = "ONE_HOUR"
+    rdb_snapshot_period = "THIRTY_MINUTES"  # Upgraded: More frequent snapshots
   }
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
@@ -1240,7 +1245,7 @@ module "dataflow-market-data-ingestion-us" {
 
   # Enterprise: High-performance Dataflow configuration
   machine_type = "n2-highcpu-32"  # Enterprise: High CPU for data processing
-  max_workers  = 50              # Enterprise: Scale to 50 workers
+  max_workers  = 200             # Upgraded: Scale to 200 workers for $100M+ volume
   streaming    = true             # Enterprise: Real-time streaming
 
   # Enterprise: GPU acceleration for ML data processing
@@ -1700,7 +1705,7 @@ module "arbitrage_interconnect" {
   name       = "arbitrage-interconnect"
   region     = "us-central1"
   type       = "DEDICATED"
-  bandwidth  = "BPS_100G"  # Enterprise: 100Gbps for ultra-low latency
+  bandwidth  = "BPS_200G"  # Upgraded: 200Gbps for $100M+ volume ultra-low latency
   vlan_tag   = 1001
   peer_asn   = 65001
   customer_router_ip_address = "192.168.1.1"
@@ -1709,11 +1714,11 @@ module "arbitrage_interconnect" {
   interconnects = [
     {
       name = "arbitrage-interconnect-1"
-      bandwidth = "BPS_100G"
+      bandwidth = "BPS_200G"  # Upgraded: 200Gbps for volume
     },
     {
       name = "arbitrage-interconnect-2"
-      bandwidth = "BPS_100G"
+      bandwidth = "BPS_200G"  # Upgraded: 200Gbps for volume
     }
   ]
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]

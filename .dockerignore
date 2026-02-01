@@ -1,0 +1,20 @@
+.git
+.gitignore
+.env
+node_modules/
+**/node_modules/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.log
+dashboard_port.txt
+alpha-orion.directory.txt
+
+# Heavy source folders (Not needed for Python Dashboard)
+backend-services/
+frontend/
+contracts/
+infrastructure/
+docs/
+tests/
+config/
