@@ -13,6 +13,7 @@ git add .
 
 echo 💾 Committing...
 git commit -m "🤖 Gemini Pilot Protocol: Added Autonomous Monitoring & Continuous Fix Loop"
+git commit -m "🐛 Fix: Resolved npm dependency errors & improved pilot stability"
 
 for /f "tokens=*" %%i in ('git rev-parse HEAD') do set COMMIT_HASH=%%i
 

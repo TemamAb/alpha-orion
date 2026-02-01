@@ -22,11 +22,9 @@ if not exist "backend-services\services\user-api-service\package.json" (
 )
 
 REM 2.1 Check Dependencies
-if not exist "backend-services\services\user-api-service\node_modules" (
-    echo [%TIME%] 📦 Installing dependencies - First Run...
-    echo [%TIME%] 📦 Installing dependencies... >> pilot_logs.txt
-    cmd /c "cd backend-services\services\user-api-service && npm install"
-)
+echo [%TIME%] 📦 Verifying dependencies...
+echo [%TIME%] 📦 Verifying dependencies... >> pilot_logs.txt
+cmd /c "cd backend-services\services\user-api-service && npm install"
 
 REM 3. Start Backend Service (Background)
 echo [%TIME%] 🚀 Starting User API Service (Port 8080)...
@@ -42,7 +40,6 @@ echo.
 echo ✅ PILOT RUNNING. Monitoring 'pilot_logs.txt' for AI analysis.
 echo.
 echo 📍 Log File: %CD%\pilot_logs.txt
-echo � To view logs live:  Get-Content pilot_logs.txt -Wait  (PowerShell)
 echo 📝 To view logs live:  Get-Content pilot_logs.txt -Wait  (PowerShell)
 echo 🛑 To stop: Close this window (Ctrl+C will not kill background processes)
 echo.
