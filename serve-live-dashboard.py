@@ -13,9 +13,17 @@ from datetime import datetime
 import urllib.request
 import urllib.error
 import webbrowser
+import json
+import threading
+import time
 
-DASHBOARD_FILE = 'unified-dashboard.html'
-HARDCODED_PORT = 8888  # Proposed working port
+# Try to import deployment engine
+try:
+    import deployment_autopilot
+except ImportError:
+    deployment_autopilot = None
+
+DASHBOARD_FILE = 'LIVE_PROFIT_DASHBOARD.html'
 
 def find_free_port(start_port=8888, max_attempts=100):
     """
@@ -64,10 +72,78 @@ def find_free_port(start_port=8888, max_attempts=100):
     raise RuntimeError(f"No free port found between {start_port} and {start_port + max_attempts}")
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
+    def do_POST(self):
+        """Handle POST requests for deployment triggers"""
+        if self.path == '/api/deploy/cloud':
+            self.trigger_deployment('cloud')
+        elif self.path == '/api/deploy/local':
+            self.trigger_deployment('local')
+        elif self.path == '/api/deploy/stop':
+            if deployment_autopilot:
+                deployment_autopilot.request_stop()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "stopping"}).encode('utf-8'))
+            else:
+                self.send_error(500, "Deployment module not found")
+        elif self.path == '/api/deploy/restart':
+            if deployment_autopilot:
+                deployment_autopilot.request_stop()
+                
+                def restart_sequence():
+                    time.sleep(2) # Wait for stop to propagate
+                    autopilot = deployment_autopilot.DeploymentAutopilot()
+                    autopilot.deploy_to_cloud_run()
+                
+                threading.Thread(target=restart_sequence).start()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "restarting"}).encode('utf-8'))
+            else:
+                self.send_error(500, "Deployment module not found")
+        else:
+            self.send_error(404)
+
+    def trigger_deployment(self, mode):
+        """Execute deployment in a separate thread"""
+        if not deployment_autopilot:
+            self.send_error(500, "Deployment module not found")
+            return
+        
+        def run_deploy():
+            try:
+                autopilot = deployment_autopilot.DeploymentAutopilot()
+                if mode == 'cloud':
+                    autopilot.deploy_to_cloud_run()
+                else:
+                    autopilot.run_local_docker()
+            except Exception as e:
+                deployment_autopilot.log(f"Deployment failed: {str(e)}", "ERROR")
+        
+        # Run in thread to avoid blocking the server
+        threading.Thread(target=run_deploy).start()
+        
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({"status": "started", "mode": mode}).encode('utf-8'))
+
     def do_GET(self):
         """Handle GET requests"""
         if self.path == '/' or self.path == '/dashboard':
             self.serve_dashboard_with_api_url()
+            return
+            
+        # Deployment Logs Endpoint
+        if self.path == '/api/deploy/logs':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            logs = deployment_autopilot.deployment_logs if deployment_autopilot else []
+            self.wfile.write(json.dumps(logs).encode('utf-8'))
             return
 
         # API Endpoints - Proxy to Backend
@@ -149,7 +225,7 @@ def main():
     print('\n')
     print('===========================================================')
     print('      ALPHA-ORION LIVE PROFIT DASHBOARD SERVER        ')
-    print('          PROPOSED PORT: 8888 (TESTING AVAILABILITY)        ')
+    print('          AUTO-DETECTING FREE PORT...                     ')
     print('===========================================================')
     print()
 
@@ -167,7 +243,7 @@ def main():
         print('STAGE 2: PORT CONFIGURATION (ENV DETECTED)')
         print(f'  Using environment variable PORT: {PORT}')
     else:
-        print('STAGE 2: PORT DETECTION (TESTING PORT 8888)')
+        print('STAGE 2: PORT DETECTION')
         try:
             PORT, is_default = find_free_port(start_port=8888, max_attempts=1)
         except RuntimeError as e:
@@ -192,14 +268,25 @@ def main():
     print()
     print('===========================================================')
     print()
+    
+    # Dynamic port check
+    backend_port = 8080
+    if os.path.exists('ports.json'):
+        try:
+            with open('ports.json', 'r') as f:
+                data = json.load(f)
+                backend_port = data.get('api', 8080)
+        except:
+            pass
+
     print('ACCESS DASHBOARD:')
     print(f'   http://localhost:{PORT}/')
     print(f'   http://localhost:{PORT}/dashboard')
     print()
     print('PRODUCTION API:')
-    print('   http://localhost:8080/analytics/total-pnl')
-    print('   http://localhost:8080/trades/executed')
-    print('   http://localhost:8080/opportunities')
+    print(f'   http://localhost:{backend_port}/analytics/total-pnl')
+    print(f'   http://localhost:{backend_port}/trades/executed')
+    print(f'   http://localhost:{backend_port}/opportunities')
     print()
     print('===========================================================')
     print()
@@ -239,7 +326,7 @@ def main():
             print('STAGE 7: READY FOR CONNECTIONS')
             print(f'  Dashboard accessible at: http://localhost:{PORT}/')
             print(f'  Listening on: http://0.0.0.0:{PORT}')
-            print(f'  API base: http://localhost:8080')
+            print(f'  API base: http://localhost:{backend_port}')
             print()
             print('===========================================================')
             print()

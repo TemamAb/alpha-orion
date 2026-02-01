@@ -9,6 +9,21 @@ from typing import Dict, List, Optional, Any
 from decimal import Decimal
 from datetime import datetime
 import json
+import os
+import sys
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# Add sibling service paths to allow imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+services_dir = os.path.abspath(os.path.join(current_dir, '../..'))
+sys.path.append(os.path.join(services_dir, 'brain-risk-management', 'src'))
+sys.path.append(os.path.join(services_dir, 'executor'))
+sys.path.append(os.path.join(services_dir, 'brain-strategy-engine', 'src'))
 
 # Import enterprise components
 from multi_chain_engine import MultiChainEngine
@@ -447,22 +462,25 @@ async def main():
     
     # Load configuration
     config = {
-        'ETHEREUM_RPC_URL': 'https://eth.llamarpc.com',
-        'POLYGON_RPC_URL': 'https://polygon-rpc.com',
-        'ARBITRUM_RPC_URL': 'https://arb1.arbitrum.io/rpc',
-        'OPTIMISM_RPC_URL': 'https://mainnet.optimism.io',
-        'BSC_RPC_URL': 'https://bsc-dataseed.binance.org',
-        'AVALANCHE_RPC_URL': 'https://api.avax.network/ext/bc/C/rpc',
-        'BASE_RPC_URL': 'https://mainnet.base.org',
-        'ZKSYNC_RPC_URL': 'https://mainnet.era.zksync.io',
+        'ETHEREUM_RPC_URL': os.getenv('ETHEREUM_RPC_URL', 'https://eth.llamarpc.com'),
+        'POLYGON_RPC_URL': os.getenv('POLYGON_RPC_URL', 'https://polygon-rpc.com'),
+        'ARBITRUM_RPC_URL': os.getenv('ARBITRUM_RPC_URL', 'https://arb1.arbitrum.io/rpc'),
+        'OPTIMISM_RPC_URL': os.getenv('OPTIMISM_RPC_URL', 'https://mainnet.optimism.io'),
+        'BSC_RPC_URL': os.getenv('BSC_RPC_URL', 'https://bsc-dataseed.binance.org'),
+        'AVALANCHE_RPC_URL': os.getenv('AVALANCHE_RPC_URL', 'https://api.avax.network/ext/bc/C/rpc'),
+        'BASE_RPC_URL': os.getenv('BASE_RPC_URL', 'https://mainnet.base.org'),
+        'ZKSYNC_RPC_URL': os.getenv('ZKSYNC_RPC_URL', 'https://mainnet.era.zksync.io'),
         
-        'FLASHBOTS_ENABLED': True,
-        'MEV_BLOCKER_ENABLED': True,
-        'MAX_GAS_PRICE_GWEI': 500,
+        'FLASHBOTS_ENABLED': os.getenv('FLASHBOTS_ENABLED', 'true').lower() == 'true',
+        'MEV_BLOCKER_ENABLED': os.getenv('MEV_BLOCKER_ENABLED', 'true').lower() == 'true',
+        'MAX_GAS_PRICE_GWEI': int(os.getenv('MAX_GAS_PRICE_GWEI', '500')),
         
-        'PRIVATE_KEY': None,  # Load from secure storage
-        'EXECUTOR_CONTRACT_ADDRESS': None,
-        'AAVE_V3_POOL_ADDRESS': None,
+        'PRIVATE_KEY': os.getenv('PRIVATE_KEY'),
+        'EXECUTOR_CONTRACT_ADDRESS': os.getenv('EXECUTOR_CONTRACT_ADDRESS'),
+        'AAVE_V3_POOL_ADDRESS': os.getenv('AAVE_V3_POOL_ADDRESS'),
+        
+        'ONE_INCH_API_KEY': os.getenv('ONE_INCH_API_KEY'),
+        'ONE_INCH_API_URL': os.getenv('ONE_INCH_API_URL', 'https://api.1inch.dev/swap/v5.2'),
     }
     
     # Create orchestrator

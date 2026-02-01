@@ -6,9 +6,14 @@
 
 set -e
 
+# Load configuration from .env if available
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
 # Configuration
-PROJECT_ID="alpha-orion"
-REGION="us-central1"
+PROJECT_ID="${GCP_PROJECT_ID:-alpha-orion}"
+REGION="${GCP_REGION:-us-central1}"
 GITHUB_USER="TemamAb"
 REPO1="alpha-orion"
 REPO2="wealthdech"
@@ -390,8 +395,8 @@ $(gcloud run services list --region=$REGION --format="table(name,status.url)" --
 
 ## Next Steps
 1. Monitor performance 24/7 for first 48 hours
-2. Start with conservative capital (\$10K-\$50K)
-3. Scale gradually based on performance metrics
+2. Deploy institutional capital (\$1M-\$5M)
+3. Scale to full \$50M+ capacity
 4. Review daily P&L and system health
 
 ## Emergency Contacts

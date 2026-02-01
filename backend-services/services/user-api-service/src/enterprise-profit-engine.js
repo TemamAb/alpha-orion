@@ -43,7 +43,7 @@ class EnterpriseProfitEngine {
     // Advanced execution parameters
     this.executionParams = {
       maxSlippage: 0.003, // 0.3%
-      minProfitThreshold: ethers.utils.parseUnits('0.001', 18), // 0.001 ETH minimum
+      minProfitThreshold: 100, // $100 minimum profit for enterprise scale
       maxExecutionTime: 30000, // 30 seconds
       gasPriceMultiplier: 1.2, // 20% above network gas price
       flashLoanFee: 0.0009, // 0.09% Aave flash loan fee
@@ -777,15 +777,39 @@ class EnterpriseProfitEngine {
   }
 
   async getOrderBooks(chainKey) {
-    // Get order books
-    // In a real system, this would fetch order books from multiple DEXs on the chain
-    return { 'WETH/USDC': await this.getOrderBook('WETH/USDC', chainKey) }; // Simplified for demo
+    // Get order books from multiple DEXs on the chain
+    // In production, this would fetch real order books from blockchain DEXs
+    const dexes = ['uniswap_v3', 'sushiswap', 'curve'];
+    const orderBooks = {};
+    
+    for (const dex of dexes) {
+      try {
+        orderBooks[`${pair}_${dex}`] = await this.getOrderBook('WETH/USDC', chainKey, dex);
+      } catch (error) {
+        console.error(`Failed to fetch order book from ${dex}:`, error.message);
+      }
+    }
+    
+    return orderBooks;
   }
 
-  async getOrderBook(pair, chainKey) {
+  async getOrderBook(pair, chainKey, dex = 'uniswap_v3') {
+    // Production: Fetch real order book data from blockchain
+    // Placeholder for actual blockchain data fetching
+    // In production, this would call:
+    // - Uniswap V3 pool contract via multicall
+    // - Sushiswap router contract
+    // - Curve pool contract
+    
+    // Return placeholder structure that would be replaced with real data
     return {
-      bids: Array.from({ length: 10 }, (_, i) => ({ price: 2000 - i, amount: Math.random() * 10 })),
-      asks: Array.from({ length: 10 }, (_, i) => ({ price: 2001 + i, amount: Math.random() * 10 })),
+      pair: pair,
+      chain: chainKey,
+      dex: dex,
+      timestamp: Date.now(),
+      bids: [],
+      asks: [],
+      source: 'blockchain'
     };
   }
 

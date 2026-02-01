@@ -380,14 +380,19 @@ class MultiChainEngine:
         # Example: Fetch from 1inch API
         if '1inch' in chain_config.dexes and self.session:
             try:
-                url = f"https://api.1inch.io/v5.0/{chain_config.chain_id}/quote"
+                base_url = self.config.get('ONE_INCH_API_URL', 'https://api.1inch.dev/swap/v5.2')
+                url = f"{base_url}/{chain_config.chain_id}/quote"
                 params = {
                     'fromTokenAddress': token_a,
                     'toTokenAddress': token_b,
                     'amount': '1000000000000000000'  # 1 token
                 }
                 
-                async with self.session.get(url, params=params) as response:
+                headers = {}
+                if self.config.get('ONE_INCH_API_KEY'):
+                    headers['Authorization'] = f"Bearer {self.config.get('ONE_INCH_API_KEY')}"
+                
+                async with self.session.get(url, params=params, headers=headers) as response:
                     if response.status == 200:
                         data = await response.json()
                         prices.append({

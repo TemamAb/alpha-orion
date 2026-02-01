@@ -12,9 +12,14 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Load configuration from .env if available
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
 # Configuration
-PROJECT_ID="${PROJECT_ID:-alpha-orion}"
-REGION="${REGION:-us-central1}"
+PROJECT_ID="${GCP_PROJECT_ID:-${PROJECT_ID:-alpha-orion}}"
+REGION="${GCP_REGION:-${REGION:-us-central1}}"
 ENVIRONMENT="${ENVIRONMENT:-production}"
 
 echo -e "${BLUE}🚀 ALPHA-ORION ENTERPRISE INFRASTRUCTURE DEPLOYMENT${NC}"

@@ -72,7 +72,7 @@ class CrossExchangeArbitrage:
         """Initialize exchange configurations"""
         return [
             # Centralized DEX Aggregators
-            {'name': '1inch', 'type': 'aggregator', 'api': 'https://api.1inch.io/v5.0'},
+            {'name': '1inch', 'type': 'aggregator', 'api': self.config.get('ONE_INCH_API_URL', 'https://api.1inch.dev/swap/v5.2')},
             {'name': 'paraswap', 'type': 'aggregator', 'api': 'https://apiv5.paraswap.io'},
             {'name': '0x', 'type': 'aggregator', 'api': 'https://api.0x.org'},
             
@@ -293,7 +293,11 @@ class CrossExchangeArbitrage:
                     'amount': '1000000000000000000'  # 1 token
                 }
                 
-                async with self.session.get(url, params=params) as response:
+                headers = {}
+                if self.config.get('ONE_INCH_API_KEY'):
+                    headers['Authorization'] = f"Bearer {self.config.get('ONE_INCH_API_KEY')}"
+                
+                async with self.session.get(url, params=params, headers=headers) as response:
                     if response.status == 200:
                         data = await response.json()
                         price = Decimal(data.get('toTokenAmount', 0)) / Decimal('1e18')

@@ -7,7 +7,7 @@
 set -e
 
 # Configuration
-PROJECT_ID="alpha-orion"
+PROJECT_ID="alpha-orion-485207"
 REGION="us-central1"
 GITHUB_USER="TemamAb"
 REPO1="alpha-orion"

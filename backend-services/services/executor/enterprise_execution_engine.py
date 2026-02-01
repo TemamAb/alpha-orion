@@ -78,6 +78,11 @@ class EnterpriseExecutionEngine:
         # Web3 instances
         self.w3_instances: Dict[str, Web3] = {}
         
+        # Optimization: Local State
+        self.nonce_cache: Dict[str, int] = {}
+        self.gas_cache: Dict[str, GasEstimate] = {}
+        self.chain_ids: Dict[str, int] = {}
+        
         logger.info("EnterpriseExecutionEngine initialized")
     
     async def initialize(self):
@@ -108,6 +113,10 @@ class EnterpriseExecutionEngine:
         )
         
         logger.info("HTTP session initialized with connection pooling")
+        
+        # Start background tasks
+        asyncio.create_task(self._background_gas_updater())
+        logger.info("Background gas oracle started")
     
     async def execute_arbitrage(
         self,
@@ -129,16 +138,11 @@ class EnterpriseExecutionEngine:
         start_time = time.time()
         
         try:
-            # Step 1: Build transaction (parallel with gas estimation)
-            tx_task = asyncio.create_task(
-                self._build_transaction(opportunity, w3, account)
-            )
-            gas_task = asyncio.create_task(
-                self._get_optimal_gas_price(w3, opportunity)
-            )
+            # Step 1: Get Gas Estimate (Instant from Cache)
+            gas_estimate = self._get_cached_gas_price(opportunity.get('chain', 'ethereum'))
             
-            # Wait for both in parallel
-            tx, gas_estimate = await asyncio.gather(tx_task, gas_task)
+            # Step 2: Build transaction (Optimized with local nonce)
+            tx = await self._build_transaction(opportunity, w3, account)
             
             # Step 2: Update transaction with optimal gas
             tx['maxFeePerGas'] = gas_estimate.max_fee
@@ -180,6 +184,13 @@ class EnterpriseExecutionEngine:
             )
         
         except Exception as e:
+            # CRITICAL: Invalidate nonce cache on failure to force resync with chain
+            # This prevents "nonce too high/low" errors if a tx fails to broadcast
+            try:
+                self._invalidate_nonce(w3.eth.chain_id, account.address)
+            except Exception:
+                pass  # Best effort invalidation
+
             execution_time = (time.time() - start_time) * 1000
             logger.error(f"Execution failed after {execution_time:.2f}ms: {e}")
             
@@ -195,6 +206,13 @@ class EnterpriseExecutionEngine:
                 route='failed'
             )
     
+    def _invalidate_nonce(self, chain_id: int, address: str):
+        """Invalidate nonce cache to force resync on next transaction"""
+        cache_key = f"{chain_id}_{address}"
+        if cache_key in self.nonce_cache:
+            del self.nonce_cache[cache_key]
+            logger.info(f"Invalidated nonce cache for {address} on chain {chain_id} due to execution failure")
+
     async def _build_transaction(
         self,
         opportunity: Dict[str, Any],
@@ -203,8 +221,21 @@ class EnterpriseExecutionEngine:
     ) -> Dict[str, Any]:
         """Build transaction for arbitrage execution"""
         
-        # Get nonce in parallel with other operations
-        nonce = w3.eth.get_transaction_count(account.address, 'pending')
+        # Optimization: Use local nonce if available, else fetch
+        # Ensure chain_id is cached to avoid ANY network calls in hot path
+        chain_name = opportunity.get('chain', 'ethereum')
+        if chain_name not in self.chain_ids:
+             self.chain_ids[chain_name] = w3.eth.chain_id
+        chain_id = self.chain_ids[chain_name]
+        
+        cache_key = f"{chain_id}_{account.address}"
+        
+        if cache_key not in self.nonce_cache:
+            self.nonce_cache[cache_key] = w3.eth.get_transaction_count(account.address, 'pending')
+        
+        nonce = self.nonce_cache[cache_key]
+        # Optimistically increment for next time
+        self.nonce_cache[cache_key] += 1
         
         # Build flash loan transaction
         # This is a simplified version - full implementation would build
@@ -303,6 +334,78 @@ class EnterpriseExecutionEngine:
         
         return tx
     
+    async def _background_gas_updater(self):
+        """Background task to keep gas prices fresh without blocking execution"""
+        
+        def update_gas_sync(chain_name, w3):
+            try:
+                # Get latest block for base fee
+                latest_block = w3.eth.get_block('latest')
+                base_fee = latest_block.get('baseFeePerGas', 0)
+                
+                # Get priority fee
+                try:
+                    priority_fee = w3.eth.max_priority_fee
+                except:
+                    priority_fee = 2 * 10**9
+                
+                # Competitive bidding
+                competitive_priority = int(priority_fee * self.gas_competitive_multiplier)
+                max_fee = base_fee + competitive_priority
+                
+                # Cap at maximum
+                max_gas_wei = self.max_gas_price_gwei * 10**9
+                if max_fee > max_gas_wei:
+                    max_fee = max_gas_wei
+                    competitive_priority = max(0, max_fee - base_fee)
+                
+                # Estimate cost
+                eth_price = Decimal('3000')
+                gas_limit = 500000
+                cost_eth = Decimal(str(max_fee * gas_limit / 1e18))
+                cost_usd = cost_eth * eth_price
+                
+                estimate = GasEstimate(
+                    base_fee=base_fee,
+                    priority_fee=competitive_priority,
+                    max_fee=max_fee,
+                    estimated_cost_usd=cost_usd,
+                    competitive_multiplier=self.gas_competitive_multiplier
+                )
+                
+                self.gas_cache[chain_name] = estimate
+            except Exception as e:
+                logger.warning(f"Failed to update gas for {chain_name}: {e}")
+
+        while True:
+            try:
+                # Update gas for all connected chains
+                tasks = []
+                for chain_name, w3 in self.w3_instances.items():
+                    tasks.append(asyncio.to_thread(update_gas_sync, chain_name, w3))
+                
+                if tasks:
+                    await asyncio.gather(*tasks)
+                
+                await asyncio.sleep(2) # Update every 2 seconds
+            except Exception as e:
+                logger.error(f"Background gas update failed: {e}")
+                await asyncio.sleep(5)
+
+    def _get_cached_gas_price(self, chain: str) -> GasEstimate:
+        """Get gas price from cache or return default if cold"""
+        if chain in self.gas_cache:
+            return self.gas_cache[chain]
+            
+        # Fallback default if cache miss (shouldn't happen after warmup)
+        return GasEstimate(
+            base_fee=30 * 10**9,
+            priority_fee=2 * 10**9,
+            max_fee=35 * 10**9,
+            estimated_cost_usd=Decimal('50'),
+            competitive_multiplier=1.0
+        )
+
     async def _get_optimal_gas_price(
         self,
         w3: Web3,
@@ -318,6 +421,9 @@ class EnterpriseExecutionEngine:
         4. Bid 10% above competitors
         5. Cap at max gas price
         """
+        
+        # Update cache
+        chain_id = str(w3.eth.chain_id) # Simplified key
         
         try:
             # Get latest block for base fee
@@ -348,7 +454,7 @@ class EnterpriseExecutionEngine:
             cost_eth = Decimal(str(max_fee * gas_limit / 1e18))
             cost_usd = cost_eth * eth_price
             
-            return GasEstimate(
+            estimate = GasEstimate(
                 base_fee=base_fee,
                 priority_fee=competitive_priority,
                 max_fee=max_fee,

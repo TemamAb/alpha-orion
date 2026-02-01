@@ -104,20 +104,7 @@ git add .gitignore
 if git diff-index --quiet HEAD --; then
     echo "ℹ️  No changes to commit"
 else
-    git commit -m "🚀 Enterprise-grade flash loan arbitrage system - Production ready
-
-Features:
-- Multi-chain support (8 blockchains)
-- 50+ DEX integrations
-- Sub-50ms execution
-- MEV protection (Flashbots + MEV-Blocker)
-- Enterprise risk management (VaR, stress testing, circuit breakers)
-- Compliance engine (KYC/AML, sanctions screening)
-- Google Cloud deployment ready
-- Statistical + cross-exchange arbitrage
-
-Status: Ready for production deployment
-Score: 95/100 enterprise grade"
+    git commit -m "🤖 Gemini Pilot Protocol: Added Autonomous Monitoring & Continuous Fix Loop"
     echo "✅ Changes committed"
 fi
 
@@ -146,26 +133,14 @@ echo "📊 Repository Status:"
 git status --short | head -20
 echo ""
 
+# Get Commit Hash
+COMMIT_HASH=$(git rev-parse HEAD)
+
 # Push to repositories
-echo "🚀 Ready to push to GitHub repositories"
+echo "🚀 Pushing to GitHub repositories..."
+git push -u origin main
+git push wealthdech main || echo "⚠️  Secondary push to wealthdech failed (check permissions)"
+
 echo ""
-echo "To push to both repositories, run:"
-echo""
-echo "  git push -u origin main"
-echo "  git push wealthdech main"
-echo ""
-echo "Or push to both at once:"
-echo ""
-echo "  git push -u origin main && git push wealthdech main"
-echo ""
-echo "⚠️  Note: You will need to authenticate with GitHub"
-echo "   Use a Personal Access Token (PAT) as password"
-echo "   Create one at: https://github.com/settings/tokens"
-echo ""
-echo "✅ Repository setup complete!"
-echo ""
-echo "📦 Summary:"
-echo "   - Files staged: $(git diff --cached --name-only | wc -l)"
-echo "   - Remotes configured: 2"
-echo "   - Branch: main"
-echo "   - Status: Ready to push"
+echo "✅ SUCCESS: Codebase pushed to GitHub"
+echo "🔑 Commit Hash: $COMMIT_HASH"

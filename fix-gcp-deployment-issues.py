@@ -13,12 +13,13 @@ from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 
 class GCPDeploymentFixer:
-    def __init__(self, project_id: str = "alpha-orion", region: str = "us-central1"):
+    def __init__(self, project_id: str = "alpha-orion-485207", region: str = "us-central1"):
         self.project_id = project_id
         self.region = region
+        self.load_env_config()
         self.issues_found = []
         self.issues_fixed = []
-        self.auth_id = "100036329256815676668"
+        self.auth_id = self.get_active_account()
 
         # Common GCP deployment issues and their fixes
         self.issue_fixes = {
@@ -33,6 +34,52 @@ class GCPDeploymentFixer:
             "billing": self.fix_billing_issues,
             "regions": self.fix_region_availability
         }
+
+    def get_active_account(self) -> str:
+        """Get the currently active gcloud account"""
+        success, stdout, stderr = self.run_command(
+            "gcloud auth list --filter=status:ACTIVE --format='value(account)'",
+            "Getting active account"
+        )
+        return stdout.strip() if success and stdout.strip() else "Unknown"
+
+    def load_env_config(self):
+        """Load configuration from .env file if available"""
+        # Check current and parent directories for .env
+        # Determine script directory to reliably find .env
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        paths = [
+            os.path.join(os.getcwd(), '.env'),
+            os.path.join(os.path.dirname(os.getcwd()), '.env'),
+            os.path.join(os.getcwd(), 'backend-services', 'services', 'user-api-service', '.env'),
+            os.path.join(script_dir, '.env'),
+            os.path.join(os.path.dirname(script_dir), '.env'),
+            os.path.join(script_dir, 'backend-services', 'services', 'user-api-service', '.env')
+        ]
+        
+        for env_path in paths:
+            if os.path.exists(env_path):
+                print(f"📄 Found .env file at: {env_path}")
+                try:
+                    with open(env_path, 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith('#'):
+                                continue
+                            if '=' in line:
+                                key, value = line.split('=', 1)
+                                key = key.strip()
+                                value = value.strip().strip("'").strip('"')
+                                
+                                if key == "GCP_PROJECT_ID" and self.project_id == "alpha-orion-485207":
+                                    self.project_id = value
+                                    print(f"   ✅ Using Project ID from .env: {self.project_id}")
+                                # Load into environment for subprocesses
+                                os.environ[key] = value
+                except Exception as e:
+                    print(f"   ⚠️ Error reading .env: {e}")
+                break
 
     def run_command(self, command: str, description: str = "", timeout: int = 30) -> Tuple[bool, str, str]:
         """Execute shell command with error handling"""
@@ -112,7 +159,18 @@ class GCPDeploymentFixer:
             "securitycenter.googleapis.com",
             "cloudarmor.googleapis.com",
             "networkconnectivity.googleapis.com",
-            "certificatemanager.googleapis.com"
+            "certificatemanager.googleapis.com",
+            "globalaccelerator.googleapis.com",
+            "confidentialcomputing.googleapis.com",
+            "datacatalog.googleapis.com",
+            "clouddeploy.googleapis.com",
+            "config.googleapis.com",
+            "recommender.googleapis.com",
+            "analyticshub.googleapis.com",
+            "policyanalyzer.googleapis.com",
+            "beyondcorp.googleapis.com",
+            "automl.googleapis.com",
+            "networkmanagement.googleapis.com"
         ]
 
         disabled_apis = []
@@ -569,6 +627,9 @@ class GCPDeploymentFixer:
         print(f"Region: {self.region}")
         print(f"Auth ID: {self.auth_id}")
         print()
+        
+        if self.project_id == "alpha-orion-485207":
+            print("⚠️  WARNING: Using default Project ID 'alpha-orion-485207'. Ensure this is correct or set GCP_PROJECT_ID in .env")
 
         # Run diagnostics
         self.run_diagnostics()
@@ -633,7 +694,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="GCP Deployment Issues Fixer for Alpha-Orion")
-    parser.add_argument("--project", default="alpha-orion",
+    parser.add_argument("--project", default="alpha-orion-485207",
                        help="GCP Project ID")
     parser.add_argument("--region", default="us-central1",
                        help="GCP Region")

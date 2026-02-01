@@ -6,9 +6,14 @@
 
 set -e
 
+# Load configuration from .env if available
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
 # Configuration
-PROJECT_ID="alpha-orion"
-REGION="us-central1"
+PROJECT_ID="${GCP_PROJECT_ID:-alpha-orion}"
+REGION="${GCP_REGION:-us-central1}"
 GITHUB_USER="TemamAb"
 REPO1="alpha-orion"
 REPO2="wealthdech"
@@ -206,18 +211,26 @@ push_to_github() {
     if git push -u origin main --quiet; then
         success "Pushed to alpha-orion repository"
     else
-        warning "Push to alpha-orion failed - may need authentication"
-        echo "Please run: git push -u origin main"
-        read -p "Press Enter after authenticating..."
+        if [ "$NON_INTERACTIVE" = "true" ]; then
+            warning "Push to alpha-orion failed. Skipping interactive prompt (NON_INTERACTIVE mode)."
+        else
+            warning "Push to alpha-orion failed - may need authentication"
+            echo "Please run: git push -u origin main"
+            read -p "Press Enter after authenticating..."
+        fi
     fi
 
     log "Pushing to wealthdech..."
     if git push wealthdech main --quiet; then
         success "Pushed to wealthdech repository"
     else
-        warning "Push to wealthdech failed - may need authentication"
-        echo "Please run: git push wealthdech main"
-        read -p "Press Enter after authenticating..."
+        if [ "$NON_INTERACTIVE" = "true" ]; then
+            warning "Push to wealthdech failed. Skipping interactive prompt (NON_INTERACTIVE mode)."
+        else
+            warning "Push to wealthdech failed - may need authentication"
+            echo "Please run: git push wealthdech main"
+            read -p "Press Enter after authenticating..."
+        fi
     fi
 
     success "GitHub deployment complete"
@@ -423,9 +436,9 @@ $(gcloud run services list --region=$REGION --format="table(name,status.url)" --
 
 ## Next Steps
 1. **Immediate**: Monitor services for 24-48 hours
-2. **Start Trading**: Begin with small capital (\$10K-\$50K)
-3. **Scale Gradually**: Increase to \$500K-\$2M as confidence grows
-4. **Enterprise Level**: Target \$2M-\$10M+ for maximum potential
+2. **Capital Deployment**: Deploy initial tranche (\$1M-\$5M)
+3. **Scale Up**: Ramp up to full \$50M+ capacity
+4. **Enterprise Level**: Execute high-volume institutional strategies
 5. **Monitor Performance**: Use ./gcp-monitoring-dashboard.sh --continuous
 
 ## Emergency Contacts

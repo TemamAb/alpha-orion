@@ -7,7 +7,7 @@ const { ethers } = require('ethers');
 class InstitutionalRiskEngine {
   constructor() {
     this.riskLimits = {
-      maxPositionSize: ethers.utils.parseUnits('1000', 18), // $1000 max per position
+      maxPositionSize: ethers.utils.parseUnits('5000000', 18), // $5M max per position for $50M+ scale
       maxPortfolioVaR: 0.05, // 5% VaR limit
       maxDrawdown: 0.10, // 10% max drawdown
       maxLeverage: 3.0, // 3x max leverage

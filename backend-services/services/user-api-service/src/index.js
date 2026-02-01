@@ -2,6 +2,9 @@
 // OPENTELEMETRY DISTRIBUTED TRACING - PHASE 5
 // ============================================
 
+// Load environment variables early to ensure GCP_PROJECT_ID is correct for global clients
+require('dotenv').config();
+
 // Initialize OpenTelemetry before any other imports
 const { NodeSDK } = require('@opentelemetry/sdk-node');
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
@@ -52,6 +55,10 @@ sdk.start();
 const { trace } = require('@opentelemetry/api');
 const tracer = trace.getTracer('user-api-service', '1.0.0');
 
+const { spawn } = require('child_process');
+const net = require('net');
+const http = require('http');
+const { Server } = require('socket.io');
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -75,6 +82,14 @@ const InstitutionalMonitoringEngine = require('./institutional-monitoring-engine
 const EnterpriseProfitEngine = require('./enterprise-profit-engine');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow frontend access
+    methods: ["GET", "POST"]
+  }
+});
+
 
 // Database and Redis connections
 const pool = new Pool({
@@ -347,8 +362,8 @@ async function initializeSecrets() {
       networks: ['Ethereum', 'Polygon', 'BSC', 'Arbitrum', 'Optimism', 'Avalanche', 'Fantom', 'Polygon zkEVM'],
       mode: 'PRODUCTION',
       gasless: true,
-      minProfitThreshold: process.env.MIN_PROFIT_THRESHOLD_USD || 100,
-      autoWithdrawalThreshold: process.env.AUTO_WITHDRAWAL_THRESHOLD_USD || 1000,
+      minProfitThreshold: process.env.MIN_PROFIT_THRESHOLD_USD || 1000,
+      autoWithdrawalThreshold: process.env.AUTO_WITHDRAWAL_THRESHOLD_USD || 50000,
       dexes: ['1inch', 'Uniswap', 'SushiSwap', 'PancakeSwap', 'QuickSwap', 'TraderJoe', 'SpookySwap']
     });
 
@@ -383,6 +398,9 @@ const scanInterval = setInterval(async () => {
     const opportunities = await apiCircuitBreaker.fire(() => profitEngine.generateProfitOpportunities()); // Use EnterpriseProfitEngine
     activeOpportunities = opportunities;
 
+    // STREAMING: Emit opportunities to dashboard
+    io.emit('market:opportunities', { count: opportunities.length, items: opportunities.slice(0, 10) });
+
     if (opportunities.length > 0) {
       log('INFO', `Found ${opportunities.length} opportunities`, { opportunities });
     } else {
@@ -392,7 +410,7 @@ const scanInterval = setInterval(async () => {
     // Execute trades
     for (const opp of opportunities) {
       // Double check profit threshold before execution
-      if (opp.potentialProfit > (process.env.MIN_PROFIT_THRESHOLD_USD || 100)) {
+      if (opp.potentialProfit > (process.env.MIN_PROFIT_THRESHOLD_USD || 1000)) {
         const tradeNumber = totalTrades + 1;
         log('NOTICE', `Executing Trade #${tradeNumber}`, {
           pair: opp.assets,
@@ -429,6 +447,9 @@ const scanInterval = setInterval(async () => {
           unrealizedProfit += netProfit;
           totalTrades++;
           saveState(); // Persist state
+
+          // STREAMING: Emit new trade event
+          io.emit('trade:executed', executedTrades[executedTrades.length - 1]);
         } else {
           log('WARNING', 'Trade execution returned failure status');
         }
@@ -465,6 +486,9 @@ const confirmInterval = setInterval(async () => {
             txHash: trade.txHash
           });
           saveState(); // Persist state
+
+          // STREAMING: Emit confirmation
+          io.emit('trade:confirmed', trade);
         } else if (receipt && !receipt.success) {
           log('ERROR', 'Trade failed on-chain', {
             tradeId: trade.number,
@@ -486,7 +510,7 @@ const confirmInterval = setInterval(async () => {
 // Auto-withdrawal loop
 const withdrawInterval = setInterval(async () => {
   const settings = await getUserSettings();
-  const threshold = settings.auto_withdrawal_threshold || 1000;
+  const threshold = settings.auto_withdrawal_threshold || 50000;
 
   if (realizedProfit >= threshold && settings.withdrawal_mode === 'auto') {
     log('NOTICE', 'Auto-withdrawal triggered', { threshold, realizedProfit });
@@ -543,6 +567,17 @@ const reportInterval = setInterval(() => {
   // Record custom metrics
   recordMetric('pnl_tracking', totalPnl);
   recordMetric('trade_success_rate', confirmed / Math.max(totalTrades, 1));
+
+  // STREAMING: Emit full dashboard update
+  io.emit('dashboard:update', {
+    totalPnl,
+    realizedProfit,
+    unrealizedProfit,
+    totalTrades,
+    activeOpportunities: activeOpportunities.length,
+    timestamp: Date.now()
+  });
+
 }, 20000); // Every 20 seconds
 
 process.on('exit', () => {
@@ -846,7 +881,7 @@ app.get('/mission/status', checkJwt, requireRole(['admin', 'user']), (req, res) 
       pimlico_active: !!PIMLICO_API_KEY,
       profit_generation_active: true,
       auto_withdrawal_enabled: true,
-      withdrawal_threshold: parseInt(process.env.AUTO_WITHDRAWAL_THRESHOLD_USD) || 1000,
+      withdrawal_threshold: parseInt(process.env.AUTO_WITHDRAWAL_THRESHOLD_USD) || 50000,
       wallet_configured: !!process.env.PROFIT_WALLET_ADDRESS
     },
     metrics: {
@@ -1135,6 +1170,24 @@ app.get('/analytics/total-pnl', (req, res) => {
   });
 });
 
+// NEW: Enterprise Risk Metrics Endpoint for Dashboard Upgrade
+app.get('/analytics/risk-metrics', checkJwt, requireRole(['admin', 'trader']), (req, res) => {
+  try {
+    // Calculate real-time risk metrics
+    const metrics = {
+      valueAtRisk: riskEngine ? riskEngine.calculateVaR() : 0,
+      sharpeRatio: riskEngine ? riskEngine.calculateSharpeRatio() : 0,
+      maxDrawdown: riskEngine ? riskEngine.calculateMaxDrawdown() : 0,
+      activeExposure: riskEngine ? riskEngine.portfolio.totalValue : 0,
+      circuitBreakerStatus: riskEngine ? riskEngine.circuitBreaker.status : 'CLOSED'
+    };
+    res.json(metrics);
+  } catch (error) {
+    log('ERROR', 'Failed to fetch risk metrics', { error: error.message });
+    res.status(500).json({ error: 'Risk metrics unavailable' });
+  }
+});
+
 app.get('/trades/executed', (req, res) => {
   res.json({
     count: executedTrades.length,
@@ -1203,34 +1256,7 @@ app.post('/withdraw/manual', checkJwt, requireRole(['admin', 'user']), async (re
   }
 });
 
-app.post('/simulate/market-event', (req, res) => {
-  const profitAmount = parseFloat(req.body.amount) || 1500;
-
-  // Inject a synthetic high-profit trade
-  log('NOTICE', '🧪 SIMULATION: Triggering High-Profit Market Event', { profit: profitAmount });
-
-  const tradeNumber = totalTrades + 1;
-
-  executedTrades.push({
-    number: tradeNumber,
-    pair: 'WETH/USDC (SIMULATED)',
-    profit: profitAmount,
-    txHash: '0xSIMULATED_HASH_' + Date.now(),
-    confirmed: true, // Auto-confirm to test withdrawal immediately
-    timestamp: Date.now()
-  });
-
-  realizedProfit += profitAmount;
-  totalTrades++;
-  saveState(); // Persist state
-
-  res.json({
-    status: 'success',
-    message: 'Simulated high-profit event injected. Auto-withdrawal should trigger shortly.',
-    newRealizedProfit: realizedProfit
-  });
-});
-
+// Production health check endpoint
 app.get('/health', async (req, res) => {
   const health_status = {
     status: 'ok',
@@ -1357,7 +1383,7 @@ async function getUserSettings(userId = 'default') {
         reinvestment_rate: 50.00,
         refresh_interval_seconds: 5,
         withdrawal_mode: 'auto',
-        auto_withdrawal_threshold: 1000.00,
+        auto_withdrawal_threshold: 50000.00,
         manual_withdrawal_amount: 100.00,
         profit_withdrawal_address: null
       };
@@ -1370,7 +1396,7 @@ async function getUserSettings(userId = 'default') {
       reinvestment_rate: 50.00,
       refresh_interval_seconds: 5,
       withdrawal_mode: 'auto',
-      auto_withdrawal_threshold: 1000.00,
+        auto_withdrawal_threshold: 50000.00,
       manual_withdrawal_amount: 100.00,
       profit_withdrawal_address: null
     };
@@ -1396,7 +1422,7 @@ app.get('/settings', checkJwt, requireRole(['admin', 'user']), async (req, res) 
         reinvestment_rate: 50.00,
         refresh_interval_seconds: 5,
         withdrawal_mode: 'auto',
-        auto_withdrawal_threshold: 1000.00,
+        auto_withdrawal_threshold: 50000.00,
         manual_withdrawal_amount: 100.00,
         profit_withdrawal_address: null
       };
@@ -1466,8 +1492,111 @@ app.put('/settings', checkJwt, requireRole(['admin', 'user']), async (req, res) 
   }
 });
 
+// ============================================
+// MISSION CONTROL: DEPLOYMENT ORCHESTRATOR
+// ============================================
+
+// Helper: Find a free port
+const findFreePort = (startPort) => {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(startPort, () => {
+      const { port } = server.address();
+      server.close(() => resolve(port));
+    });
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve(findFreePort(startPort + 1));
+      } else {
+        reject(err);
+      }
+    });
+  });
+};
+
+// Helper: Run shell command and stream output to socket
+const runCommand = (command, args, socket, eventPrefix) => {
+  return new Promise((resolve, reject) => {
+    const process = spawn(command, args, { shell: true });
+    
+    process.stdout.on('data', (data) => {
+      socket.emit(`${eventPrefix}:log`, data.toString());
+    });
+    
+    process.stderr.on('data', (data) => {
+      socket.emit(`${eventPrefix}:log`, `[ERR] ${data.toString()}`);
+    });
+
+    process.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`Command failed with code ${code}`));
+    });
+  });
+};
+
+io.on('connection', (socket) => {
+  // 1. Local Docker Validation
+  socket.on('mission:docker:start', async () => {
+    try {
+      socket.emit('mission:docker:log', '🔍 Detecting free local port...');
+      const port = await findFreePort(9090);
+      socket.emit('mission:docker:log', `✅ Found free port: ${port}`);
+
+      socket.emit('mission:docker:log', '🐳 Building Docker image (alpha-orion-local)...');
+      // Assuming Dockerfile exists in root or current dir. Adjust path if needed.
+      // We use '..' to go up to project root if running from src
+      await runCommand('docker', ['build', '-t', 'alpha-orion-local', '.'], socket, 'mission:docker');
+
+      socket.emit('mission:docker:log', `🚀 Running container on port ${port}...`);
+      // Stop existing if any (cleanup)
+      try { await runCommand('docker', ['rm', '-f', 'alpha-orion-validation'], socket, 'mission:docker'); } catch(e){}
+      
+      await runCommand('docker', ['run', '-d', '--name', 'alpha-orion-validation', '-p', `${port}:8080`, '-e', 'NODE_ENV=production', 'alpha-orion-local'], socket, 'mission:docker');
+
+      socket.emit('mission:docker:success', { port, url: `http://localhost:${port}` });
+      socket.emit('mission:docker:log', `✅ Validation Container Running at http://localhost:${port}`);
+    } catch (error) {
+      socket.emit('mission:docker:log', `❌ Error: ${error.message}`);
+      socket.emit('mission:docker:error', error.message);
+    }
+  });
+
+  // 2. GCP Deployment
+  socket.on('mission:gcp:deploy', async ({ projectId }) => {
+    try {
+      if (!projectId) throw new Error("Project ID is required");
+      
+      socket.emit('mission:gcp:log', `☁️ Initializing deployment for Project: ${projectId}`);
+      
+      // Configure Project
+      await runCommand('gcloud', ['config', 'set', 'project', projectId], socket, 'mission:gcp');
+      
+      // Submit Build & Deploy
+      // We use a simplified direct deploy command for robustness here, or call the shell script
+      socket.emit('mission:gcp:log', '📦 Submitting build to Cloud Run...');
+      
+      const imageName = `gcr.io/${projectId}/alpha-orion-enterprise`;
+      await runCommand('gcloud', ['builds', 'submit', '--tag', imageName, '.'], socket, 'mission:gcp');
+      
+      socket.emit('mission:gcp:log', '🚀 Deploying service...');
+      await runCommand('gcloud', ['run', 'deploy', 'alpha-orion-enterprise', '--image', imageName, '--platform', 'managed', '--region', 'us-central1', '--allow-unauthenticated'], socket, 'mission:gcp');
+
+      // Capture URL
+      socket.emit('mission:gcp:log', '🔍 Retrieving Service URL...');
+      // We can't easily capture stdout from runCommand into a variable with the current helper, 
+      // so we rely on the user seeing the log or we'd need to refactor runCommand to return output.
+      // For now, the logs will show the URL.
+      
+      socket.emit('mission:gcp:success', { registry: imageName });
+    } catch (error) {
+      socket.emit('mission:gcp:log', `❌ Deployment Error: ${error.message}`);
+      socket.emit('mission:gcp:error', error.message);
+    }
+  });
+});
+
 console.log(`Attempting to start server on port ${PORT}`);
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   log('INFO', `Production API running on port ${PORT}`, {
     mode: 'PRODUCTION',
     network: 'Polygon zkEVM'

@@ -14,9 +14,14 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+# Load configuration from .env if available
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
 # Configuration
-PROJECT_ID="${PROJECT_ID:-alpha-orion}"
-REGION="${REGION:-us-central1}"
+PROJECT_ID="${GCP_PROJECT_ID:-${PROJECT_ID:-alpha-orion-485207}}"
+REGION="${GCP_REGION:-${REGION:-us-central1}}"
 SERVICE_ACCOUNT_NAME="alpha-orion-deployer"
 SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 BUCKET_NAME="${PROJECT_ID}-deployments"

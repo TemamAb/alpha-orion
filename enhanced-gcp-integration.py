@@ -15,10 +15,36 @@ from typing import Dict, List, Optional
 class EnhancedGCPIntegration:
     def __init__(self, auth_id: str = "100036329256815676668"):
         self.auth_id = auth_id
-        self.project_id = "alpha-orion"
+        self.project_id = "alpha-orion-485207"
         self.region = "us-central1"
+        self.load_env_config()
         self.services = {}
         self.enhanced_features = {}
+
+        # Core APIs required for the project
+        self.core_apis = [
+            "compute.googleapis.com",
+            "dataflow.googleapis.com",
+            "bigtable.googleapis.com",
+            "aiplatform.googleapis.com",
+            "bigquery.googleapis.com",
+            "monitoring.googleapis.com",
+            "logging.googleapis.com",
+            "pubsub.googleapis.com",
+            "secretmanager.googleapis.com",
+            "cloudbuild.googleapis.com",
+            "containerregistry.googleapis.com",
+            "run.googleapis.com",
+            "vpcaccess.googleapis.com",
+            "servicenetworking.googleapis.com",
+            "cloudresourcemanager.googleapis.com",
+            "iam.googleapis.com",
+            "cloudbilling.googleapis.com",
+            "securitycenter.googleapis.com",
+            "cloudarmor.googleapis.com",
+            "networkconnectivity.googleapis.com",
+            "certificatemanager.googleapis.com"
+        ]
 
         # GCP API endpoints unlocked by authentication
         self.api_endpoints = {
@@ -33,55 +59,76 @@ class EnhancedGCPIntegration:
             "networkconnectivity": "https://networkconnectivity.googleapis.com/v1"
         }
 
+    def load_env_config(self):
+        """Load configuration from .env file if available"""
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        paths = [
+            os.path.join(os.getcwd(), '.env'),
+            os.path.join(script_dir, '.env')
+        ]
+        
+        for env_path in paths:
+            if os.path.exists(env_path):
+                print(f"📄 Found .env file at: {env_path}")
+                try:
+                    with open(env_path, 'r') as f:
+                        for line in f:
+                            if line.strip() and not line.startswith('#') and '=' in line:
+                                key, value = line.strip().split('=', 1)
+                                if key.strip() == "GCP_PROJECT_ID":
+                                    self.project_id = value.strip().strip("'").strip('"')
+                                    print(f"   ✅ Using Project ID from .env: {self.project_id}")
+                except Exception as e:
+                    print(f"   ⚠️ Error reading .env: {e}")
+                break
+
+    def enable_core_apis(self) -> Dict[str, bool]:
+        """Enable standard required APIs"""
+        print("🔌 Enabling Core GCP APIs...")
+        results = {}
+        for api in self.core_apis:
+            results[api] = self._enable_service(api)
+        return results
+
+    def _run_gcloud(self, command: List[str]) -> bool:
+        """Helper to run gcloud commands"""
+        try:
+            if os.name == 'nt':
+                cmd_str = subprocess.list2cmdline(command)
+                result = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
+            else:
+                result = subprocess.run(command, capture_output=True, text=True)
+
+            if result.returncode != 0:
+                # Don't print error for auth checks to avoid noise
+                if "auth" not in command:
+                    print(f"    ⚠️ Command failed: {result.stderr.strip()}")
+                return False
+            return True
+        except Exception as e:
+            print(f"    ❌ Execution error: {e}")
+            return False
+
+    def _enable_service(self, service: str) -> bool:
+        """Actually enable the GCP service"""
+        print(f"  🔌 Requesting enablement: {service}...")
+        return self._run_gcloud(["gcloud", "services", "enable", service, "--project", self.project_id])
+
     def authenticate_with_gcp(self) -> bool:
         """Authenticate using the provided auth ID"""
         print(f"🔐 Authenticating with GCP using Auth ID: {self.auth_id}")
 
-        try:
-            # Set up authentication environment
-            os.environ["GOOGLE_CLOUD_AUTH_ID"] = self.auth_id
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f"/tmp/gcp-auth-{self.auth_id}.json"
-
-            # Create service account key structure
-            service_account_key = {
-                "type": "service_account",
-                "project_id": self.project_id,
-                "private_key_id": f"enhanced-key-{self.auth_id}",
-                "private_key": "-----BEGIN PRIVATE KEY-----\nENHANCED_GCP_INTEGRATION_KEY\n-----END PRIVATE KEY-----\n",
-                "client_email": f"alpha-orion-enhanced@{self.project_id}.iam.gserviceaccount.com",
-                "client_id": self.auth_id,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/alpha-orion-enhanced%40{self.project_id}.iam.gserviceaccount.com"
-            }
-
-            # Write credentials file
-            with open(os.environ["GOOGLE_APPLICATION_CREDENTIALS"], 'w') as f:
-                json.dump(service_account_key, f, indent=2)
-
-            # Test authentication
-            result = subprocess.run([
-                "gcloud", "auth", "activate-service-account",
-                service_account_key["client_email"],
-                "--key-file", os.environ["GOOGLE_APPLICATION_CREDENTIALS"],
-                "--project", self.project_id
-            ], capture_output=True, text=True)
-
-            if result.returncode == 0:
-                print("✅ Enhanced GCP authentication successful")
-                return True
-            else:
-                print(f"❌ Authentication failed: {result.stderr}")
-                return False
-
-        except Exception as e:
-            print(f"❌ Authentication error: {e}")
-            return False
+        # Check if we are already authenticated via gcloud
+        if self._run_gcloud(["gcloud", "auth", "print-access-token"]):
+            print("✅ Detected active GCP session.")
+            return True
+            
+        print("❌ No active GCP session found. Please run 'gcloud auth login' first.")
+        return False
 
     def enable_enterprise_features(self) -> Dict[str, bool]:
         """Enable advanced GCP enterprise features unlocked by auth ID"""
-        print("🚀 Enabling Enterprise GCP Features...")
+        print("🚀 Enabling Enterprise GCP Features (Live Provisioning)...")
 
         features_status = {}
 
@@ -119,6 +166,8 @@ class EnhancedGCPIntegration:
     def _enable_vertex_ai_predictive(self) -> bool:
         """Enable Vertex AI predictive analytics for arbitrage"""
         print("🎯 Enabling Vertex AI Predictive Analytics...")
+        if not self._enable_service("aiplatform.googleapis.com"):
+            return False
 
         try:
             # Create advanced ML models
@@ -151,6 +200,9 @@ class EnhancedGCPIntegration:
     def _enable_automl_arbitrage(self) -> bool:
         """Enable AutoML for automated arbitrage strategy generation"""
         print("🤖 Enabling AutoML Arbitrage Strategies...")
+        if not self._enable_service("automl.googleapis.com"):
+             # Fallback to aiplatform if automl specific api is deprecated/merged
+             self._enable_service("aiplatform.googleapis.com")
 
         try:
             # AutoML pipeline for strategy generation
@@ -171,6 +223,8 @@ class EnhancedGCPIntegration:
     def _enable_real_time_ml(self) -> bool:
         """Enable real-time ML inference for live trading"""
         print("⚡ Enabling Real-Time ML Inference...")
+        # Ensure Cloud Run is enabled for serving
+        self._enable_service("run.googleapis.com")
 
         try:
             # Real-time inference endpoints
@@ -200,6 +254,8 @@ class EnhancedGCPIntegration:
     def _enable_global_accelerator(self) -> bool:
         """Enable Global Accelerator for ultra-low latency"""
         print("🌐 Enabling Global Accelerator...")
+        if not self._enable_service("globalaccelerator.googleapis.com"):
+            return False
 
         try:
             accelerator_config = {
@@ -219,6 +275,8 @@ class EnhancedGCPIntegration:
     def _enable_premium_interconnect(self) -> bool:
         """Enable premium Cloud Interconnect"""
         print("🔗 Enabling Premium Cloud Interconnect...")
+        # Interconnect is part of Compute API
+        self._enable_service("compute.googleapis.com")
 
         try:
             interconnect_config = {
@@ -239,6 +297,8 @@ class EnhancedGCPIntegration:
     def _enable_network_intelligence(self) -> bool:
         """Enable Network Intelligence Center"""
         print("🧠 Enabling Network Intelligence Center...")
+        if not self._enable_service("networkmanagement.googleapis.com"):
+            return False
 
         try:
             intelligence_config = {
@@ -258,6 +318,8 @@ class EnhancedGCPIntegration:
     def _enable_confidential_computing(self) -> bool:
         """Enable Confidential Computing for secure arbitrage"""
         print("🔒 Enabling Confidential Computing...")
+        if not self._enable_service("confidentialcomputing.googleapis.com"):
+            return False
 
         try:
             confidential_config = {
@@ -276,6 +338,8 @@ class EnhancedGCPIntegration:
     def _enable_beyondcorp(self) -> bool:
         """Enable BeyondCorp Enterprise for secure access"""
         print("🏢 Enabling BeyondCorp Enterprise...")
+        if not self._enable_service("beyondcorp.googleapis.com"):
+            return False
 
         try:
             beyondcorp_config = {
@@ -294,6 +358,8 @@ class EnhancedGCPIntegration:
     def _enable_scc_premium(self) -> bool:
         """Enable Security Command Center Premium"""
         print("🛡️ Enabling Security Command Center Premium...")
+        if not self._enable_service("securitycenter.googleapis.com"):
+            return False
 
         try:
             scc_config = {
@@ -313,6 +379,8 @@ class EnhancedGCPIntegration:
     def _enable_bigquery_ml_advanced(self) -> bool:
         """Enable advanced BigQuery ML features"""
         print("📊 Enabling Advanced BigQuery ML...")
+        if not self._enable_service("bigquery.googleapis.com"):
+            return False
 
         try:
             bqml_config = {
@@ -331,6 +399,8 @@ class EnhancedGCPIntegration:
     def _enable_data_catalog_ai(self) -> bool:
         """Enable Data Catalog AI for intelligent data discovery"""
         print("📚 Enabling Data Catalog AI...")
+        if not self._enable_service("datacatalog.googleapis.com"):
+            return False
 
         try:
             catalog_config = {
@@ -349,6 +419,8 @@ class EnhancedGCPIntegration:
     def _enable_analytics_hub(self) -> bool:
         """Enable Analytics Hub for data sharing"""
         print("📤 Enabling Analytics Hub...")
+        if not self._enable_service("analyticshub.googleapis.com"):
+            return False
 
         try:
             hub_config = {
@@ -367,6 +439,8 @@ class EnhancedGCPIntegration:
     def _enable_cloud_deploy_advanced(self) -> bool:
         """Enable advanced Cloud Deploy features"""
         print("🚀 Enabling Advanced Cloud Deploy...")
+        if not self._enable_service("clouddeploy.googleapis.com"):
+            return False
 
         try:
             deploy_config = {
@@ -386,6 +460,8 @@ class EnhancedGCPIntegration:
     def _enable_infrastructure_manager(self) -> bool:
         """Enable Infrastructure Manager for IaC"""
         print("🏗️ Enabling Infrastructure Manager...")
+        if not self._enable_service("config.googleapis.com"):
+            return False
 
         try:
             infra_config = {
@@ -405,6 +481,8 @@ class EnhancedGCPIntegration:
     def _enable_policy_automation(self) -> bool:
         """Enable Policy Automation for governance"""
         print("📋 Enabling Policy Automation...")
+        if not self._enable_service("policyanalyzer.googleapis.com"):
+            return False
 
         try:
             policy_config = {
@@ -423,6 +501,8 @@ class EnhancedGCPIntegration:
     def _enable_cost_management_advanced(self) -> bool:
         """Enable advanced cost management features"""
         print("💰 Enabling Advanced Cost Management...")
+        if not self._enable_service("cloudbilling.googleapis.com"):
+            return False
 
         try:
             cost_config = {
@@ -442,6 +522,8 @@ class EnhancedGCPIntegration:
     def _enable_sustainability_insights(self) -> bool:
         """Enable sustainability insights for green computing"""
         print("🌱 Enabling Sustainability Insights...")
+        if not self._enable_service("recommender.googleapis.com"):
+            return False
 
         try:
             sustainability_config = {
@@ -498,6 +580,11 @@ class EnhancedGCPIntegration:
             print("❌ Enhanced integration failed at authentication")
             return False
 
+        # Step 1.5: Enable Core APIs
+        print("\n🔌 ENABLING CORE INFRASTRUCTURE APIS:")
+        print("-" * 40)
+        core_status = self.enable_core_apis()
+
         # Step 2: Enable enterprise features
         print("\n🔓 ENABLING ENTERPRISE FEATURES:")
         print("-" * 40)
@@ -512,10 +599,19 @@ class EnhancedGCPIntegration:
         print("-" * 40)
 
         successful_features = sum(1 for status in features_status.values() if status)
+        successful_core = sum(1 for status in core_status.values() if status)
+        
         total_features = len(features_status)
+        total_core = len(core_status)
+        
+        total_ops = total_features + total_core
+        total_success = successful_features + successful_core
+        
+        success_rate = (total_success / total_ops * 100) if total_ops > 0 else 0.0
 
-        print(f"✅ Features Successfully Enabled: {successful_features}/{total_features}")
-        print(f"Success Rate: {success_rate:.1f}")
+        print(f"✅ Core APIs Enabled: {successful_core}/{total_core}")
+        print(f"✅ Enterprise Features Enabled: {successful_features}/{total_features}")
+        print(f"Success Rate: {success_rate:.1f}%")
         print("\n🔧 ENABLED FEATURES:")
         for feature, status in features_status.items():
             icon = "✅" if status else "❌"
@@ -553,7 +649,7 @@ def main():
     parser = argparse.ArgumentParser(description="Enhanced GCP Integration for Alpha-Orion")
     parser.add_argument("--auth-id", default="100036329256815676668",
                        help="GCP Authentication ID")
-    parser.add_argument("--project", default="alpha-orion",
+    parser.add_argument("--project", default="alpha-orion-485207",
                        help="GCP Project ID")
 
     args = parser.parse_args()
