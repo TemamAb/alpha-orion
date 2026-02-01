@@ -2,7 +2,7 @@
 > user-api-service@1.0.0 start
 > node src/index.js
 
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
 node:internal/modules/cjs/loader:1413
   throw err;
   ^
