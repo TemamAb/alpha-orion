@@ -1,11 +1,11 @@
 steps:
   # 1. Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/alpha-orion-core', '.']
+    args: ['build', '-t', 'gcr.io/$_PROJECT_ID/alpha-orion-core', '.']
 
   # 2. Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/alpha-orion-core']
+    args: ['push', 'gcr.io/$_PROJECT_ID/alpha-orion-core']
 
   # 3. Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -15,9 +15,9 @@ steps:
       - 'deploy'
       - 'alpha-orion-core'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/alpha-orion-core'
+      - 'gcr.io/$_PROJECT_ID/alpha-orion-core'
       - '--region'
-      - 'us-central1'
+      - '$_REGION'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
@@ -27,7 +27,7 @@ steps:
       - 'NODE_ENV=production'
 
 images:
-  - 'gcr.io/$PROJECT_ID/alpha-orion-core'
+  - 'gcr.io/$_PROJECT_ID/alpha-orion-core'
 
 options:
   logging: CLOUD_LOGGING_ONLY

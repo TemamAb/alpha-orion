@@ -312,12 +312,12 @@ push_to_github() {
 deploy_infrastructure() {
     log "Deploying enterprise infrastructure..."
 
-    if [ ! -d "infrastructure" ]; then
-        warning "Infrastructure directory not found. Skipping infrastructure deployment."
+    if [ ! -d "terraform" ]; then
+        warning "Terraform directory not found. Skipping infrastructure deployment."
         return 0
     fi
 
-    cd infrastructure
+    cd terraform
 
     # Fix for Windows "Unreadable module directory" and corruption
     if [ -d ".terraform" ]; then
@@ -380,6 +380,7 @@ deploy_services() {
     log "Starting Cloud Build deployment..."
     build_id=$(gcloud builds submit \
       --config=cloudbuild-enterprise.yaml \
+      --substitutions _PROJECT_ID=$PROJECT_ID,_REGION=$REGION \
       --timeout=3600s \
       --format="value(id)" \
       --quiet \
