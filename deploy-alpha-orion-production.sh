@@ -312,13 +312,6 @@ push_to_github() {
 deploy_infrastructure() {
     log "Deploying enterprise infrastructure..."
 
-    if [ ! -d "terraform" ]; then
-        warning "Terraform directory not found. Skipping infrastructure deployment."
-        return 0
-    fi
-
-    cd terraform
-
     # Fix for Windows "Unreadable module directory" and corruption
     if [ -d ".terraform" ]; then
         log "🧹 Cleaning up previous Terraform state to fix Windows path issues..."
@@ -332,7 +325,6 @@ deploy_infrastructure() {
         warning "This is likely due to Windows path length limits or invalid module definitions."
         read -p "⚠️  Do you want to skip Infrastructure deployment and proceed to Services? (y/N): " skip_infra
         if [[ "$skip_infra" =~ ^[Yy]$ ]]; then
-            cd ..
             return 0
         else
             exit 1
@@ -345,7 +337,6 @@ deploy_infrastructure() {
         error "Terraform plan failed."
         read -p "⚠️  Do you want to skip Infrastructure deployment and proceed to Services? (y/N): " skip_infra
         if [[ "$skip_infra" =~ ^[Yy]$ ]]; then
-            cd ..
             return 0
         else
             exit 1
@@ -358,7 +349,6 @@ deploy_infrastructure() {
         error "Terraform apply failed."
         read -p "⚠️  Do you want to skip Infrastructure deployment and proceed to Services? (y/N): " skip_infra
         if [[ "$skip_infra" =~ ^[Yy]$ ]]; then
-            cd ..
             return 0
         else
             exit 1
@@ -366,9 +356,8 @@ deploy_infrastructure() {
     fi
 
     # Capture outputs
-    terraform output -json > ../terraform-outputs.json
+    terraform output -json > terraform-outputs.json
 
-    cd ..
     success "Enterprise infrastructure deployed"
 }
 
