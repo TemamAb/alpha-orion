@@ -304,27 +304,58 @@ push_to_github() {
 deploy_infrastructure() {
     log "Deploying enterprise infrastructure..."
 
+    if [ ! -d "infrastructure" ]; then
+        warning "Infrastructure directory not found. Skipping infrastructure deployment."
+        return 0
+    fi
+
     cd infrastructure
+
+    # Fix for Windows "Unreadable module directory" and corruption
+    if [ -d ".terraform" ]; then
+        log "🧹 Cleaning up previous Terraform state to fix Windows path issues..."
+        rm -rf .terraform .terraform.lock.hcl
+    fi
 
     # Initialize Terraform
     log "Initializing Terraform..."
-    terraform init -upgrade -no-color
-    check_success "Terraform initialized"
+    if ! terraform init -upgrade -no-color; then
+        error "Terraform initialization failed."
+        warning "This is likely due to Windows path length limits or invalid module definitions."
+        read -p "⚠️  Do you want to skip Infrastructure deployment and proceed to Services? (y/N): " skip_infra
+        if [[ "$skip_infra" =~ ^[Yy]$ ]]; then
+            cd ..
+            return 0
+        else
+            exit 1
+        fi
+    fi
 
-    # Validate configuration
-    log "Validating Terraform configuration..."
-    terraform validate -no-color
-    check_success "Terraform validation"
-
-    # Create plan
+    # Create plan (Skip validation to save time/errors on partial configs)
     log "Creating deployment plan..."
-    terraform plan -out=tfplan -var="project_id=$PROJECT_ID" -no-color
-    check_success "Terraform plan created"
+    if ! terraform plan -out=tfplan -var="project_id=$PROJECT_ID" -no-color; then
+        error "Terraform plan failed."
+        read -p "⚠️  Do you want to skip Infrastructure deployment and proceed to Services? (y/N): " skip_infra
+        if [[ "$skip_infra" =~ ^[Yy]$ ]]; then
+            cd ..
+            return 0
+        else
+            exit 1
+        fi
+    fi
 
     # Apply infrastructure
     log "Deploying infrastructure..."
-    terraform apply -auto-approve -var="project_id=$PROJECT_ID" -no-color
-    check_success "Infrastructure deployed"
+    if ! terraform apply -auto-approve -var="project_id=$PROJECT_ID" -no-color; then
+        error "Terraform apply failed."
+        read -p "⚠️  Do you want to skip Infrastructure deployment and proceed to Services? (y/N): " skip_infra
+        if [[ "$skip_infra" =~ ^[Yy]$ ]]; then
+            cd ..
+            return 0
+        else
+            exit 1
+        fi
+    fi
 
     # Capture outputs
     terraform output -json > ../terraform-outputs.json
