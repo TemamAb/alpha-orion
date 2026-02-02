@@ -4,7 +4,7 @@ import sys
 import os
 
 # Add project root to path to allow imports
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../backend-services/services/brain-orchestrator/src')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'backend-services/services/brain-orchestrator/src')))
 
 from autoscaling_engine import AutoScalingEngine, LoadBalancer
 

@@ -1,4 +1,4 @@
-// ============================================
+: ETH?// ============================================
 // OPENTELEMETRY DISTRIBUTED TRACING - PHASE 5
 // ============================================
 
@@ -1252,6 +1252,31 @@ app.post('/withdraw/manual', checkJwt, requireRole(['admin', 'user']), async (re
     res.json({ status: 'success', amount, destination: destinationWallet, txHash: result.userOpHash });
   } catch (error) {
     log('ERROR', 'Manual withdrawal failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Dashboard withdrawal endpoint
+app.post('/withdraw/profit', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+    if (realizedProfit < amount) return res.status(400).json({ error: 'Insufficient realized profit' });
+
+    let destinationWallet = process.env.PROFIT_WALLET_ADDRESS;
+    if (!destinationWallet) return res.status(500).json({ error: 'No wallet configured' });
+
+    log('NOTICE', 'Dashboard profit withdrawal requested', { amount });
+    const result = await pimlicoEngine.executeGaslessWithdrawal(amount, destinationWallet);
+
+    realizedProfit -= amount;
+    totalWithdrawals++;
+    saveState(); // Persist state
+
+    res.json({ status: 'success', amount, destination: destinationWallet, txHash: result.userOpHash });
+  } catch (error) {
+    log('ERROR', 'Dashboard withdrawal failed', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

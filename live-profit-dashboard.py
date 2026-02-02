@@ -1,0 +1,4 @@
+CONFIG = {
+    "PORT": 5000,
+    "BACKEND_URL": "http://localhost:3000"
+}

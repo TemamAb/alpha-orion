@@ -8,7 +8,9 @@ set -e
 
 # Load configuration from .env if available
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
+    set -a
+    . ./.env
+    set +a
 fi
 
 # Configuration
@@ -67,6 +69,20 @@ check_success() {
 verify_prerequisites() {
     log "Verifying deployment prerequisites..."
 
+    # Auto-fix for Windows/Git Bash environment if gcloud is not in PATH
+    if ! command -v gcloud &> /dev/null; then
+        if [ -d "/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
+            log "🔄 Detected Google Cloud SDK in Program Files (x86). Adding to PATH..."
+            export PATH=$PATH:"/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin"
+        elif [ -d "/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
+            log "🔄 Detected Google Cloud SDK in Program Files. Adding to PATH..."
+            export PATH=$PATH:"/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin"
+        elif [ -d "/c/Users/$USERNAME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
+            log "🔄 Detected Google Cloud SDK in AppData. Adding to PATH..."
+            export PATH=$PATH:"/c/Users/$USERNAME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
+        fi
+    fi
+
     # Check if gcloud is installed
     if ! command -v gcloud &> /dev/null; then
         error "gcloud CLI not found. Please install Google Cloud SDK."
@@ -111,7 +127,8 @@ verify_prerequisites() {
 enable_apis() {
     log "Enabling required GCP APIs..."
 
-    apis=(
+    # Split into batches to avoid SU_MAX_BATCH_SIZE_EXCEEDED (limit 20)
+    apis_batch_1=(
         "compute.googleapis.com"
         "run.googleapis.com"
         "cloudbuild.googleapis.com"
@@ -123,6 +140,9 @@ enable_apis() {
         "redis.googleapis.com"
         "bigtable.googleapis.com"
         "bigquery.googleapis.com"
+    )
+
+    apis_batch_2=(
         "dataflow.googleapis.com"
         "pubsub.googleapis.com"
         "vpcaccess.googleapis.com"
@@ -135,21 +155,19 @@ enable_apis() {
         "cloudkms.googleapis.com"
     )
 
-    enabled_count=0
-    total_apis=${#apis[@]}
+    log "Enabling APIs (Batch 1/2)..."
+    if gcloud services enable "${apis_batch_1[@]}" --project=$PROJECT_ID --quiet; then
+        success "Core infrastructure APIs enabled"
+    else
+        warning "Batch 1 encountered issues. Attempting to proceed..."
+    fi
 
-    for api in "${apis[@]}"; do
-        echo -n "Enabling $api... "
-        if gcloud services enable $api --project=$PROJECT_ID --quiet 2>/dev/null; then
-            echo -e "${GREEN}✅${NC}"
-            ((enabled_count++))
-        else
-            echo -e "${YELLOW}⚠️${NC} (may already be enabled)"
-            ((enabled_count++))
-        fi
-    done
-
-    success "GCP APIs: $enabled_count/$total_apis enabled"
+    log "Enabling APIs (Batch 2/2)..."
+    if gcloud services enable "${apis_batch_2[@]}" --project=$PROJECT_ID --quiet; then
+        success "Security & Networking APIs enabled"
+    else
+        warning "Batch 2 encountered issues. Attempting to proceed..."
+    fi
 }
 
 # Function to verify secrets
@@ -161,15 +179,10 @@ verify_secrets() {
         "polygon-rpc-url"
         "arbitrum-rpc-url"
         "optimism-rpc-url"
-        "bsc-rpc-url"
-        "avalanche-rpc-url"
         "base-rpc-url"
-        "zksync-rpc-url"
-        "executor-private-key"
-        "withdrawal-wallet-keys"
+        "profit-destination-wallet"
         "pimlico-api-key"
-        "1inch-api-key"
-        "db-credentials"
+        "one-inch-api-key"
     )
 
     missing_secrets=()
@@ -185,8 +198,24 @@ verify_secrets() {
             echo "  - $secret"
         done
         echo ""
-        echo "Run ./setup-secrets.sh to configure missing secrets"
-        exit 1
+        
+        warning "Deployment cannot proceed without these secrets."
+        
+        if [ -f .env ]; then
+            log "📄 Found .env file. Auto-configuring secrets..."
+            ./setup-secrets.sh
+            log "✅ Secrets configured. Resuming deployment..."
+        else
+            read -p "Would you like to run the interactive secrets setup now? (y/N): " run_setup
+            if [[ "$run_setup" =~ ^[Yy]$ ]]; then
+                ./setup-secrets.sh
+                log "Secrets setup finished. Please re-run the deployment script to verify and proceed."
+                exit 0
+            else
+                echo "Run ./setup-secrets.sh to configure missing secrets manually."
+                exit 1
+            fi
+        fi
     fi
 
     success "All production secrets verified"

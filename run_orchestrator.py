@@ -12,8 +12,8 @@ def main():
     
     # 2. Run Orchestrator
     print("\n⚡ Starting Orchestrator...")
-    orchestrator_script = os.path.join("backend-services", "services", "brain-orchestrator", "src", "enterprise_orchestrator.py")
-    
+    orchestrator_script = os.path.join("backend-services", "services", "brain-orchestrator", "src", "main.py")
+
     # Execute
     subprocess.call([sys.executable, orchestrator_script])
 

@@ -103,9 +103,31 @@ jobs:
         services=(
           "user-api-service=backend-services/services/user-api-service"
           "withdrawal-service=backend-services/services/withdrawal-service"
-          "flash-loan-dashboard=frontend-dashboard"
-          # Add other services from main.tf here as they are created and have a Dockerfile
-          # e.g., "eye-scanner-us=backend-services/services/scanner-service"
+          "flash-loan-dashboard=frontend"
+          "brain-orchestrator-us=backend-services/services/brain-orchestrator"
+          "brain-risk-management-us=backend-services/services/brain-risk-management"
+          "brain-strategy-engine-us=backend-services/services/brain-strategy-engine"
+          "brain-ai-optimizer-us=backend-services/services/ai-optimizer"
+          "ai-agent-service=backend-services/services/ai-agent-service"
+          "benchmarking-scraper-service=backend-services/services/benchmarking-scraper-service"
+          "brain-ai-optimization-orchestrator-us=backend-services/services/brain-ai-optimization-orchestrator"
+          "brain-simulation-us=backend-services/services/brain-simulation"
+          "hand-smart-order-router-us=backend-services/services/hand-smart-order-router"
+          "order-management-service-us=backend-services/services/order-management-service"
+          # EU Region Mappings (Using same source as US)
+          "user-api-service-eu=backend-services/services/user-api-service"
+          "withdrawal-service-eu=backend-services/services/withdrawal-service"
+          "flash-loan-dashboard-eu=frontend"
+          "brain-orchestrator-eu=backend-services/services/brain-orchestrator"
+          "brain-risk-management-eu=backend-services/services/brain-risk-management"
+          "brain-strategy-engine-eu=backend-services/services/brain-strategy-engine"
+          "brain-ai-optimizer-eu=backend-services/services/ai-optimizer"
+          "ai-agent-service-eu=backend-services/services/ai-agent-service"
+          "benchmarking-scraper-service-eu=backend-services/services/benchmarking-scraper-service"
+          "brain-ai-optimization-orchestrator-eu=backend-services/services/brain-ai-optimization-orchestrator"
+          "brain-simulation-eu=backend-services/services/brain-simulation"
+          "hand-smart-order-router-eu=backend-services/services/hand-smart-order-router"
+          "order-management-service-eu=backend-services/services/order-management-service"
         )
 
         # Create a variables file for Terraform to consume the image tags

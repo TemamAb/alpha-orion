@@ -11,6 +11,7 @@ import subprocess
 import time
 import webbrowser
 import urllib.request
+import json
 from datetime import datetime
 
 # Configuration
@@ -129,7 +130,7 @@ def phase_1_preflight():
     # 3. Readiness Check
     log_info("Running Readiness Check for core files...")
     # Checking for files known to exist in the context to ensure script passes
-    core_files = ["serve-live-dashboard.py", "LIVE_PROFIT_DASHBOARD.html"] 
+    core_files = ["production/serve-live-dashboard.py", "production/live-profit-dashboard.html"] 
     for f in core_files:
         path = os.path.join(PROJECT_ROOT, f)
         if not os.path.exists(path):
@@ -269,10 +270,21 @@ def phase_3_git_deploy():
     else:
         log_info("No changes to commit.")
         
-    # 4. Launch
-    log_info(f"Launching dashboard: {DASHBOARD_URL}")
-    webbrowser.open(DASHBOARD_URL)
-    log_success("Dashboard launched.")
+def verify_profit_engine():
+    log_info("Verifying Profit Generation Engine (Backend)...")
+    try:
+        req = urllib.request.Request("http://localhost:3000/analytics/total-pnl")
+        with urllib.request.urlopen(req, timeout=2) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode())
+                log_success(f"Profit Generation Verified. Current PnL: ${data.get('total_profit', '0.00')}")
+                return True
+    except Exception:
+        pass
+    
+    print(f"{Colors.WARNING}⚠️  Profit Generation Engine (localhost:3000) not detected.{Colors.ENDC}")
+    print(f"{Colors.WARNING}   Please ensure 'simulate_backend.py' is running to complete the mission.{Colors.ENDC}")
+    return False
 
 def main():
     print(f"{Colors.BOLD}Starting Alpha-Orion Deployment Pipeline...{Colors.ENDC}")
@@ -284,7 +296,19 @@ def main():
         else:
             print(f"\n{Colors.WARNING}=== SKIPPING PHASE 2: LOCAL DOCKER VERIFICATION (Configured to Skip) ==={Colors.ENDC}")
         phase_3_git_deploy()
+        
+        # Verify Profit Engine before launch
+        verify_profit_engine()
+        
         print(f"\n{Colors.GREEN}{Colors.BOLD}DEPLOYMENT PIPELINE COMPLETED SUCCESSFULLY.{Colors.ENDC}")
+        
+        # Phase 4: Local Server Startup
+        print(f"\n{Colors.HEADER}=== PHASE 4: LOCAL SERVER STARTUP ==={Colors.ENDC}")
+        log_info("Starting local dashboard server on port 8080...")
+        env = os.environ.copy()
+        env["PORT"] = "8080"
+        subprocess.run([sys.executable, os.path.join(PROJECT_ROOT, "production", "serve-live-dashboard.py")], env=env)
+        
     except KeyboardInterrupt:
         print("\nDeployment cancelled by user.")
         sys.exit(1)
