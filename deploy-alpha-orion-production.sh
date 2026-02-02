@@ -65,6 +65,36 @@ check_success() {
     fi
 }
 
+# Function to auto-install Terraform
+install_terraform() {
+    log "⬇️  Terraform dependency missing. Auto-installing v1.5.7..."
+    
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+        TF_URL="https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_windows_amd64.zip"
+        
+        if ! curl -s -L -o terraform.zip $TF_URL; then
+            error "Failed to download Terraform."
+            exit 1
+        fi
+        
+        log "📦 Extracting Terraform..."
+        if ! unzip -o -q terraform.zip; then
+             error "Failed to unzip Terraform."
+             exit 1
+        fi
+        rm terraform.zip
+        
+        mkdir -p "$HOME/bin"
+        mv terraform.exe "$HOME/bin/"
+        export PATH="$HOME/bin:$PATH"
+        
+        success "Terraform installed successfully"
+    else
+        error "Manual Terraform installation required for this OS."
+        exit 1
+    fi
+}
+
 # Function to verify prerequisites
 verify_prerequisites() {
     log "Verifying deployment prerequisites..."
@@ -81,6 +111,11 @@ verify_prerequisites() {
             log "🔄 Detected Google Cloud SDK in AppData. Adding to PATH..."
             export PATH=$PATH:"/c/Users/$USERNAME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
         fi
+    fi
+
+    # Check for Terraform
+    if ! command -v terraform &> /dev/null; then
+        install_terraform
     fi
 
     # Check if gcloud is installed
