@@ -4,3 +4,8 @@
 node_modules/
 dashboard_port.txt
 alpha-orion-profit-log.txt
+# Terraform
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.backup

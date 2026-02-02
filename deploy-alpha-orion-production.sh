@@ -260,6 +260,14 @@ verify_secrets() {
 push_to_github() {
     log "Pushing code to GitHub repositories..."
 
+    # ARCHITECTURAL FIX: Prevent committing Terraform state/modules
+    if ! grep -q ".terraform" .gitignore 2>/dev/null; then
+        echo -e "\n# Terraform\n.terraform/\n**/.terraform/\n*.tfstate\n*.tfstate.backup" >> .gitignore
+    fi
+    
+    # Remove accidental tracking of terraform modules from git index
+    git rm -r --cached .terraform infrastructure/.terraform 2>/dev/null || true
+
     # Check if there are changes to commit
     if git diff-index --quiet HEAD --; then
         log "No changes to commit"
