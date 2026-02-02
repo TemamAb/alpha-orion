@@ -380,7 +380,6 @@ deploy_services() {
     log "Starting Cloud Build deployment..."
     build_id=$(gcloud builds submit \
       --config=cloudbuild-enterprise.yaml \
-      --substitutions=_PROJECT_ID=$PROJECT_ID,_REGION=$REGION \
       --timeout=3600s \
       --format="value(id)" \
       --quiet \
