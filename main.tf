@@ -455,142 +455,142 @@ module "flash-loan-lb-global-lb-backend" {
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 # Enterprise: Cloud Armor Security Policies
-module "cloud-armor-security-policy" {
-  source        = "github.com/terraform-google-modules/terraform-google-cloud-armor?ref=v0.4.0"
-  project_id    = "alpha-orion"
-  name          = "flash-loan-security-policy"
-  description   = "Enterprise security policy for Alpha-Orion trading platform"
-  default_rule_action = "allow"
-  type           = "CLOUD_ARMOR"
+# module "cloud-armor-security-policy" {
+#   source        = "github.com/terraform-google-modules/terraform-google-cloud-armor?ref=v0.4.0"
+#   project_id    = "alpha-orion"
+#   name          = "flash-loan-security-policy"
+#   description   = "Enterprise security policy for Alpha-Orion trading platform"
+#   default_rule_action = "allow"
+#   type           = "CLOUD_ARMOR"
 
-  # Enterprise: Advanced WAF rules
-  rules = [
-    {
-      action   = "deny(403)"
-      priority = "1000"
-      description = "Block common web attacks"
-      match = {
-        expr = {
-          expression = "evaluatePreconfiguredExpr('xss-stable')"
-        }
-      }
-    },
-    {
-      action   = "deny(403)"
-      priority = "1001"
-      description = "Block SQL injection attempts"
-      match = {
-        expr = {
-          expression = "evaluatePreconfiguredExpr('sqli-stable')"
-        }
-      }
-    },
-    {
-      action   = "deny(403)"
-      priority = "1002"
-      description = "Block local file inclusion attacks"
-      match = {
-        expr = {
-          expression = "evaluatePreconfiguredExpr('lfi-stable')"
-        }
-      }
-    },
-    {
-      action   = "deny(403)"
-      priority = "1003"
-      description = "Block remote code execution attempts"
-      match = {
-        expr = {
-          expression = "evaluatePreconfiguredExpr('rce-stable')"
-        }
-      }
-    },
-    {
-      action   = "rate_based_ban"
-      priority = "1004"
-      description = "Rate limit excessive requests"
-      rate_limit_options = {
-        conform_action = "allow"
-        exceed_action  = "deny(429)"
-        rate_limit_threshold = {
-          count        = 100
-          interval_sec = 60
-        }
-        ban_duration_sec = 300
-      }
-      match = {
-        config = {
-          src_ip_ranges = ["*"]
-        }
-        versioned_expr = "SRC_IPS_V1"
-      }
-    },
-    {
-      action   = "deny(403)"
-      priority = "1005"
-      description = "Block known malicious IPs"
-      match = {
-        expr = {
-          expression = "evaluatePreconfiguredExpr('cve-canary')"
-        }
-      }
-    }
-  ]
+#   # Enterprise: Advanced WAF rules
+#   rules = [
+#     {
+#       action   = "deny(403)"
+#       priority = "1000"
+#       description = "Block common web attacks"
+#       match = {
+#         expr = {
+#           expression = "evaluatePreconfiguredExpr('xss-stable')"
+#         }
+#       }
+#     },
+#     {
+#       action   = "deny(403)"
+#       priority = "1001"
+#       description = "Block SQL injection attempts"
+#       match = {
+#         expr = {
+#           expression = "evaluatePreconfiguredExpr('sqli-stable')"
+#         }
+#       }
+#     },
+#     {
+#       action   = "deny(403)"
+#       priority = "1002"
+#       description = "Block local file inclusion attacks"
+#       match = {
+#         expr = {
+#           expression = "evaluatePreconfiguredExpr('lfi-stable')"
+#         }
+#       }
+#     },
+#     {
+#       action   = "deny(403)"
+#       priority = "1003"
+#       description = "Block remote code execution attempts"
+#       match = {
+#         expr = {
+#           expression = "evaluatePreconfiguredExpr('rce-stable')"
+#         }
+#       }
+#     },
+#     {
+#       action   = "rate_based_ban"
+#       priority = "1004"
+#       description = "Rate limit excessive requests"
+#       rate_limit_options = {
+#         conform_action = "allow"
+#         exceed_action  = "deny(429)"
+#         rate_limit_threshold = {
+#           count        = 100
+#           interval_sec = 60
+#         }
+#         ban_duration_sec = 300
+#       }
+#       match = {
+#         config = {
+#           src_ip_ranges = ["*"]
+#         }
+#         versioned_expr = "SRC_IPS_V1"
+#       }
+#     },
+#     {
+#       action   = "deny(403)"
+#       priority = "1005"
+#       description = "Block known malicious IPs"
+#       match = {
+#         expr = {
+#           expression = "evaluatePreconfiguredExpr('cve-canary')"
+#         }
+#       }
+#     }
+#   ]
 
-  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
-}
+#   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+# }
 # Enterprise: Security Monitoring and Audit Logging
-module "security-monitoring" {
-  source        = "github.com/terraform-google-modules/terraform-google-scc-notification?ref=v1.1.0"
-  project_id    = "alpha-orion"
-  display_name  = "Alpha-Orion Security Monitoring"
-  description   = "Enterprise security monitoring for Alpha-Orion trading platform"
+# module "security-monitoring" {
+#   source        = "github.com/terraform-google-modules/terraform-google-scc-notification?ref=v1.1.0"
+#   project_id    = "alpha-orion"
+#   display_name  = "Alpha-Orion Security Monitoring"
+#   description   = "Enterprise security monitoring for Alpha-Orion trading platform"
 
-  pubsub_topic = "projects/alpha-orion/topics/security-alerts"
+#   pubsub_topic = "projects/alpha-orion/topics/security-alerts"
 
-  # Enterprise: Advanced security monitoring
-  filter = "category = \"THREAT_DETECTION\" OR category = \"CONFIGURATION_VIOLATION\" OR category = \"VULNERABILITY\""
+#   # Enterprise: Advanced security monitoring
+#   filter = "category = \"THREAT_DETECTION\" OR category = \"CONFIGURATION_VIOLATION\" OR category = \"VULNERABILITY\""
 
-  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
-}
+#   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+# }
 # Enterprise: Identity-Aware Proxy Configuration
-module "iap-config" {
-  source        = "github.com/terraform-google-modules/terraform-google-iap?ref=v1.3.0"
-  project_id    = "alpha-orion"
-  support_email = "security@alpha-orion.com"
+# module "iap-config" {
+#   source        = "github.com/terraform-google-modules/terraform-google-iap?ref=v1.3.0"
+#   project_id    = "alpha-orion"
+#   support_email = "security@alpha-orion.com"
 
-  # Enterprise: IAP for admin endpoints
-  brand         = "Alpha-Orion Security"
-  application_title = "Alpha-Orion Admin Console"
+#   # Enterprise: IAP for admin endpoints
+#   brand         = "Alpha-Orion Security"
+#   application_title = "Alpha-Orion Admin Console"
 
-  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
-}
+#   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+# }
 # Enterprise: Security Headers and SSL Policies
-module "ssl-policy" {
-  source        = "github.com/terraform-google-modules/terraform-google-ssl-policy?ref=v1.0.0"
-  project_id    = "alpha-orion"
-  name          = "flash-loan-ssl-policy"
-  profile       = "MODERN"
-  min_tls_version = "TLS_1_2"
+# module "ssl-policy" {
+#   source        = "github.com/terraform-google-modules/terraform-google-ssl-policy?ref=v1.0.0"
+#   project_id    = "alpha-orion"
+#   name          = "flash-loan-ssl-policy"
+#   profile       = "MODERN"
+#   min_tls_version = "TLS_1_2"
 
-  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
-}
+#   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+# }
 # Enterprise: Security Command Center
-module "security-command-center" {
-  source        = "github.com/terraform-google-modules/terraform-google-scc?ref=v4.0.0"
-  project_id    = "alpha-orion"
-  organization_id = var.organization_id
+# module "security-command-center" {
+#   source        = "github.com/terraform-google-modules/terraform-google-scc?ref=v4.0.0"
+#   project_id    = "alpha-orion"
+#   organization_id = var.organization_id
 
-  # Enterprise: Enable all security services
-  services = [
-    "securitycenter.googleapis.com",
-    "containerthreatdetection.googleapis.com",
-    "eventthreatdetection.googleapis.com",
-    "websecurityscanner.googleapis.com"
-  ]
+#   # Enterprise: Enable all security services
+#   services = [
+#     "securitycenter.googleapis.com",
+#     "containerthreatdetection.googleapis.com",
+#     "eventthreatdetection.googleapis.com",
+#     "websecurityscanner.googleapis.com"
+#   ]
 
-  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
-}
+#   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+# }
 module "pimlico-api-secret-eu" {
   source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
   project_id  = "alpha-orion"

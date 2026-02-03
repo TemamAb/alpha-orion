@@ -12,20 +12,12 @@ import sys
 import urllib.request
 import urllib.error
 import webbrowser
-
-# Load Configuration
-config_path = os.path.join(os.path.dirname(__file__), "live-profit-dashboard.py")
-config_data = {}
-try:
-    with open(config_path) as f:
-        exec(f.read(), {}, config_data)
-    CONFIG = config_data.get("CONFIG", {})
-except Exception as e:
-    print(f"Error loading config: {e}")
-    CONFIG = {"PORT": 8080, "BACKEND_URL": "http://localhost:3000"}
-
-PORT = CONFIG["PORT"]
-BACKEND_URL = CONFIG["BACKEND_URL"]
+# Configuration - Hardcoded to resolve deployment blocker
+# As per UPDATED_DEPLOYMENT_CHECKLIST.md, the dashboard must run on port 8888.
+# The previous dynamic configuration was failing and causing a port conflict with the API server (8080).
+PORT = 8888
+BACKEND_URL = "http://localhost:3000" # Simulation backend for non-proxied API calls
+ORCHESTRATOR_URL = "http://localhost:8080" # Production API backend
 DASHBOARD_FILE = "simulation/performance-dashboard.html"
 
 class ProductionHandler(http.server.SimpleHTTPRequestHandler):
@@ -79,7 +71,7 @@ class ProductionHandler(http.server.SimpleHTTPRequestHandler):
     def proxy_request(self):
         # Route strategy, analytics, opportunities, trades requests to orchestrator (8080), others to simulation backend (3000)
         if self.path.startswith(('/strategy', '/analytics', '/opportunities', '/trades')):
-            target = f"http://localhost:8080{self.path}"
+            target = f"{ORCHESTRATOR_URL}{self.path}"
         else:
             target = f"{BACKEND_URL}{self.path}"
         try:

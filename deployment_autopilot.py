@@ -51,7 +51,7 @@ class DeploymentAutopilot:
         print(f"\n{Colors.HEADER}🔐 PHASE 1A: GCP ACCESS VERIFICATION{Colors.ENDC}")
 
         # Check gcloud auth
-        success, _ = self._run_command("gcloud auth list --filter=status:ACTIVE --format='value(account)'",
+        success, _ = self._run_command("gcloud auth list --filter=status:ACTIVE --format=value(account)",
                                      "Checking GCP authentication")
 
         if not success:
