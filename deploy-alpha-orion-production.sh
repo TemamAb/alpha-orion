@@ -308,17 +308,40 @@ push_to_github() {
 deploy_infrastructure() {
     log "Deploying enterprise infrastructure..."
 
+    # Ensure we are in the right directory and have the config
+    if [ -d "infrastructure" ]; then
+        cd infrastructure
+        # Copy main.tf if it's missing in infrastructure but exists in root
+        if [ ! -f "main.tf" ] && [ -f "../main.tf" ]; then
+            log "📦 Copying main.tf to infrastructure directory..."
+            cp "../main.tf" .
+        fi
+    fi
+
     # Fix for Windows "Unreadable module directory" and corruption
     if [ -d ".terraform" ]; then
         log "🧹 Cleaning up previous Terraform state to fix Windows path issues..."
         rm -rf .terraform .terraform.lock.hcl
     fi
 
+    # Fix for Windows Long Paths (Critical for Terraform modules)
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+        log "🔧 Enabling long paths support in Git..."
+        git config --global core.longpaths true
+        
+        # Use a short path for Terraform data to avoid MAX_PATH issues
+        # This moves the deep module tree out of the project folder
+        TF_SHORT_DIR="$HOME/.tf_data_ao"
+        mkdir -p "$TF_SHORT_DIR"
+        export TF_DATA_DIR="$TF_SHORT_DIR"
+        log "🔧 Using short TF_DATA_DIR: $TF_SHORT_DIR"
+    fi
+
     # Auto-fix main.tf project ID if it's hardcoded wrong (Auto-Healing)
-    if grep -q 'project_id  = "alpha-orion"' main.tf || grep -q 'project_id = "alpha-orion"' main.tf; then
+    if grep -q "alpha-orion" main.tf; then
         log "🔧 Auto-correcting Project ID in main.tf to $PROJECT_ID..."
-        sed -i "s/project_id  = \"alpha-orion\"/project_id  = \"$PROJECT_ID\"/g" main.tf
-        sed -i "s/project_id = \"alpha-orion\"/project_id = \"$PROJECT_ID\"/g" main.tf
+        # Use robust regex to handle variable whitespace (e.g. "project_id    = ...")
+        sed -i "s/project_id[[:space:]]*=[[:space:]]*\"alpha-orion\"/project_id = \"$PROJECT_ID\"/g" main.tf
         sed -i "s|projects/alpha-orion/|projects/$PROJECT_ID/|g" main.tf
         sed -i "s|pkg.dev/alpha-orion/|pkg.dev/$PROJECT_ID/|g" main.tf
     fi
