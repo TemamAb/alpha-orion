@@ -16,7 +16,6 @@ PROJECT_ID="${GCP_PROJECT_ID:-alpha-orion}"
 REGION="${GCP_REGION:-us-central1}"
 GITHUB_USER="TemamAb"
 REPO1="alpha-orion"
-REPO2="wealthdech"
 
 echo "🚀 ALPHA-ORION FULLY AUTOMATED ENTERPRISE DEPLOYMENT"
 echo "===================================================="
@@ -145,13 +144,6 @@ else
     exit 1
 fi
 
-if git remote get-url wealthdech | grep -q "$GITHUB_USER/$REPO2"; then
-    echo "✅ WealthDech remote: $GITHUB_USER/$REPO2"
-else
-    echo "❌ WealthDech remote not configured"
-    exit 1
-fi
-
 echo "✅ GitHub setup verified"
 echo ""
 
@@ -165,15 +157,6 @@ if git push -u origin main --quiet; then
 else
     echo "⚠️  Push failed - may need authentication"
     echo "Please run: git push -u origin main"
-    read -p "Press Enter after authenticating with GitHub..."
-fi
-
-echo "Pushing to wealthdech..."
-if git push wealthdech main --quiet; then
-    echo "✅ Pushed to wealthdech repository"
-else
-    echo "⚠️  Push failed - may need authentication"
-    echo "Please run: git push wealthdech main"
     read -p "Press Enter after authenticating with GitHub..."
 fi
 

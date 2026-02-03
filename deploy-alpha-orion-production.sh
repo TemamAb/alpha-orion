@@ -14,11 +14,10 @@ if [ -f .env ]; then
 fi
 
 # Configuration
-PROJECT_ID="${GCP_PROJECT_ID:-alpha-orion}"
+PROJECT_ID="${GCP_PROJECT_ID:-alpha-orion-485207}"
 REGION="${GCP_REGION:-us-central1}"
 GITHUB_USER="TemamAb"
 REPO1="alpha-orion"
-REPO2="wealthdech"
 
 # Colors for output
 RED='\033[0;31m'
@@ -112,6 +111,12 @@ verify_prerequisites() {
             export PATH=$PATH:"/c/Users/$USERNAME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
         fi
     fi
+    
+    # Fix for Windows Long Paths (Critical for Terraform modules)
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+        log "🔧 Enabling long paths support in Git to fix Terraform init..."
+        git config --global core.longpaths true
+    fi
 
     # Check for Terraform
     if ! command -v terraform &> /dev/null; then
@@ -189,6 +194,10 @@ enable_apis() {
         "iam.googleapis.com"
         "cloudkms.googleapis.com"
     )
+
+    log "Enabling Service Usage API first (Required for others)..."
+    gcloud services enable serviceusage.googleapis.com cloudresourcemanager.googleapis.com --project=$PROJECT_ID --quiet
+    check_success "Service Usage API enabled"
 
     log "Enabling APIs (Batch 1/2)..."
     if gcloud services enable "${apis_batch_1[@]}" --project=$PROJECT_ID --quiet; then
@@ -292,19 +301,6 @@ push_to_github() {
         fi
     fi
 
-    log "Pushing to wealthdech..."
-    if git push wealthdech main --quiet; then
-        success "Pushed to wealthdech repository"
-    else
-        if [ "$NON_INTERACTIVE" = "true" ]; then
-            warning "Push to wealthdech failed. Skipping interactive prompt (NON_INTERACTIVE mode)."
-        else
-            warning "Push to wealthdech failed - may need authentication"
-            echo "Please run: git push wealthdech main"
-            read -p "Press Enter after authenticating..."
-        fi
-    fi
-
     success "GitHub deployment complete"
 }
 
@@ -316,6 +312,15 @@ deploy_infrastructure() {
     if [ -d ".terraform" ]; then
         log "🧹 Cleaning up previous Terraform state to fix Windows path issues..."
         rm -rf .terraform .terraform.lock.hcl
+    fi
+
+    # Auto-fix main.tf project ID if it's hardcoded wrong (Auto-Healing)
+    if grep -q 'project_id  = "alpha-orion"' main.tf || grep -q 'project_id = "alpha-orion"' main.tf; then
+        log "🔧 Auto-correcting Project ID in main.tf to $PROJECT_ID..."
+        sed -i "s/project_id  = \"alpha-orion\"/project_id  = \"$PROJECT_ID\"/g" main.tf
+        sed -i "s/project_id = \"alpha-orion\"/project_id = \"$PROJECT_ID\"/g" main.tf
+        sed -i "s|projects/alpha-orion/|projects/$PROJECT_ID/|g" main.tf
+        sed -i "s|pkg.dev/alpha-orion/|pkg.dev/$PROJECT_ID/|g" main.tf
     fi
 
     # Initialize Terraform

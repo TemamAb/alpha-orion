@@ -11,7 +11,6 @@ PROJECT_ID="alpha-orion-485207"
 REGION="us-central1"
 GITHUB_USER="TemamAb"
 REPO1="alpha-orion"
-REPO2="wealthdech"
 
 echo "🚀 ALPHA-ORION ENTERPRISE DEPLOYMENT ORCHESTRATION"
 echo "=================================================="
@@ -48,13 +47,6 @@ else
     exit 1
 fi
 
-if git remote get-url wealthdech | grep -q "$GITHUB_USER/$REPO2"; then
-    echo "✅ WealthDech remote configured: $GITHUB_USER/$REPO2"
-else
-    echo "❌ WealthDech remote not properly configured"
-    exit 1
-fi
-
 # Check if on main branch
 if [ "$(git branch --show-current)" != "main" ]; then
     echo "❌ Not on main branch"
@@ -73,15 +65,6 @@ if git push -u origin main; then
 else
     echo "⚠️  Push to alpha-orion failed (may need authentication)"
     echo "Please run: git push -u origin main"
-    echo "And authenticate with your GitHub Personal Access Token"
-fi
-
-echo "Pushing to wealthdech..."
-if git push wealthdech main; then
-    echo "✅ Successfully pushed to wealthdech repository"
-else
-    echo "⚠️  Push to wealthdech failed (may need authentication)"
-    echo "Please run: git push wealthdech main"
     echo "And authenticate with your GitHub Personal Access Token"
 fi
 

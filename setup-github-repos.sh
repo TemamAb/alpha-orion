@@ -10,7 +10,6 @@ echo "========================================"
 
 # Configuration
 REPO1="github.com/TemamAb/alpha-orion"
-REPO2="github.com/TemamAb/wealthdech"
 
 # Initialize git if not already initialized
 if [ ! -d ".git" ]; then
@@ -113,15 +112,16 @@ echo "🔗 Adding remote repositories..."
 
 # Remove existing remotes if they exist
 git remote remove origin 2>/dev/null || true
-git remote remove wealthdech 2>/dev/null || true
+git remote remove wealthdeck 2>/dev/null || true
 
 # Add new remotes
 git remote add origin "https://$REPO1.git"
-git remote add wealthdech "https://$REPO2.git"
 
 echo "✅ Remotes added:"
 echo "   - origin: $REPO1"
-echo "   - wealthdech: $REPO2"
+
+echo "🔍 Verification (git remote -v):"
+git remote -v
 
 # Create and checkout main branch
 echo "🌿 Setting up main branch..."
@@ -139,7 +139,6 @@ COMMIT_HASH=$(git rev-parse HEAD)
 # Push to repositories
 echo "🚀 Pushing to GitHub repositories..."
 git push -u origin main
-git push wealthdech main || echo "⚠️  Secondary push to wealthdech failed (check permissions)"
 
 echo ""
 echo "✅ SUCCESS: Codebase pushed to GitHub"
