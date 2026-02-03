@@ -311,10 +311,10 @@ deploy_infrastructure() {
     # Ensure we are in the right directory and have the config
     if [ -d "infrastructure" ]; then
         cd infrastructure
-        # Copy main.tf if it's missing in infrastructure but exists in root
-        if [ ! -f "main.tf" ] && [ -f "../main.tf" ]; then
-            log "📦 Copying main.tf to infrastructure directory..."
-            cp "../main.tf" .
+        # Force update main.tf from root to ensure latest config
+        if [ -f "../main.tf" ]; then
+            log "📦 Syncing main.tf to infrastructure directory..."
+            cp -f "../main.tf" .
         fi
     fi
 
@@ -332,6 +332,8 @@ deploy_infrastructure() {
         # Use a short path for Terraform data to avoid MAX_PATH issues
         # This moves the deep module tree out of the project folder
         # Convert to Windows path format for terraform.exe using cygpath
+        # Clean it first to ensure no corruption from previous failed runs
+        rm -rf "$HOME/.tf_data_ao"
         mkdir -p "$HOME/.tf_data_ao"
         if command -v cygpath &> /dev/null; then
             TF_SHORT_DIR=$(cygpath -w "$HOME/.tf_data_ao")
@@ -343,7 +345,8 @@ deploy_infrastructure() {
     fi
 
     # Auto-fix main.tf project ID if it's hardcoded wrong (Auto-Healing)
-    if grep -q "alpha-orion" main.tf; then
+    # Check for "alpha-orion" specifically (the placeholder), not the full ID
+    if grep -q "\"alpha-orion\"" main.tf; then
         log "🔧 Auto-correcting Project ID in main.tf to $PROJECT_ID..."
         # Use robust regex to handle variable whitespace (e.g. "project_id    = ...")
         sed -i "s/project_id[[:space:]]*=[[:space:]]*\"alpha-orion\"/project_id = \"$PROJECT_ID\"/g" main.tf
@@ -353,7 +356,7 @@ deploy_infrastructure() {
 
     # Initialize Terraform
     log "Initializing Terraform..."
-    if ! terraform init -upgrade -no-color; then
+    if ! terraform init -upgrade -reconfigure -no-color; then
         error "Terraform initialization failed."
         warning "This is likely due to Windows path length limits or invalid module definitions."
         read -p "⚠️  Do you want to skip Infrastructure deployment and proceed to Services? (y/N): " skip_infra
