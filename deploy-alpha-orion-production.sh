@@ -331,8 +331,13 @@ deploy_infrastructure() {
         
         # Use a short path for Terraform data to avoid MAX_PATH issues
         # This moves the deep module tree out of the project folder
-        TF_SHORT_DIR="$HOME/.tf_data_ao"
-        mkdir -p "$TF_SHORT_DIR"
+        # Convert to Windows path format for terraform.exe using cygpath
+        mkdir -p "$HOME/.tf_data_ao"
+        if command -v cygpath &> /dev/null; then
+            TF_SHORT_DIR=$(cygpath -w "$HOME/.tf_data_ao")
+        else
+            TF_SHORT_DIR="$HOME/.tf_data_ao"
+        fi
         export TF_DATA_DIR="$TF_SHORT_DIR"
         log "🔧 Using short TF_DATA_DIR: $TF_SHORT_DIR"
     fi

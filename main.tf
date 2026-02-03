@@ -14,7 +14,7 @@ module "pimlico-api-secret" {
 }
 module "user-api-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "user-api-service"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/user-api-service:${lookup(var.image_versions, "user-api-service", "latest")}"
@@ -52,7 +52,7 @@ module "db-secret" {
 }
 module "scanner-service-data-analysis" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "eye-scanner-us"
   description                   = "Responsible for data collection and opportunity identification in the US region."
@@ -81,7 +81,7 @@ module "scanner-service-data-analysis" {
 }
 module "orchestrator-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "brain-orchestrator-us"
   description                   = "Manages workflow and orchestrates strategies in the US region."
@@ -110,7 +110,7 @@ module "orchestrator-service" {
 }
 module "ai-optimizer-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "brain-ai-optimizer-us"
   description                   = "Continuously optimizes AI models for performance in the US region."
@@ -142,7 +142,7 @@ module "ai-optimizer-service" {
 }
 module "dashboard-frontend" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "flash-loan-dashboard"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/flash-loan-dashboard:${lookup(var.image_versions, "flash-loan-dashboard", "latest")}"
@@ -193,7 +193,7 @@ module "dashboard-frontend" {
 }
 module "withdrawal-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "withdrawal-service"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/withdrawal-service:${lookup(var.image_versions, "withdrawal-service", "latest")}"
@@ -221,13 +221,13 @@ module "withdrawal-service" {
 }
 module "vertex-ai-apis" {
   source        = "github.com/terraform-google-modules/terraform-google-project-factory//modules/project_services?ref=v18.0.0"
-  project_id    = "alpha-orion"
+  project_id    = "alpha-orion-485207"
   activate_apis = ["aiplatform.googleapis.com"]
   depends_on    = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "scanner-output-topic" {
   source             = "github.com/terraform-google-modules/terraform-google-pubsub?ref=v8.3.2"
-  project_id         = "alpha-orion"
+  project_id         = "alpha-orion-485207"
   topic              = "raw-opportunities"
   push_subscriptions = concat([{"name" = module.scanner-service-data-analysis.apphub_service_uri.service_id, "oidc_service_account_email" = module.scanner-service-data-analysis.service_account_id.email, "push_endpoint" = module.scanner-service-data-analysis.service_uri}], [{"oidc_service_account_email" = module.orchestrator-service.service_account_id.email, "push_endpoint" = module.orchestrator-service.service_uri, "name" = module.orchestrator-service.apphub_service_uri.service_id}])
   pull_subscriptions = concat([{"name" = module.scanner-service-data-analysis.service_name, "service_account" = module.scanner-service-data-analysis.service_account_id.email}], [{"service_account" = module.orchestrator-service.service_account_id.email, "name" = module.orchestrator-service.service_name}])
@@ -260,7 +260,7 @@ module "withdrawal-wallet-secret" {
 }
 module "ai-terminal-frontend" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "ai-terminal-frontend"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/ai-terminal-frontend:${lookup(var.image_versions, "ai-terminal-frontend", "latest")}"
@@ -288,7 +288,7 @@ module "ai-terminal-frontend" {
 }
 module "ai-agent-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "ai-agent-service"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/ai-agent-service:${lookup(var.image_versions, "ai-agent-service", "latest")}"
@@ -319,7 +319,7 @@ module "ai-agent-service" {
 }
 module "benchmarking-scraper-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "benchmarking-scraper-service"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/benchmarking-scraper-service:${lookup(var.image_versions, "benchmarking-scraper-service", "latest")}"
@@ -347,7 +347,7 @@ module "benchmarking-scraper-service" {
 }
 module "strategy-engine-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "brain-strategy-engine-us"
   description                   = "Selects and executes optimal strategies in the US region."
@@ -381,7 +381,7 @@ module "strategy-engine-service" {
 module "flash-loan-lb-global-lb-frontend" {
   source                          = "github.com/terraform-google-modules/terraform-google-lb-http//modules/frontend?ref=v13.2.0"
   name                            = "flash-loan-app-frontend"
-  project_id                      = "alpha-orion"
+  project_id                      = "alpha-orion-485207"
   create_address                  = true
   url_map_input                   = module.flash-loan-lb-global-lb-backend.backend_service_info
   ssl                             = true
@@ -401,7 +401,7 @@ module "flash-loan-lb-global-lb-frontend" {
 module "flash-loan-lb-global-lb-backend" {
   source                  = "github.com/terraform-google-modules/terraform-google-lb-http//modules/backend?ref=v13.2.0"
   name                    = "flash-loan-app-backend"
-  project_id              = "alpha-orion"
+  project_id              = "alpha-orion-485207"
   load_balancing_scheme   = "EXTERNAL_MANAGED"
   protocol                = "HTTP"
   enable_cdn              = true
@@ -457,7 +457,7 @@ module "flash-loan-lb-global-lb-backend" {
 # Enterprise: Cloud Armor Security Policies
 # module "cloud-armor-security-policy" {
 #   source        = "github.com/terraform-google-modules/terraform-google-cloud-armor?ref=v0.4.0"
-#   project_id    = "alpha-orion"
+#   project_id    = "alpha-orion-485207"
 #   name          = "flash-loan-security-policy"
 #   description   = "Enterprise security policy for Alpha-Orion trading platform"
 #   default_rule_action = "allow"
@@ -542,7 +542,7 @@ module "flash-loan-lb-global-lb-backend" {
 # Enterprise: Security Monitoring and Audit Logging
 # module "security-monitoring" {
 #   source        = "github.com/terraform-google-modules/terraform-google-scc-notification?ref=v1.1.0"
-#   project_id    = "alpha-orion"
+#   project_id    = "alpha-orion-485207"
 #   display_name  = "Alpha-Orion Security Monitoring"
 #   description   = "Enterprise security monitoring for Alpha-Orion trading platform"
 
@@ -556,7 +556,7 @@ module "flash-loan-lb-global-lb-backend" {
 # Enterprise: Identity-Aware Proxy Configuration
 # module "iap-config" {
 #   source        = "github.com/terraform-google-modules/terraform-google-iap?ref=v1.3.0"
-#   project_id    = "alpha-orion"
+#   project_id    = "alpha-orion-485207"
 #   support_email = "security@alpha-orion.com"
 
 #   # Enterprise: IAP for admin endpoints
@@ -568,7 +568,7 @@ module "flash-loan-lb-global-lb-backend" {
 # Enterprise: Security Headers and SSL Policies
 # module "ssl-policy" {
 #   source        = "github.com/terraform-google-modules/terraform-google-ssl-policy?ref=v1.0.0"
-#   project_id    = "alpha-orion"
+#   project_id    = "alpha-orion-485207"
 #   name          = "flash-loan-ssl-policy"
 #   profile       = "MODERN"
 #   min_tls_version = "TLS_1_2"
@@ -578,7 +578,7 @@ module "flash-loan-lb-global-lb-backend" {
 # Enterprise: Security Command Center
 # module "security-command-center" {
 #   source        = "github.com/terraform-google-modules/terraform-google-scc?ref=v4.0.0"
-#   project_id    = "alpha-orion"
+#   project_id    = "alpha-orion-485207"
 #   organization_id = var.organization_id
 
 #   # Enterprise: Enable all security services
@@ -623,7 +623,7 @@ module "withdrawal-wallet-secret-eu" {
 }
 module "scanner-output-topic-eu" {
   source             = "github.com/terraform-google-modules/terraform-google-pubsub?ref=v8.3.2"
-  project_id         = "alpha-orion"
+  project_id         = "alpha-orion-485207"
   topic              = "raw-opportunities-eu"
   push_subscriptions = concat([{"oidc_service_account_email" = module.scanner-service-data-analysis-eu.service_account_id.email, "push_endpoint" = module.scanner-service-data-analysis-eu.service_uri, "name" = module.scanner-service-data-analysis-eu.apphub_service_uri.service_id}], [{"push_endpoint" = module.orchestrator-service-eu.service_uri, "name" = module.orchestrator-service-eu.apphub_service_uri.service_id, "oidc_service_account_email" = module.orchestrator-service-eu.service_account_id.email}])
   pull_subscriptions = concat([{"name" = module.scanner-service-data-analysis-eu.service_name, "service_account" = module.scanner-service-data-analysis-eu.service_account_id.email}], [{"name" = module.orchestrator-service-eu.service_name, "service_account" = module.orchestrator-service-eu.service_account_id.email}])
@@ -646,7 +646,7 @@ module "execution-request-topic-eu" {
 }
 module "user-api-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "user-api-service-eu"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/user-api-service-eu:${lookup(var.image_versions, "user-api-service-eu", "latest")}"
@@ -674,7 +674,7 @@ module "user-api-service-eu" {
 }
 module "scanner-service-data-analysis-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "eye-scanner-eu"
   description                   = "Responsible for data collection and opportunity identification in the EU region."
@@ -703,7 +703,7 @@ module "scanner-service-data-analysis-eu" {
 }
 module "orchestrator-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "brain-orchestrator-eu"
   description                   = "Manages workflow and orchestrates strategies in the EU region."
@@ -732,7 +732,7 @@ module "orchestrator-service-eu" {
 }
 module "ai-optimizer-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "brain-ai-optimizer-eu"
   description                   = "Continuously optimizes AI models for performance in the EU region."
@@ -764,7 +764,7 @@ module "ai-optimizer-service-eu" {
 }
 module "dashboard-frontend-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "flash-loan-dashboard-eu"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/flash-loan-dashboard-eu:${lookup(var.image_versions, "flash-loan-dashboard-eu", "latest")}"
@@ -792,7 +792,7 @@ module "dashboard-frontend-eu" {
 }
 module "withdrawal-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "withdrawal-service-eu"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/withdrawal-service-eu:${lookup(var.image_versions, "withdrawal-service-eu", "latest")}"
@@ -820,7 +820,7 @@ module "withdrawal-service-eu" {
 }
 module "ai-terminal-frontend-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "ai-terminal-frontend-eu"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/ai-terminal-frontend-eu:${lookup(var.image_versions, "ai-terminal-frontend-eu", "latest")}"
@@ -848,7 +848,7 @@ module "ai-terminal-frontend-eu" {
 }
 module "ai-agent-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "ai-agent-service-eu"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/ai-agent-service-eu:${lookup(var.image_versions, "ai-agent-service-eu", "latest")}"
@@ -879,7 +879,7 @@ module "ai-agent-service-eu" {
 }
 module "benchmarking-scraper-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "benchmarking-scraper-service-eu"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/benchmarking-scraper-service-eu:${lookup(var.image_versions, "benchmarking-scraper-service-eu", "latest")}"
@@ -911,7 +911,7 @@ module "benchmarking-scraper-service-eu" {
 }
 module "strategy-engine-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "brain-strategy-engine-eu"
   description                   = "Selects and executes optimal strategies in the EU region."
@@ -941,7 +941,7 @@ module "strategy-engine-service-eu" {
 module "flash-loan-lb-global-lb-backend-ai-terminal" {
   source                  = "github.com/terraform-google-modules/terraform-google-lb-http//modules/backend?ref=v13.2.0"
   name                    = "flash-loan-app-backend-ai-terminal"
-  project_id              = "alpha-orion"
+  project_id              = "alpha-orion-485207"
   load_balancing_scheme   = "EXTERNAL_MANAGED"
   protocol                = "HTTP"
   enable_cdn              = true
@@ -973,7 +973,7 @@ module "alloydb-primary-us" {
 }
 module "alloydb-secondary-eu" {
   source                      = "github.com/GoogleCloudPlatform/terraform-google-alloy-db?ref=v8.0.1"
-  project_id                  = "alpha-orion"
+  project_id                  = "alpha-orion-485207"
   cluster_id                  = "flash-loan-db-eu"
   cluster_type                = "SECONDARY"
   location                    = "europe-west1"
@@ -990,7 +990,7 @@ module "alloydb-secondary-eu" {
 }
 module "redis-cache-us" {
   source                  = "github.com/terraform-google-modules/terraform-google-memorystore?ref=v15.2.1"
-  project_id              = "alpha-orion"
+  project_id              = "alpha-orion-485207"
   region                  = "us-central1"
   name                    = "flash-loan-redis-us"
   memory_size_gb          = 64  # Upgraded: 64GB for $100M+ volume caching
@@ -1009,7 +1009,7 @@ module "redis-cache-us" {
 }
 module "redis-cache-eu" {
   source                  = "github.com/terraform-google-modules/terraform-google-memorystore?ref=v15.2.1"
-  project_id              = "alpha-orion"
+  project_id              = "alpha-orion-485207"
   region                  = "europe-west1"
   name                    = "flash-loan-redis-eu"
   memory_size_gb          = 16
@@ -1045,14 +1045,14 @@ module "historical-data-warehouse" {
   source         = "github.com/terraform-google-modules/terraform-google-bigquery?ref=v10.2.1"
   dataset_id     = "flash_loan_historical_data"
   description    = "BigQuery dataset for flash loan historical data, leveraging BigQuery ML for predictive modeling, pattern identification, and anomaly detection."
-  project_id     = "alpha-orion"
+  project_id     = "alpha-orion-485207"
   encryption_key = "projects/alpha-orion-485207/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
   tables         = [{"schema" = "[{\"description\": \"A string type unique identifier\",\"mode\": \"NULLABLE\",\"name\": \"simpleId\",\"type\": \"STRING\"},{\"description\": \"A field to hold integer values\",\"mode\": \"NULLABLE\",\"name\": \"integerField\",\"type\": \"INTEGER\"},{\"description\": \"Data\",\"mode\": \"NULLABLE\",\"name\": \"data\",\"type\": \"STRING\"}]", "table_id" = "table-1"}]
   depends_on     = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "order-management-service-us" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "order-management-service-us"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/order-management-service-us:${lookup(var.image_versions, "order-management-service-us", "latest")}"
@@ -1080,7 +1080,7 @@ module "order-management-service-us" {
 }
 module "order-management-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "order-management-service-eu"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/order-management-service-eu:${lookup(var.image_versions, "order-management-service-eu", "latest")}"
@@ -1108,7 +1108,7 @@ module "order-management-service-eu" {
 }
 module "risk-management-service-us" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "brain-risk-management-us"
   description                   = "Assesses and manages risks associated with flash loans in the US region."
@@ -1137,7 +1137,7 @@ module "risk-management-service-us" {
 }
 module "risk-management-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "brain-risk-management-eu"
   description                   = "Assesses and manages risks associated with flash loans in the EU region."
@@ -1299,7 +1299,7 @@ module "dataflow-market-data-ingestion-eu" {
 }
 module "dataflow-cep-us" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "dataflow-cep-us"
   description                   = "Cloud Dataflow job (represented as Cloud Run) for complex event processing of raw opportunities."
@@ -1327,7 +1327,7 @@ module "dataflow-cep-us" {
 }
 module "dataflow-cep-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "dataflow-cep-eu"
   description                   = "Cloud Dataflow job (represented as Cloud Run) for complex event processing of raw opportunities."
@@ -1367,7 +1367,7 @@ module "processed-opportunities-eu" {
 }
 module "blockchain-node-proxy-service-us" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "hand-blockchain-proxy-us"
   description                   = "Proxies communication with blockchain nodes for transaction settlement in the US region."
@@ -1395,7 +1395,7 @@ module "blockchain-node-proxy-service-us" {
 }
 module "blockchain-node-proxy-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "hand-blockchain-proxy-eu"
   description                   = "Proxies communication with blockchain nodes for transaction settlement in the EU region."
@@ -1423,7 +1423,7 @@ module "blockchain-node-proxy-service-eu" {
 }
 module "smart-order-router-service-us" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "hand-smart-order-router-us"
   description                   = "Routes orders intelligently for optimal execution in the US region."
@@ -1452,7 +1452,7 @@ module "smart-order-router-service-us" {
 }
 module "smart-order-router-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "hand-smart-order-router-eu"
   description                   = "Routes orders intelligently for optimal execution in the EU region."
@@ -1481,7 +1481,7 @@ module "smart-order-router-service-eu" {
 }
 module "ai-optimization-orchestrator-us" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "brain-ai-optimization-orchestrator-us"
   description                   = "Orchestrates the continuous AI optimization loop in the US region."
@@ -1512,7 +1512,7 @@ module "ai-optimization-orchestrator-us" {
 }
 module "ai-optimization-orchestrator-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "brain-ai-optimization-orchestrator-eu"
   description                   = "Orchestrates the continuous AI optimization loop in the EU region."
@@ -1543,7 +1543,7 @@ module "ai-optimization-orchestrator-eu" {
 }
 module "simulation-service-us" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "us-central1"
   service_name                  = "brain-simulation-us"
   description                   = "Simulates flash loan scenarios for strategy validation and optimization in the US region."
@@ -1570,7 +1570,7 @@ module "simulation-service-us" {
 }
 module "simulation-service-eu" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "europe-west1"
   service_name                  = "brain-simulation-eu"
   description                   = "Simulates flash loan scenarios for strategy validation and optimization in the EU region."
@@ -1598,7 +1598,7 @@ module "simulation-service-eu" {
 # Enterprise: Additional regional services for global load balancing
 module "dashboard-frontend-asia" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "asia-southeast1"
   service_name                  = "flash-loan-dashboard-asia"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/flash-loan-dashboard-asia:${lookup(var.image_versions, "flash-loan-dashboard-asia", "latest")}"
@@ -1626,7 +1626,7 @@ module "dashboard-frontend-asia" {
 }
 module "dashboard-frontend-au" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "australia-southeast1"
   service_name                  = "flash-loan-dashboard-au"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/flash-loan-dashboard-au:${lookup(var.image_versions, "flash-loan-dashboard-au", "latest")}"
@@ -1654,7 +1654,7 @@ module "dashboard-frontend-au" {
 }
 module "dashboard-frontend-sa" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.21.6"
-  project_id                    = "alpha-orion"
+  project_id                    = "alpha-orion-485207"
   location                      = "southamerica-east1"
   service_name                  = "flash-loan-dashboard-sa"
   container_image               = "us-central1-docker.pkg.dev/alpha-orion-485207/${var.artifact_registry_repo}/flash-loan-dashboard-sa:${lookup(var.image_versions, "flash-loan-dashboard-sa", "latest")}"
@@ -1689,13 +1689,13 @@ module "apphub" {
 }
 module "project-services-alpha-orion" {
   source                      = "github.com/terraform-google-modules/terraform-google-project-factory//modules/project_services?ref=v18.2.0"
-  project_id                  = "alpha-orion"
+  project_id                  = "alpha-orion-485207"
   disable_services_on_destroy = false
   activate_apis               = ["accesscontextmanager.googleapis.com", "admin.googleapis.com", "alloydb.googleapis.com", "appengine.googleapis.com", "bigquery.googleapis.com", "bigquerystorage.googleapis.com", "bigtable.googleapis.com", "bigtableadmin.googleapis.com", "billingbudgets.googleapis.com", "certificatemanager.googleapis.com", "cloudbilling.googleapis.com", "cloudkms.googleapis.com", "cloudresourcemanager.googleapis.com", "compute.googleapis.com", "dns.googleapis.com", "essentialcontacts.googleapis.com", "iam.googleapis.com", "iamcredentials.googleapis.com", "iap.googleapis.com", "memcache.googleapis.com", "monitoring.googleapis.com", "oslogin.googleapis.com", "pubsub.googleapis.com", "redis.googleapis.com", "run.googleapis.com", "secretmanager.googleapis.com", "serviceconsumermanagement.googleapis.com", "servicedirectory.googleapis.com", "servicenetworking.googleapis.com", "serviceusage.googleapis.com", "storage-api.googleapis.com", "storage.googleapis.com", "vpcaccess.googleapis.com"]
 }
 module "project-services-billing-project" {
   source                      = "github.com/terraform-google-modules/terraform-google-project-factory//modules/project_services?ref=v18.2.0"
-  project_id                  = "alpha-orion"
+  project_id                  = "alpha-orion-485207"
   disable_services_on_destroy = false
   activate_apis               = ["accesscontextmanager.googleapis.com", "admin.googleapis.com", "alloydb.googleapis.com", "appengine.googleapis.com", "apphub.googleapis.com", "bigquery.googleapis.com", "bigquerystorage.googleapis.com", "bigtable.googleapis.com", "bigtableadmin.googleapis.com", "billingbudgets.googleapis.com", "certificatemanager.googleapis.com", "cloudbilling.googleapis.com", "cloudkms.googleapis.com", "cloudresourcemanager.googleapis.com", "compute.googleapis.com", "dns.googleapis.com", "essentialcontacts.googleapis.com", "iam.googleapis.com", "iamcredentials.googleapis.com", "iap.googleapis.com", "memcache.googleapis.com", "monitoring.googleapis.com", "oslogin.googleapis.com", "pubsub.googleapis.com", "redis.googleapis.com", "run.googleapis.com", "secretmanager.googleapis.com", "serviceconsumermanagement.googleapis.com", "servicedirectory.googleapis.com", "servicenetworking.googleapis.com", "serviceusage.googleapis.com", "storage-api.googleapis.com", "storage.googleapis.com", "vpcaccess.googleapis.com", "networkconnectivity.googleapis.com", "dataflow.googleapis.com"]
 }
