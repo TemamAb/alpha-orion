@@ -278,13 +278,14 @@ push_to_github() {
     git rm -r --cached .terraform infrastructure/.terraform 2>/dev/null || true
 
     # Check if there are changes to commit
-    if git diff-index --quiet HEAD --; then
-        log "No changes to commit"
+    log "Committing changes..."
+    git add .
+    # Only commit if there are staged changes to avoid exit code 1
+    if ! git diff --cached --quiet; then
+        git commit -m "🚀 Production deployment - $(date)" || warning "Commit failed (possibly nothing to commit)"
+        success "Code committed"
     else
-        log "Committing changes..."
-        git add .
-        git commit -m "🚀 Production deployment - $(date)"
-        check_success "Code committed"
+        log "No changes to commit"
     fi
 
     # Push to repositories
