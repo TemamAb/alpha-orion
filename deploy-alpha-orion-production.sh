@@ -160,6 +160,17 @@ verify_prerequisites() {
         exit 1
     fi
 
+    # Check for Python
+    if command -v python3 &> /dev/null; then
+        PYTHON_CMD="python3"
+    elif command -v python &> /dev/null; then
+        PYTHON_CMD="python"
+    else
+        error "Python not found. Please install Python 3."
+        exit 1
+    fi
+    log "🐍 Using Python: $PYTHON_CMD"
+
     success "Prerequisites verification complete"
 }
 
@@ -247,12 +258,12 @@ verify_secrets() {
         
         if [ -f .env ]; then
             log "📄 Found .env file. Auto-configuring secrets..."
-            ./setup-secrets.sh
+            bash setup-secrets.sh
             log "✅ Secrets configured. Resuming deployment..."
         else
             read -p "Would you like to run the interactive secrets setup now? (y/N): " run_setup
             if [[ "$run_setup" =~ ^[Yy]$ ]]; then
-                ./setup-secrets.sh
+                bash setup-secrets.sh
                 log "Secrets setup finished. Please re-run the deployment script to verify and proceed."
                 exit 0
             else
@@ -382,7 +393,7 @@ deploy_infrastructure() {
 
     # Apply infrastructure
     log "Deploying infrastructure..."
-    if ! terraform apply -auto-approve -var="project_id=$PROJECT_ID" -no-color; then
+    if ! terraform apply -auto-approve tfplan -no-color; then
         error "Terraform apply failed."
         read -p "⚠️  Do you want to skip Infrastructure deployment and proceed to Services? (y/N): " skip_infra
         if [[ "$skip_infra" =~ ^[Yy]$ ]]; then
@@ -480,11 +491,11 @@ run_verification() {
     log "Running post-deployment verification..."
 
     # Run verification script
-    if python gcp-infrastructure-verification.py --project=$PROJECT_ID; then
+    if $PYTHON_CMD gcp-infrastructure-verification.py --project=$PROJECT_ID; then
         success "Infrastructure verification passed"
     else
         warning "Some verification checks failed - reviewing..."
-        python gcp-infrastructure-verification.py --project=$PROJECT_ID || true
+        $PYTHON_CMD gcp-infrastructure-verification.py --project=$PROJECT_ID || true
     fi
 
     # Check service health

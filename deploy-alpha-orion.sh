@@ -187,7 +187,20 @@ echo "✅ STEP 7: Deployment Verification"
 echo "-----------------------------------"
 
 echo "Running infrastructure verification..."
-python gcp-infrastructure-verification.py --project=$PROJECT_ID
+if command -v python3 &> /dev/null; then
+    python3 gcp-infrastructure-verification.py --project=$PROJECT_ID
+elif command -v python &> /dev/null; then
+    python gcp-infrastructure-verification.py --project=$PROJECT_ID
+else
+    echo "❌ Python not found. Skipping verification."
+fi
+if command -v python3 &> /dev/null; then
+    python3 gcp-infrastructure-verification.py --project=$PROJECT_ID
+elif command -v python &> /dev/null; then
+    python gcp-infrastructure-verification.py --project=$PROJECT_ID
+else
+    echo "❌ Python not found. Skipping verification."
+fi
 
 echo "Checking service health..."
 gcloud run services list --region=$REGION
