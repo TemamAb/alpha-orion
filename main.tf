@@ -385,7 +385,7 @@ module "strategy-engine-service" {
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "flash-loan-lb-global-lb-frontend" {
-  source                          = "github.com/terraform-google-modules/terraform-google-lb-http//modules/frontend?ref=v13.2.0"
+  source                          = "github.com/terraform-google-modules/terraform-google-lb-http//modules/serverless_negs?ref=v13.2.0"
   name                            = "flash-loan-app-frontend"
   project_id                      = "alpha-orion-485207"
   create_address                  = true
@@ -405,7 +405,7 @@ module "flash-loan-lb-global-lb-frontend" {
   depends_on  = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "flash-loan-lb-global-lb-backend" {
-  source                  = "github.com/terraform-google-modules/terraform-google-lb-http//modules/backend?ref=v13.2.0"
+  source                  = "github.com/terraform-google-modules/terraform-google-lb-http//modules/serverless_negs?ref=v13.2.0"
   name                    = "flash-loan-app-backend"
   project_id              = "alpha-orion-485207"
   load_balancing_scheme   = "EXTERNAL_MANAGED"
@@ -418,18 +418,11 @@ module "flash-loan-lb-global-lb-backend" {
     default_ttl                  = 86400   # 24 hours default
     max_ttl                      = 604800  # 7 days maximum
     negative_caching             = true
-    negative_caching_policy = {
-      code = 404
-      ttl  = 300  # 5 minutes for 404s
-    }
-    cache_key_policy = {
-      include_host           = true
-      include_protocol       = true
-      include_query_string   = false
-      query_string_whitelist = []
-      query_string_blacklist = ["api_key", "token"]
-    }
-    signed_url_cache_max_age_sec = 7200  # 2 hours for signed URLs
+  negative_caching_policy = {
+    code = 404
+    ttl  = 300  # 5 minutes for 404s
+  }
+  signed_url_cache_max_age_sec = 7200  # 2 hours for signed URLs
   }
   serverless_neg_backends = concat(
     # US Region backends
@@ -443,22 +436,8 @@ module "flash-loan-lb-global-lb-backend" {
     [{"region" = "asia-southeast1", "service_name" = "flash-loan-dashboard-asia", "service_version" = "", "type" = "cloud-run"}],
     [{"region" = "australia-southeast1", "service_name" = "flash-loan-dashboard-au", "service_version" = "", "type" = "cloud-run"}],
     [{"region" = "southamerica-east1", "service_name" = "flash-loan-dashboard-sa", "service_version" = "", "type" = "cloud-run"}]
-  )
-  # Enterprise: Advanced load balancing configuration
-  session_affinity = "CLIENT_IP"
-  timeout_sec      = 30
-  security_policy  = "projects/alpha-orion-485207/global/securityPolicies/flash-loan-security-policy"
-  # Enterprise: Health checks for better reliability
-  health_checks = [{
-    name               = "flash-loan-health-check"
-    request_path       = "/health"
-    port               = 443
-    check_interval_sec = 30
-    timeout_sec        = 10
-    healthy_threshold  = 2
-    unhealthy_threshold = 3
-  }]
-  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+)
+depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 # Enterprise: Cloud Armor Security Policies
 # module "cloud-armor-security-policy" {
@@ -951,7 +930,7 @@ module "strategy-engine-service-eu" {
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "flash-loan-lb-global-lb-backend-ai-terminal" {
-  source                  = "github.com/terraform-google-modules/terraform-google-lb-http//modules/backend?ref=v13.2.0"
+  source                  = "github.com/terraform-google-modules/terraform-google-lb-http//modules/backend?ref=v9.0.0"
   name                    = "flash-loan-app-backend-ai-terminal"
   project_id              = "alpha-orion-485207"
   load_balancing_scheme   = "EXTERNAL_MANAGED"
@@ -1736,7 +1715,7 @@ module "arbitrage_interconnect" {
   depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "arbitrage_compute_engine" {
-  source     = "github.com/terraform-google-modules/terraform-google-compute-engine//modules/instance_template?ref=v11.1.0"
+  source     = "github.com/terraform-google-modules/terraform-google-vm//modules/instance_template?ref=v13.0.0"
   project_id = "alpha-orion-485207"
   region     = "us-central1"
   name       = "arbitrage-compute"

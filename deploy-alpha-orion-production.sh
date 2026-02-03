@@ -320,15 +320,14 @@ push_to_github() {
 deploy_infrastructure() {
     log "Deploying enterprise infrastructure..."
 
-    # Ensure we are in the right directory and have the config
-    if [ -d "infrastructure" ]; then
-        cd infrastructure
-        # Force update main.tf from root to ensure latest config
-        if [ -f "../main.tf" ]; then
-            log "📦 Syncing main.tf to infrastructure directory..."
-            cp -f "../main.tf" .
-        fi
-    fi
+# Ensure we are in the right directory and have the config
+mkdir -p infrastructure
+cd infrastructure
+# Force update main.tf from root to ensure latest config
+if [ -f "../main.tf" ]; then
+    log "📦 Syncing main.tf to infrastructure directory..."
+    cp -f "../main.tf" .
+fi
 
     # Fix for Windows "Unreadable module directory" and corruption
     if [ -d ".terraform" ]; then
@@ -411,49 +410,54 @@ deploy_infrastructure() {
 
 # Function to build and deploy services
 deploy_services() {
-    log "Building and deploying Cloud Run services..."
+    log "Building and deploying Cloud Run services to multi-region..."
 
-    # Trigger Cloud Build
-    log "Starting Cloud Build deployment..."
-    build_id=$(gcloud builds submit \
-      --config=cloudbuild-enterprise.yaml \
-      --substitutions _PROJECT_ID=$PROJECT_ID,_REGION=$REGION \
-      --timeout=3600s \
-      --format="value(id)" \
-      --quiet \
-      .)
+    # Deploy to all regions: US, EU, Asia, Australia, South America
+    regions=("us-central1" "europe-west1" "asia-southeast1" "australia-southeast1" "southamerica-east1")
 
-    if [ -z "$build_id" ]; then
-        error "Failed to start Cloud Build"
-        exit 1
-    fi
+    for region in "${regions[@]}"; do
+        log "Starting Cloud Build deployment for $region..."
 
-    success "Cloud Build started (ID: $build_id)"
+        build_id=$(gcloud builds submit \
+          --config=cloudbuild-enterprise.yaml \
+          --substitutions _PROJECT_ID=$PROJECT_ID,_REGION=$region \
+          --timeout=3600s \
+          --format="value(id)" \
+          --quiet \
+          .)
 
-    # Monitor build progress
-    log "Monitoring build progress..."
-    while true; do
-        build_status=$(gcloud builds describe $build_id --format="value(status)" --quiet)
+        if [ -z "$build_id" ]; then
+            error "Failed to start Cloud Build for $region"
+            exit 1
+        fi
 
-        case $build_status in
-            "SUCCESS")
-                success "Cloud Build completed successfully"
-                break
-                ;;
-            "FAILURE"|"TIMEOUT"|"CANCELLED")
-                error "Cloud Build failed with status: $build_status"
-                gcloud builds log $build_id
-                exit 1
-                ;;
-            "WORKING"|"QUEUED")
-                echo -n "."
-                sleep 15
-                ;;
-            *)
-                warning "Unknown build status: $build_status"
-                sleep 10
-                ;;
-        esac
+        success "Cloud Build started for $region (ID: $build_id)"
+
+        # Monitor build progress
+        log "Monitoring build progress for $region..."
+        while true; do
+            build_status=$(gcloud builds describe $build_id --format="value(status)" --quiet)
+
+            case $build_status in
+                "SUCCESS")
+                    success "Cloud Build completed successfully for $region"
+                    break
+                    ;;
+                "FAILURE"|"TIMEOUT"|"CANCELLED")
+                    error "Cloud Build failed for $region with status: $build_status"
+                    gcloud builds log $build_id
+                    exit 1
+                    ;;
+                "WORKING"|"QUEUED")
+                    echo -n "."
+                    sleep 15
+                    ;;
+                *)
+                    warning "Unknown build status for $region: $build_status"
+                    sleep 10
+                    ;;
+            esac
+        done
     done
 }
 
