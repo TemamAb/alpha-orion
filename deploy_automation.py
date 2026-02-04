@@ -92,10 +92,12 @@ def step_3_assets():
         if DASHBOARD_SOURCE_TYPO != DASHBOARD_TARGET:
             shutil.copy(DASHBOARD_SOURCE_TYPO, DASHBOARD_TARGET)
             log(f"Normalized dashboard filename to: {DASHBOARD_TARGET}")
+    elif os.path.exists(DASHBOARD_TARGET):
+        log(f"Using existing production dashboard: {DASHBOARD_TARGET}")
     elif os.path.exists("simulation/approved-dashboard.html"):
         log("Using simulation dashboard as base for production.")
         shutil.copy("simulation/approved-dashboard.html", DASHBOARD_TARGET)
-    elif not os.path.exists(DASHBOARD_TARGET):
+    else:
         log("Creating placeholder dashboard.")
         with open(DASHBOARD_TARGET, "w", encoding="utf-8") as f:
             f.write("<html><body><h1>Alpha-Orion Production Dashboard</h1><p>System Active.</p></body></html>")

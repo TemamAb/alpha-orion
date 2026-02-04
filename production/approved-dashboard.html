@@ -724,7 +724,7 @@
             <div class="profit-display">
                 <div>
                     <div class="profit-label">Lifetime</div>
-                    <div class="profit-value mono">$127,485.32</div>
+                    <div class="profit-value mono" id="header-lifetime-profit">$127,485.32</div>
                 </div>
             </div>
             <select class="refresh-select" id="refresh-rate">
@@ -805,28 +805,28 @@
                                 <div class="metric-name">Average Profit/Trade</div>
                                 <div class="metric-desc">Net profit after gas costs</div>
                             </td>
-                            <td><span class="actual-value">$485.32</span></td>
+                            <td><span class="actual-value" id="val-avg-profit">$485.32</span></td>
                         </tr>
                         <tr>
                             <td>
                                 <div class="metric-name">Trades/Hour</div>
                                 <div class="metric-desc">Execution rate</div>
                             </td>
-                            <td><span class="actual-value">127</span></td>
+                            <td><span class="actual-value" id="val-trades-hour">127</span></td>
                         </tr>
                         <tr>
                             <td>
                                 <div class="metric-name">Total Trades</div>
                                 <div class="metric-desc">All-time successful trades</div>
                             </td>
-                            <td><span class="actual-value">2,847</span></td>
+                            <td><span class="actual-value" id="val-total-trades">2,847</span></td>
                         </tr>
                         <tr>
                             <td>
                                 <div class="metric-name">Available Balance</div>
                                 <div class="metric-desc">Ready for withdrawal</div>
                             </td>
-                            <td><span class="actual-value">$2,847.50</span></td>
+                            <td><span class="actual-value" id="val-balance">$2,847.50</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -851,19 +851,19 @@
                         <tr>
                             <td><div class="metric-name">Strategy Success Rate</div></td>
                             <td><span class="design-value">>85%</span></td>
-                            <td><span class="actual-value">92.4%</span></td>
+                            <td><span class="actual-value" id="val-success-rate">92.4%</span></td>
                             <td><span class="gap-badge gap-positive">+7.4%</span></td>
                         </tr>
                         <tr>
                             <td><div class="metric-name">Execution Latency</div></td>
                             <td><span class="design-value"><50ms</span></td>
-                            <td><span class="actual-value">42ms</span></td>
+                            <td><span class="actual-value" id="val-latency">42ms</span></td>
                             <td><span class="gap-badge gap-positive">+16%</span></td>
                         </tr>
                         <tr>
                             <td><div class="metric-name">Arbitrage Opportunities</div></td>
                             <td><span class="design-value">200+/day</span></td>
-                            <td><span class="actual-value">287/day</span></td>
+                            <td><span class="actual-value" id="val-arb-opps">287/day</span></td>
                             <td><span class="gap-badge gap-positive">+43%</span></td>
                         </tr>
                     </tbody>
@@ -889,19 +889,19 @@
                         <tr>
                             <td><div class="metric-name">VaR (95%)</div></td>
                             <td><span class="design-value"><2%</span></td>
-                            <td><span class="actual-value">1.2%</span></td>
+                            <td><span class="actual-value" id="val-var">1.2%</span></td>
                             <td><span class="gap-badge gap-positive">+40%</span></td>
                         </tr>
                         <tr>
                             <td><div class="metric-name">Max Drawdown</div></td>
                             <td><span class="design-value"><10%</span></td>
-                            <td><span class="actual-value">4.8%</span></td>
+                            <td><span class="actual-value" id="val-drawdown">4.8%</span></td>
                             <td><span class="gap-badge gap-positive">+52%</span></td>
                         </tr>
                         <tr>
                             <td><div class="metric-name">Circuit Breakers</div></td>
                             <td><span class="design-value">Active</span></td>
-                            <td><span class="actual-value">Active</span></td>
+                            <td><span class="actual-value" id="val-circuit">Active</span></td>
                             <td><span class="gap-badge gap-positive">100%</span></td>
                         </tr>
                     </tbody>
@@ -927,19 +927,19 @@
                         <tr>
                             <td><div class="metric-name">Auto-scaling</div></td>
                             <td><span class="design-value">Dynamic</span></td>
-                            <td><span class="actual-value">8/8 Passed</span></td>
+                            <td><span class="actual-value" id="val-scaling">8/8 Passed</span></td>
                             <td><span class="gap-badge gap-positive">100%</span></td>
                         </tr>
                         <tr>
                             <td><div class="metric-name">Uptime</div></td>
                             <td><span class="design-value">99.99%</span></td>
-                            <td><span class="actual-value">99.97%</span></td>
+                            <td><span class="actual-value" id="val-uptime">99.97%</span></td>
                             <td><span class="gap-badge gap-neutral">-0.02%</span></td>
                         </tr>
                         <tr>
                             <td><div class="metric-name">Multi-chain</div></td>
                             <td><span class="design-value">8 chains</span></td>
-                            <td><span class="actual-value">6 chains</span></td>
+                            <td><span class="actual-value" id="val-chains">6 chains</span></td>
                             <td><span class="gap-badge gap-negative">-25%</span></td>
                         </tr>
                     </tbody>

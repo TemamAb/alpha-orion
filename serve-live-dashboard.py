@@ -60,6 +60,10 @@ class ProductionHandler(http.server.SimpleHTTPRequestHandler):
             self.serve_profit()
             return
             
+        if self.path == '/api/risk':
+            self.serve_risk()
+            return
+            
         return super().do_GET()
 
     def serve_dashboard(self):
@@ -90,44 +94,37 @@ async function updateDashboard() {
     // Update analytics
     const analytics = await fetchAPI('/api/analytics');
     if (analytics) {
-        updateElement('total-volume', formatCurrency(analytics.totalVolume));
-        updateElement('active-trades', analytics.activeTrades);
-        updateElement('success-rate', analytics.successRate + '%');
-        updateElement('execution-time', analytics.avgExecutionTime + 's');
-        updateElement('gas-saved', formatCurrency(analytics.gasSaved));
-    }
-    
-    // Update profit
-    const profit = await fetchAPI('/api/profit');
-    if (profit) {
-        updateElement('total-profit', formatCurrency(profit.totalProfit));
-        updateElement('daily-profit', formatCurrency(profit.dailyProfit));
-        updateElement('weekly-profit', formatCurrency(profit.weeklyProfit));
-        updateElement('monthly-profit', formatCurrency(profit.monthlyProfit));
-        updateElement('roi', profit.roi + '%');
+        updateElement('header-lifetime-profit', formatCurrency(analytics.lifetimeProfit));
+        updateElement('val-avg-profit', formatCurrency(analytics.avgProfit));
+        updateElement('val-trades-hour', analytics.tradesHour);
+        updateElement('val-total-trades', analytics.totalTrades.toLocaleString());
+        updateElement('val-balance', formatCurrency(analytics.balance));
     }
     
     // Update strategy
     const strategy = await fetchAPI('/api/strategy');
     if (strategy) {
-        updateElement('active-strategies', strategy.activeStrategies);
-        updateElement('total-allocated', formatCurrency(strategy.totalAllocated));
-        updateElement('pnl-24h', formatCurrency(strategy.pnl24h));
-        updateElement('pnl-7d', formatCurrency(strategy.pnl7d));
-        updateElement('apy', strategy.apy + '%');
-        updateElement('risk-score', strategy.riskScore);
+        updateElement('val-success-rate', strategy.successRate + '%');
+        updateElement('val-latency', strategy.latency + 'ms');
+        updateElement('val-arb-opps', strategy.arbOpps + '/day');
     }
     
-    // Update trades table
-    const trades = await fetchAPI('/api/trades');
-    if (trades) {
-        updateTradesTable(trades);
+    // Update risk
+    const risk = await fetchAPI('/api/risk');
+    if (risk) {
+        updateElement('val-var', risk.var + '%');
+        updateElement('val-drawdown', risk.drawdown + '%');
+        updateElement('val-circuit', risk.circuit);
     }
     
-    // Update opportunities
-    const opportunities = await fetchAPI('/api/opportunities');
-    if (opportunities) {
-        updateOpportunitiesTable(opportunities);
+    // Update infrastructure (mocked in analytics for now or separate)
+    // For this demo, we'll assume infra is stable or fetch if needed
+    // But let's update the specific infra IDs if we had an endpoint
+    // Using strategy endpoint to carry infra data for efficiency
+    if (strategy) {
+        updateElement('val-scaling', strategy.scaling);
+        updateElement('val-uptime', strategy.uptime + '%');
+        updateElement('val-chains', strategy.chains + ' chains');
     }
 }
 
@@ -219,11 +216,11 @@ document.addEventListener('DOMContentLoaded', function() {
     def serve_analytics(self):
         """Serve simulated analytics data"""
         data = {
-            "totalVolume": round(random.uniform(1000000, 5000000), 2),
-            "activeTrades": random.randint(10, 50),
-            "successRate": round(random.uniform(85, 99), 2),
-            "avgExecutionTime": round(random.uniform(0.5, 2.5), 2),
-            "gasSaved": round(random.uniform(5000, 50000), 2),
+            "lifetimeProfit": round(random.uniform(127000, 128000), 2),
+            "avgProfit": round(random.uniform(400, 600), 2),
+            "tradesHour": random.randint(100, 150),
+            "totalTrades": random.randint(2800, 2900),
+            "balance": round(random.uniform(2800, 3500), 2),
             "timestamp": datetime.utcnow().isoformat()
         }
         self.send_json_response(data)
@@ -262,12 +259,12 @@ document.addEventListener('DOMContentLoaded', function() {
     def serve_strategy(self):
         """Serve simulated strategy data"""
         data = {
-            "activeStrategies": random.randint(2, 8),
-            "totalAllocated": round(random.uniform(10000, 100000), 2),
-            "pnl24h": round(random.uniform(-5000, 20000), 2),
-            "pnl7d": round(random.uniform(-10000, 50000), 2),
-            "apy": round(random.uniform(15, 45), 2),
-            "riskScore": random.randint(20, 80),
+            "successRate": round(random.uniform(90, 95), 1),
+            "latency": random.randint(35, 48),
+            "arbOpps": random.randint(250, 320),
+            "scaling": f"{random.randint(6,8)}/8 Passed",
+            "uptime": round(random.uniform(99.95, 99.99), 2),
+            "chains": random.randint(6, 8),
             "timestamp": datetime.utcnow().isoformat()
         }
         self.send_json_response(data)
@@ -281,6 +278,15 @@ document.addEventListener('DOMContentLoaded', function() {
             "monthlyProfit": round(random.uniform(20000, 100000), 2),
             "roi": round(random.uniform(15, 35), 2),
             "timestamp": datetime.utcnow().isoformat()
+        }
+        self.send_json_response(data)
+
+    def serve_risk(self):
+        """Serve simulated risk data"""
+        data = {
+            "var": round(random.uniform(0.8, 1.5), 1),
+            "drawdown": round(random.uniform(2.0, 5.0), 1),
+            "circuit": "Active"
         }
         self.send_json_response(data)
 
@@ -310,6 +316,7 @@ if __name__ == "__main__":
             print(f"  - /api/opportunities")
             print(f"  - /api/strategy")
             print(f"  - /api/profit")
+            print(f"  - /api/risk")
             print("\nPress Ctrl+C to stop the server.")
             httpd.serve_forever()
     except KeyboardInterrupt:
