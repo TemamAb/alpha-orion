@@ -16,4 +16,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8080
 
 # Run the dashboard script
-CMD [ "python", "production/serve-live-dashboard.py" ]
+CMD [ "python", "serve-live-dashboard.py" ]
