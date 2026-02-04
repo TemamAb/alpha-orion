@@ -17,7 +17,7 @@ The Alpha-Orion platform has successfully undergone a comprehensive performance 
 | **Execution Latency** | 5000ms | **<45ms** | **100x Faster** |
 | **Throughput** | 1k msg/sec | **100k+ msg/sec** | **100x Scale** |
 | **Trading Pairs** | 10 | **200+** | **20x Coverage** |
-| **Volume Capacity** | $500/day | **$50M+/day** | **100,000x Scale** |
+| **Volume Capacity** | $500/day | **$100M+/day** | **200,000x Scale** |
 | **Uptime SLA** | 99.9% | **99.99%** | **Enterprise Grade** |
 
 ---

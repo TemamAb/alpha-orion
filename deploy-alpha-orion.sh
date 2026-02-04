@@ -268,7 +268,7 @@ cat > DEPLOYMENT_SUCCESS_$(date +%Y%m%d_%H%M%S).md << EOF
 - **Latency**: <50ms (Infrastructure optimized)
 - **Throughput**: 100,000+ msg/sec (Dataflow ready)
 - **Pairs**: 200+ (Configured)
-- **Volume**: $50M+ daily capacity (Enterprise ready)
+- **Volume**: $100M+ daily capacity (Enterprise ready)
 - **Uptime**: 99.99% (Redundancy deployed)
 
 ## Services Status

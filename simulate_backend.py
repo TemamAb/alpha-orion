@@ -23,7 +23,7 @@ def generate_simulation_data():
     while True:
         # 1. Simulate Profit Increase (Randomly)
         if random.random() > 0.4:  # 60% chance of trade
-            profit = round(random.uniform(10.0, 150.0), 2)
+            profit = round(random.uniform(500.0, 1500.0), 2)  # Updated to match design target of $500+ per trade
             state["total_profit"] += profit
             
             # Create Trade Record

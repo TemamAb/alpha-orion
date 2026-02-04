@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Alpha-Orion Production Server
-Serves the Enterprise Dashboard and proxies requests to the real backend.
+Alpha-Orion Production Dashboard Server (Simulation Mode)
+Serves the Enterprise Dashboard with simulated data for testing/development.
 """
 
 import http.server
@@ -9,18 +9,23 @@ import socketserver
 import json
 import os
 import sys
-import urllib.request
-import urllib.error
-import webbrowser
-# Configuration - Hardcoded to resolve deployment blocker
-# As per UPDATED_DEPLOYMENT_CHECKLIST.md, the dashboard must run on port 8888.
-# The previous dynamic configuration was failing and causing a port conflict with the API server (8080).
-PORT = 8888
-BACKEND_URL = "http://localhost:3000" # Simulation backend for non-proxied API calls
-ORCHESTRATOR_URL = "http://localhost:8080" # Production API backend
-DASHBOARD_FILE = "simulation/performance-dashboard.html"
+from datetime import datetime, timedelta
+import random
+
+# Configuration - Dynamic port support
+PORT = int(os.environ.get("PORT", 8888))
+if len(sys.argv) > 1:
+    PORT = int(sys.argv[1])
+DASHBOARD_FILE = "production/approved-dashboard.html"
+
+# Simulation mode flag
+SIMULATION_MODE = True
 
 class ProductionHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, format, *args):
+        """Override to reduce logging noise"""
+        pass
+    
     def do_GET(self):
         if self.path == '/' or self.path == '/dashboard':
             self.serve_dashboard()
@@ -29,10 +34,30 @@ class ProductionHandler(http.server.SimpleHTTPRequestHandler):
         if self.path == '/health':
             self.check_health()
             return
+        
+        if self.path == '/favicon.ico':
+            self.send_response(204)
+            self.end_headers()
+            return
+        
+        if self.path == '/api/analytics':
+            self.serve_analytics()
+            return
             
-        # Proxy API requests to Backend
-        if any(self.path.startswith(p) for p in ['/analytics', '/trades', '/opportunities', '/strategy', '/api']):
-            self.proxy_request()
+        if self.path == '/api/trades':
+            self.serve_trades()
+            return
+            
+        if self.path == '/api/opportunities':
+            self.serve_opportunities()
+            return
+            
+        if self.path == '/api/strategy':
+            self.serve_strategy()
+            return
+            
+        if self.path == '/api/profit':
+            self.serve_profit()
             return
             
         return super().do_GET()
@@ -42,61 +67,255 @@ class ProductionHandler(http.server.SimpleHTTPRequestHandler):
             with open(os.path.join(os.path.dirname(__file__), DASHBOARD_FILE), 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # Inject API URL
-            injection = f'<script>window.API_BASE_URL = "";</script>' # Empty means relative/same origin for proxy
+            # Inject API URL and dynamic data fetching JavaScript
+            injection = '''
+<script>
+window.SIMULATION_MODE = true;
+window.API_BASE = '';
+
+// API Fetch Functions
+async function fetchAPI(endpoint) {
+    try {
+        const response = await fetch(endpoint);
+        if (!response.ok) throw new Error('API request failed');
+        return await response.json();
+    } catch (error) {
+        console.error('API Error:', error);
+        return null;
+    }
+}
+
+// Update Dashboard Functions
+async function updateDashboard() {
+    // Update analytics
+    const analytics = await fetchAPI('/api/analytics');
+    if (analytics) {
+        updateElement('total-volume', formatCurrency(analytics.totalVolume));
+        updateElement('active-trades', analytics.activeTrades);
+        updateElement('success-rate', analytics.successRate + '%');
+        updateElement('execution-time', analytics.avgExecutionTime + 's');
+        updateElement('gas-saved', formatCurrency(analytics.gasSaved));
+    }
+    
+    // Update profit
+    const profit = await fetchAPI('/api/profit');
+    if (profit) {
+        updateElement('total-profit', formatCurrency(profit.totalProfit));
+        updateElement('daily-profit', formatCurrency(profit.dailyProfit));
+        updateElement('weekly-profit', formatCurrency(profit.weeklyProfit));
+        updateElement('monthly-profit', formatCurrency(profit.monthlyProfit));
+        updateElement('roi', profit.roi + '%');
+    }
+    
+    // Update strategy
+    const strategy = await fetchAPI('/api/strategy');
+    if (strategy) {
+        updateElement('active-strategies', strategy.activeStrategies);
+        updateElement('total-allocated', formatCurrency(strategy.totalAllocated));
+        updateElement('pnl-24h', formatCurrency(strategy.pnl24h));
+        updateElement('pnl-7d', formatCurrency(strategy.pnl7d));
+        updateElement('apy', strategy.apy + '%');
+        updateElement('risk-score', strategy.riskScore);
+    }
+    
+    // Update trades table
+    const trades = await fetchAPI('/api/trades');
+    if (trades) {
+        updateTradesTable(trades);
+    }
+    
+    // Update opportunities
+    const opportunities = await fetchAPI('/api/opportunities');
+    if (opportunities) {
+        updateOpportunitiesTable(opportunities);
+    }
+}
+
+function updateElement(id, value) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = value;
+        el.classList.add('updated');
+        setTimeout(() => el.classList.remove('updated'), 500);
+    }
+}
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+}
+
+function updateTradesTable(trades) {
+    const tbody = document.querySelector('#trades-table tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = trades.map(trade => `
+        <tr>
+            <td>${trade.tokenIn}/${trade.tokenOut}</td>
+            <td>${trade.amountIn.toFixed(4)}</td>
+            <td>${trade.amountOut.toFixed(4)}</td>
+            <td class="mono profit-${trade.profit >= 0 ? 'positive' : 'negative'}">${formatCurrency(trade.profit)}</td>
+            <td>${trade.status}</td>
+            <td>${new Date(trade.timestamp).toLocaleString()}</td>
+        </tr>
+    `).join('');
+}
+
+function updateOpportunitiesTable(opportunities) {
+    const tbody = document.querySelector('#opportunities-table tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = opportunities.map(opp => `
+        <tr>
+            <td>${opp.type}</td>
+            <td class="mono">${formatCurrency(opp.estimatedProfit)}</td>
+            <td>${opp.confidence}%</td>
+            <td>${opp.gasCost} gwei</td>
+            <td><span class="risk-${opp.riskLevel}">${opp.riskLevel}</span></td>
+        </tr>
+    `).join('');
+}
+
+// Initialize polling
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Alpha-Orion Dashboard - Dynamic Mode');
+    updateDashboard();
+    setInterval(updateDashboard, 5000); // Update every 5 seconds
+    console.log('Dashboard updates enabled - polling every 5 seconds');
+});
+</script>
+<style>
+.updated { animation: highlight 0.5s ease; }
+@keyframes highlight { 
+    0% { background: rgba(59, 130, 246, 0.3); }
+    100% { background: transparent; }
+}
+.profit-positive { color: var(--accent-secondary); }
+.profit-negative { color: var(--accent-danger); }
+.risk-low { color: var(--accent-secondary); }
+.risk-medium { color: var(--accent-warning); }
+.risk-high { color: var(--accent-danger); }
+</style>
+'''
             content = content.replace('</head>', f'{injection}\n</head>')
             
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
+            self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(content.encode('utf-8'))
         except FileNotFoundError:
             self.send_error(404, "Dashboard file not found")
 
     def check_health(self):
-        status = "offline"
-        try:
-            # Check backend connectivity
-            with urllib.request.urlopen(BACKEND_URL, timeout=1) as response:
-                if response.status == 200:
-                    status = "online"
-        except Exception:
-            pass
+        # Always return healthy in simulation mode
+        status = "simulation"
         
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps({"status": "ok", "backend": status}).encode('utf-8'))
+        self.wfile.write(json.dumps({"status": "ok", "mode": "simulation", "backend": status}).encode('utf-8'))
 
-    def proxy_request(self):
-        # Route strategy, analytics, opportunities, trades requests to orchestrator (8080), others to simulation backend (3000)
-        if self.path.startswith(('/strategy', '/analytics', '/opportunities', '/trades')):
-            target = f"{ORCHESTRATOR_URL}{self.path}"
-        else:
-            target = f"{BACKEND_URL}{self.path}"
-        try:
-            req = urllib.request.Request(target)
-            with urllib.request.urlopen(req, timeout=2) as response:
-                self.send_response(response.status)
-                for k, v in response.headers.items():
-                    self.send_header(k, v)
-                self.end_headers()
-                self.wfile.write(response.read())
-        except urllib.error.HTTPError as e:
-            self.send_response(e.code)
-            self.end_headers()
-            self.wfile.write(e.read())
-        except Exception as e:
-            self.send_error(503, f"Backend Unavailable: {e}")
+    def serve_analytics(self):
+        """Serve simulated analytics data"""
+        data = {
+            "totalVolume": round(random.uniform(1000000, 5000000), 2),
+            "activeTrades": random.randint(10, 50),
+            "successRate": round(random.uniform(85, 99), 2),
+            "avgExecutionTime": round(random.uniform(0.5, 2.5), 2),
+            "gasSaved": round(random.uniform(5000, 50000), 2),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        self.send_json_response(data)
+
+    def serve_trades(self):
+        """Serve simulated trades data"""
+        trades = []
+        for i in range(10):
+            trades.append({
+                "id": f"trade_{i+1}",
+                "tokenIn": random.choice(["ETH", "USDC", "WBTC", "DAI"]),
+                "tokenOut": random.choice(["ETH", "USDC", "WBTC", "DAI"]),
+                "amountIn": round(random.uniform(1, 100), 4),
+                "amountOut": round(random.uniform(1, 100), 4),
+                "profit": round(random.uniform(-50, 500), 2),
+                "timestamp": (datetime.utcnow() - timedelta(minutes=random.randint(1, 60))).isoformat(),
+                "status": random.choice(["completed", "pending", "failed"])
+            })
+        self.send_json_response(trades)
+
+    def serve_opportunities(self):
+        """Serve simulated opportunities data"""
+        opportunities = []
+        for i in range(5):
+            opportunities.append({
+                "id": f"opp_{i+1}",
+                "type": random.choice(["arbitrage", "sandwich", "liquidation"]),
+                "estimatedProfit": round(random.uniform(100, 5000), 2),
+                "confidence": round(random.uniform(70, 98), 2),
+                "gasCost": random.randint(10, 100),
+                "riskLevel": random.choice(["low", "medium", "high"]),
+                "timestamp": datetime.utcnow().isoformat()
+            })
+        self.send_json_response(opportunities)
+
+    def serve_strategy(self):
+        """Serve simulated strategy data"""
+        data = {
+            "activeStrategies": random.randint(2, 8),
+            "totalAllocated": round(random.uniform(10000, 100000), 2),
+            "pnl24h": round(random.uniform(-5000, 20000), 2),
+            "pnl7d": round(random.uniform(-10000, 50000), 2),
+            "apy": round(random.uniform(15, 45), 2),
+            "riskScore": random.randint(20, 80),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        self.send_json_response(data)
+
+    def serve_profit(self):
+        """Serve simulated profit data"""
+        data = {
+            "totalProfit": round(random.uniform(50000, 200000), 2),
+            "dailyProfit": round(random.uniform(500, 5000), 2),
+            "weeklyProfit": round(random.uniform(5000, 30000), 2),
+            "monthlyProfit": round(random.uniform(20000, 100000), 2),
+            "roi": round(random.uniform(15, 35), 2),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        self.send_json_response(data)
+
+    def send_json_response(self, data):
+        """Helper to send JSON responses"""
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Cache-Control', 'no-cache')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode('utf-8'))
 
 if __name__ == "__main__":
-    print(f"Starting Production Dashboard on port {PORT}")
-    print(f"Proxying to Backend: {BACKEND_URL}")
+    print(f"Starting Alpha-Orion Dashboard Server (Simulation Mode)")
+    print(f"Serving on port {PORT}")
+    
+    # Allow address reuse to prevent "port in use" errors
+    socketserver.TCPServer.allow_reuse_address = True
     
     try:
         with socketserver.TCPServer(("", PORT), ProductionHandler) as httpd:
-            print(f"Serving at http://localhost:{PORT}/dashboard")
-            webbrowser.open(f"http://localhost:{PORT}/dashboard")
+            print(f"Dashboard available at: http://localhost:{PORT}/dashboard")
+            print(f"Health check: http://localhost:{PORT}/health")
+            print(f"API Endpoints:")
+            print(f"  - /api/analytics")
+            print(f"  - /api/trades")
+            print(f"  - /api/opportunities")
+            print(f"  - /api/strategy")
+            print(f"  - /api/profit")
+            print("\nPress Ctrl+C to stop the server.")
             httpd.serve_forever()
     except KeyboardInterrupt:
         print("\nServer stopped.")
+    except OSError as e:
+        if e.errno == 10048:
+            print(f"Error: Port {PORT} is already in use. Try: python serve-live-dashboard.py <port>")
+        else:
+            print(f"Error: {e}")

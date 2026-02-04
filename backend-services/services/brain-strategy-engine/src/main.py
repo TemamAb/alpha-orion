@@ -10,6 +10,116 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error
 import joblib
+import time
+import statistics
+from collections import deque
+import functools
+import threading
+from datetime import datetime, timedelta
+
+# Performance monitoring infrastructure
+performance_metrics = {
+    'endpoint_latencies': {},
+    'throughput_counters': {},
+    'error_rates': {},
+    'strategy_execution_times': {},
+    'cache_hit_rates': {},
+    'system_health': {}
+}
+
+# Thread-safe performance tracking
+metrics_lock = threading.Lock()
+
+def performance_monitor(endpoint_name):
+    """Decorator to monitor endpoint performance"""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            try:
+                result = func(*args, **kwargs)
+                execution_time = time.time() - start_time
+
+                with metrics_lock:
+                    # Track latency percentiles
+                    if endpoint_name not in performance_metrics['endpoint_latencies']:
+                        performance_metrics['endpoint_latencies'][endpoint_name] = deque(maxlen=1000)
+
+                    performance_metrics['endpoint_latencies'][endpoint_name].append(execution_time)
+
+                    # Track throughput
+                    if endpoint_name not in performance_metrics['throughput_counters']:
+                        performance_metrics['throughput_counters'][endpoint_name] = 0
+
+                    performance_metrics['throughput_counters'][endpoint_name] += 1
+
+                return result
+            except Exception as e:
+                with metrics_lock:
+                    # Track error rates
+                    if endpoint_name not in performance_metrics['error_rates']:
+                        performance_metrics['error_rates'][endpoint_name] = 0
+                    performance_metrics['error_rates'][endpoint_name] += 1
+
+                raise e
+        return wrapper
+    return decorator
+
+def calculate_percentiles(data, percentiles=[50, 95, 99]):
+    """Calculate percentiles from data"""
+    if not data:
+        return {p: 0 for p in percentiles}
+
+    sorted_data = sorted(data)
+    results = {}
+
+    for p in percentiles:
+        index = int(len(sorted_data) * p / 100)
+        if index >= len(sorted_data):
+            index = len(sorted_data) - 1
+        results[p] = sorted_data[index]
+
+    return results
+
+def get_performance_report():
+    """Generate comprehensive performance report"""
+    with metrics_lock:
+        report = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'endpoints': {},
+            'system_health': performance_metrics['system_health'].copy(),
+            'overall_metrics': {
+                'total_requests': sum(performance_metrics['throughput_counters'].values()),
+                'total_errors': sum(performance_metrics['error_rates'].values()),
+                'error_rate': 0,
+                'cache_hit_rate': 0
+            }
+        }
+
+        # Calculate endpoint metrics
+        for endpoint, latencies in performance_metrics['endpoint_latencies'].items():
+            if latencies:
+                percentiles = calculate_percentiles(list(latencies))
+                throughput = performance_metrics['throughput_counters'].get(endpoint, 0)
+                errors = performance_metrics['error_rates'].get(endpoint, 0)
+
+                report['endpoints'][endpoint] = {
+                    'p50_latency': percentiles[50],
+                    'p95_latency': percentiles[95],
+                    'p99_latency': percentiles[99],
+                    'avg_latency': statistics.mean(latencies) if latencies else 0,
+                    'throughput_per_second': throughput / max(1, (time.time() - time.time() + 1)),  # Simplified
+                    'error_count': errors,
+                    'error_rate': errors / max(1, throughput) if throughput > 0 else 0,
+                    'sample_count': len(latencies)
+                }
+
+        # Calculate overall error rate
+        total_requests = report['overall_metrics']['total_requests']
+        if total_requests > 0:
+            report['overall_metrics']['error_rate'] = report['overall_metrics']['total_errors'] / total_requests
+
+        return report
 
 # GPU libraries enabled for production
 TORCH_AVAILABLE = True
@@ -222,6 +332,7 @@ def get_market_conditions():
         }
 
 @app.route('/strategy', methods=['GET'])
+@performance_monitor('strategy')
 def strategy():
     mode = get_system_mode()
     market_conditions = get_market_conditions()
@@ -601,6 +712,7 @@ async def process_strategy_task_async(strategy_name, task_data):
         return {'strategy': strategy_name, 'error': str(e)}
 
 @app.route('/strategy/parallel', methods=['GET'])
+@performance_monitor('strategy_parallel')
 async def run_strategies_parallel():
     """Run all strategies in parallel using asyncio for <50ms execution"""
     try:
@@ -817,7 +929,32 @@ def analyze_pair_correlations():
     except Exception as e:
         return jsonify({'error': f'Correlation analysis failed: {str(e)}'}), 500
 
+@app.route('/performance/metrics', methods=['GET'])
+@performance_monitor('performance_metrics')
+def get_performance_metrics():
+    """Get comprehensive performance metrics report"""
+    try:
+        report = get_performance_report()
+
+        # Add system health metrics
+        with metrics_lock:
+            performance_metrics['system_health'] = {
+                'cpu_usage': 45.2,  # Mock data - would be real system metrics
+                'memory_usage': 67.8,
+                'disk_usage': 23.1,
+                'network_io': 150.5,
+                'active_connections': 42,
+                'uptime_seconds': time.time() - time.time(),  # Would track actual uptime
+                'last_updated': datetime.utcnow().isoformat()
+            }
+
+        return jsonify(report)
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to generate performance report: {str(e)}'}), 500
+
 @app.route('/health', methods=['GET'])
+@performance_monitor('health')
 def health():
     health_status = {
         'status': 'ok',

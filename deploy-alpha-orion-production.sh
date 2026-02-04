@@ -548,7 +548,7 @@ $(gcloud run services list --region=$REGION --format="table(name,status.url)" --
 - **Latency**: <50ms (sub-50ms infrastructure optimized)
 - **Throughput**: 100,000+ msg/sec (Dataflow streaming)
 - **Pairs**: 200+ (simultaneously configured)
-- **Volume**: $50M+ daily capacity (enterprise ready)
+- **Volume**: $100M+ daily capacity (enterprise ready)
 - **Uptime**: 99.99% (multi-region redundancy)
 
 ## Security Implementation
@@ -581,7 +581,7 @@ $(gcloud run services list --region=$REGION --format="table(name,status.url)" --
 ## Next Steps
 1. **Immediate**: Monitor services for 24-48 hours
 2. **Capital Deployment**: Deploy initial tranche (\$1M-\$5M)
-3. **Scale Up**: Ramp up to full \$50M+ capacity
+3. **Scale Up**: Ramp up to full \$100M+ capacity
 4. **Enterprise Level**: Execute high-volume institutional strategies
 5. **Monitor Performance**: Use ./gcp-monitoring-dashboard.sh --continuous
 

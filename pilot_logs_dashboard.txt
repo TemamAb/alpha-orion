@@ -1,16 +1,0 @@
-
-
-===========================================================
-      ALPHA-ORION LIVE PROFIT DASHBOARD SERVER        
-          AUTO-DETECTING FREE PORT...                     
-===========================================================
-
-STAGE 1: INITIALIZATION
-  Changing to working directory...
-  Working directory set
-
-STAGE 2: PORT DETECTION
-
-Scanning ports for availability...
-
-  Testing: Port 8888 ... [-------------------------] 1%

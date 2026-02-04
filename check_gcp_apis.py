@@ -96,7 +96,7 @@ def get_project_id():
 
 def enable_api(api, project_id):
     """Attempt to enable a disabled API"""
-    print(f"   🛠️  Attempting to enable {api}...")
+    print(f"   [ENABLING] {api}...")
     try:
         result = subprocess.run(
             f"gcloud services enable {api} --project={project_id}", 
@@ -106,36 +106,36 @@ def enable_api(api, project_id):
         )
         
         if result.returncode == 0:
-            print(f"   ✅ Successfully enabled {api}")
+            print(f"   [OK] Successfully enabled {api}")
             return True
         else:
-            print(f"   ❌ Failed to enable {api}: {result.stderr.strip()}")
+            print(f"   [FAIL] Failed to enable {api}: {result.stderr.strip()}")
             return False
     except Exception as e:
-        print(f"   ❌ Execution error: {e}")
+        print(f"   [ERROR] Execution error: {e}")
         return False
 
 def check_billing(project_id):
     """Verify billing is enabled"""
-    print(f"💰 Checking billing status...")
+    print(f"[BILLING] Checking billing status...")
     try:
         result = subprocess.run(
             f"gcloud billing projects describe {project_id} --format='value(billingEnabled)'",
             shell=True, capture_output=True, text=True
         )
         if result.returncode == 0 and result.stdout.strip() == 'True':
-            print("   ✅ Billing is ENABLED")
+            print("   [OK] Billing is ENABLED")
             return True
         else:
-            print(f"   ❌ Billing is DISABLED or unknown: {result.stderr.strip()}")
+            print(f"   [FAIL] Billing is DISABLED or unknown: {result.stderr.strip()}")
             return False
     except Exception as e:
-        print(f"   ❌ Error checking billing: {e}")
+        print(f"   [ERROR] Error checking billing: {e}")
         return False
 
 def check_project_access(project_id):
     """Verify project access"""
-    print(f"🏗️  Checking project access...")
+    print(f"[PROJECT] Checking project access...")
     try:
         result = subprocess.run(
             f"gcloud projects describe {project_id} --format='value(lifecycleState)'",
@@ -143,26 +143,26 @@ def check_project_access(project_id):
         )
         if result.returncode == 0:
             state = result.stdout.strip()
-            print(f"   ✅ Project found (State: {state})")
+            print(f"   [OK] Project found (State: {state})")
             return True
         else:
-            print(f"   ❌ Project access failed: {result.stderr.strip()}")
+            print(f"   [FAIL] Project access failed: {result.stderr.strip()}")
             return False
     except Exception as e:
-        print(f"   ❌ Error checking project: {e}")
+        print(f"   [ERROR] Error checking project: {e}")
         return False
 
 def check_apis():
     load_env_vars()
     project_id = get_project_id()
-    print(f"🔍 CHIEF ARCHITECT VERIFICATION: {project_id}")
+    print(f"[CHIEF ARCHITECT VERIFICATION]: {project_id}")
     print("=" * 60)
     
     # Check if gcloud is installed
     try:
         subprocess.run("gcloud --version", shell=True, capture_output=True, check=True)
     except subprocess.CalledProcessError:
-        print("❌ Error: 'gcloud' CLI not found. Please install Google Cloud SDK.")
+        print("[ERROR] 'gcloud' CLI not found. Please install Google Cloud SDK.")
         return
 
     # Check Project & Billing
@@ -170,10 +170,10 @@ def check_apis():
     billing_ok = check_billing(project_id)
     
     if not project_ok:
-        print("⚠️  Cannot verify project access. Please check permissions.")
+        print("[WARN] Cannot verify project access. Please check permissions.")
 
     # Get enabled services
-    print("⏳ Fetching enabled services list (this may take a moment)...")
+    print("[INFO] Fetching enabled services list (this may take a moment)...")
     try:
         cmd = f"gcloud services list --project={project_id} --format='value(config.name)'"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -181,20 +181,20 @@ def check_apis():
         if result.returncode != 0:
             # Try enabling service usage API if listing failed
             if "serviceusage.googleapis.com" in result.stderr:
-                print("   ⚠️ Service Usage API seems disabled. Attempting to enable...")
+                print("   [WARN] Service Usage API seems disabled. Attempting to enable...")
                 enable_api("serviceusage.googleapis.com", project_id)
                 # Retry listing
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
         if result.returncode != 0:
-            print(f"❌ Error fetching services: {result.stderr.strip()}")
+            print(f"[ERROR] Error fetching services: {result.stderr.strip()}")
             print("   Tip: Run 'gcloud auth login' if you are not authenticated.")
             return
             
         enabled_services = set(result.stdout.strip().split('\n'))
         
     except Exception as e:
-        print(f"❌ Execution error: {e}")
+        print(f"[ERROR] Execution error: {e}")
         return
 
     # Check against required list
@@ -207,9 +207,9 @@ def check_apis():
     
     for api in REQUIRED_APIS:
         if api in enabled_services:
-            print(f"{api:<40} | ✅ ENABLED")
+            print(f"{api:<40} | [ENABLED]")
         else:
-            print(f"{api:<40} | ❌ DISABLED")
+            print(f"{api:<40} | [DISABLED]")
             disabled_count += 1
             if enable_api(api, project_id):
                 fixed_count += 1
@@ -217,15 +217,15 @@ def check_apis():
     print("-" * 60)
     
     if disabled_count == 0 and project_ok and billing_ok:
-        print("\n🎉 VERIFICATION COMPLETE: SYSTEM READY")
-        print("   Project Access: ✅")
-        print("   Billing Status: ✅")
-        print("   API Status:     ✅")
+        print("\n[SUCCESS] VERIFICATION COMPLETE: SYSTEM READY")
+        print("   Project Access: [OK]")
+        print("   Billing Status: [OK]")
+        print("   API Status:     [OK]")
     elif disabled_count == fixed_count and project_ok and billing_ok:
-        print(f"\n🎉 SUCCESS: Fixed {fixed_count}/{disabled_count} disabled APIs.")
+        print(f"\n[SUCCESS] Fixed {fixed_count}/{disabled_count} disabled APIs.")
         print("   The infrastructure is ready for deployment.")
     else:
-        print(f"\n⚠️  WARNING: Could not enable {disabled_count - fixed_count} APIs.")
+        print(f"\n[WARN] Could not enable {disabled_count - fixed_count} APIs.")
         print("   Please check permissions or billing status.")
 
 if __name__ == "__main__":
