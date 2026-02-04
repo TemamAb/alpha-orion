@@ -101,6 +101,28 @@ def git_push():
     run_cmd('git commit -m "🚀 Automated Deployment: Production Dashboard & Infrastructure" || echo "No changes to commit"', exit_on_fail=False)
     run_cmd("git push origin main", exit_on_fail=False)
 
+def fix_iam_permissions():
+    log("Fixing IAM permissions for Cloud Build/Storage...")
+    try:
+        # Get Project Number
+        cmd = f"gcloud projects describe {PROJECT_ID} --format=\"value(projectNumber)\""
+        out = subprocess.check_output(cmd, shell=True)
+        project_number = out.decode().strip()
+        
+        if not project_number:
+            log("⚠️ Could not determine project number. Skipping IAM fix.")
+            return
+
+        # Default Compute Service Account (often used by Cloud Run source deploys)
+        compute_sa = f"{project_number}-compute@developer.gserviceaccount.com"
+        
+        log(f"Granting Storage Admin to {compute_sa}...")
+        run_cmd(f"gcloud projects add-iam-policy-binding {PROJECT_ID} "
+                f"--member=serviceAccount:{compute_sa} --role=roles/storage.admin --condition=None --quiet", exit_on_fail=False)
+                
+    except Exception as e:
+        log(f"⚠️ Error fixing IAM: {e}")
+
 def deploy_gcp():
     log(f"Deploying to GCP Project: {PROJECT_ID}")
     
@@ -133,6 +155,7 @@ def main():
     ensure_gcloud_path()
     prepare_dashboard()
     update_server_script()
+    fix_iam_permissions()
     git_push()
     deploy_gcp()
     log("✅ AUTOMATED DEPLOYMENT COMPLETED")
