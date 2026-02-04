@@ -30,6 +30,28 @@ def run_cmd(cmd, exit_on_fail=True):
         sys.exit(1)
     return ret
 
+def ensure_gcloud_path():
+    """Ensure gcloud is in the PATH for Windows environments"""
+    # Check if gcloud is already available
+    if shutil.which("gcloud"):
+        return
+
+    log("⚠️  'gcloud' not found in PATH. Searching common Windows locations...")
+    
+    common_paths = [
+        os.path.expandvars(r"%ProgramFiles(x86)%\Google\Cloud SDK\google-cloud-sdk\bin"),
+        os.path.expandvars(r"%ProgramFiles%\Google\Cloud SDK\google-cloud-sdk\bin"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Google\Cloud SDK\google-cloud-sdk\bin"),
+        os.path.expanduser(r"~\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin")
+    ]
+
+    for path in common_paths:
+        if os.path.exists(path):
+            log(f"🔄 Found gcloud at: {path}")
+            os.environ["PATH"] += os.pathsep + path
+            log("✅ gcloud added to PATH successfully.")
+            return
+
 def prepare_dashboard():
     log("Preparing Dashboard...")
     
@@ -108,6 +130,7 @@ def deploy_gcp():
     run_cmd(cmd, exit_on_fail=False)
 
 def main():
+    ensure_gcloud_path()
     prepare_dashboard()
     update_server_script()
     git_push()
