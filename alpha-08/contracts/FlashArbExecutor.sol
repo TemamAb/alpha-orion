@@ -85,6 +85,7 @@ contract FlashArbExecutor {
     ) external returns (bool) {
         // Validation: Ensure only the lending pool can call this
         // Note: In production, add a check for msg.sender == poolAddress
+        require(initiator == address(this), "SOVEREIGN: UNTRUSTED_INITIATOR");
         
         (uint256 minProfit, bytes memory swapData) = abi.decode(params, (uint256, bytes));
         
