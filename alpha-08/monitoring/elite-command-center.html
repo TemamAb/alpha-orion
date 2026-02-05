@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALPHA-08 | Enterprise Command Center</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.ethers.org/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+    <style>
+        :root {
+            --bg-dark: #07080a;
+            --bg-panel: #0d1117;
+            --bg-card: #161b22;
+            --bg-hover: rgba(255, 255, 255, 0.03);
+            --accent-primary: #3b82f6;
+            /* Orion Blue */
+            --accent-secondary: #00ff88;
+            /* Sovereign Green */
+            --accent-danger: #f85149;
+            --accent-warning: #d29922;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --border-color: #30363d;
+            --sidebar-width: 280px;
+            --header-height: 64px;
+            --glow-green: rgba(0, 255, 136, 0.3);
+            --glow-blue: rgba(59, 130, 246, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-dark);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            font-size: 13px;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* === TOP HEADER === */
+        header {
+            height: var(--header-height);
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            z-index: 1000;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: -0.5px;
+        }
+
+        .header-brand .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 8px;
+            box-shadow: 0 0 15px var(--glow-blue);
+        }
+
+        .header-metrics {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .header-stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-stat .label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .header-stat .value {
+            font-family: 'JetBrains Mono';
+            font-weight: 700;
+            color: var(--accent-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* === LAYOUT === */
+        .app-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .nav-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0 0.75rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0.75rem 0.75rem;
+            border-radius: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: var(--bg-hover);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-primary);
+            border-left: 3px solid var(--accent-primary);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* === MAIN PANEL === */
+        .main-panel {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.05), transparent 40%);
+        }
+
+        .panel-header {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        /* === ELITE WITHDRAWAL SYSTEM === */
+        .vault-card {
+            background: linear-gradient(145deg, #1c2128, #12141a);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+        }
+
+        .balance-hero {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-bottom: 3rem;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .hero-stat .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .hero-stat .value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono';
+            color: var(--text-main);
+        }
+
+        .hero-stat .value.profit {
+            color: var(--accent-secondary);
+            text-shadow: 0 0 20px var(--glow-green);
+        }
+
+        .vault-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+        }
+
+        .config-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .input-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .input-field {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            color: #fff;
+            font-family: 'JetBrains Mono';
+            font-size: 1rem;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent-primary);
+            outline: none;
+        }
+
+        .toggle-container {
+            display: flex;
+            background: #000;
+            border-radius: 10px;
+            padding: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            background: none;
+            color: var(--text-muted);
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 7px;
+            transition: 0.3s;
+        }
+
+        .toggle-btn.active {
+            background: var(--accent-primary);
+            color: #fff;
+            box-shadow: 0 4px 12px var(--glow-blue);
+        }
+
+        .elite-btn {
+            background: linear-gradient(135deg, var(--accent-primary), #1e40af);
+            color: #fff;
+            border: none;
+            padding: 1.25rem;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .elite-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(59, 130, 246, 0.4);
+        }
+
+        .history-mini-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .history-mini-table td {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .badge-auto {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-primary);
+        }
+
+        .badge-success {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--accent-secondary);
+        }
+
+        /* === GEMINI ELITE TERMINAL === */
+        .terminal-card {
+            background: #000;
+            border-radius: 16px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-header {
+            background: #1a1a1a;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .terminal-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            color: var(--accent-secondary);
+        }
+
+        .terminal-body {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: #00ff88;
+            line-height: 1.6;
+        }
+
+        .terminal-line {
+            margin-bottom: 6px;
+        }
+
+        .terminal-line.ai {
+            color: #fff;
+        }
+
+        .terminal-line.cmd {
+            color: #3b82f6;
+        }
+
+        .terminal-line.caution {
+            color: #ffaa00;
+        }
+
+        .terminal-footer {
+            padding: 1rem;
+            background: #0a0a0a;
+            border-top: 1px solid #333;
+        }
+
+        .terminal-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #111;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        .terminal-input {
+            background: none;
+            border: none;
+            color: #fff;
+            font-family: 'JetBrains Mono';
+            flex: 1;
+            outline: none;
+        }
+
+        /* === DEPLOYMENT TABLE (GCP BEGINNER FRIENDLY) === */
+        .deploy-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .deploy-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .deploy-table th {
+            text-align: left;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .deploy-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+        }
+
+        .hash {
+            font-family: 'JetBrains Mono';
+            color: var(--accent-primary);
+            opacity: 0.8;
+        }
+
+        .deploy-phrase {
+            color: var(--accent-secondary);
+            font-weight: 600;
+        }
+
+        /* === ANIMATIONS === */
+        @keyframes scanline {
+            0% {
+                top: 0;
+            }
+
+            100% {
+                top: 100%;
+            }
+        }
+
+        .terminal-body::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 255, 136, 0.1);
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="header-brand">
+            <div class="logo"></div>
+            ALPHA-08 COMMAND
+        </div>
+        <div class="header-metrics">
+            <div class="header-stat">
+                <div class="label">Sovereign P&L</div>
+                <div class="value">+$127,485.32</div>
+            </div>
+            <div class="header-stat">
+                <div class="label">Velocity 100 Status</div>
+                <div class="value" style="color: var(--accent-primary);">85.4% Optimized</div>
+            </div>
+            <div class="header-stat">
+                <div class="label">GCP Node Health</div>
+                <div class="value" style="color: var(--accent-secondary);">Optimal</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="nav-section">
+                <div class="nav-label">OPERATIONS</div>
+                <div class="nav-item active" onclick="switchTab('withdrawal')"><i class="icon">🏦</i> Elite Vault</div>
+                <div class="nav-item" onclick="switchTab('terminal')"><i class="icon">✨</i> Gemini Terminal</div>
+                <div class="nav-item" onclick="switchTab('deploy')"><i class="icon">🚀</i> GCP Deployer</div>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">ENGINE TUNING</div>
+                <div class="nav-item"><i class="icon">⚡</i> Latency Matrix</div>
+                <div class="nav-item"><i class="icon">🛡️</i> MEV Shield</div>
+                <div class="nav-item"><i class="icon">🧬</i> Strategy DNA</div>
+            </div>
+            <div class="nav-section" style="margin-top: auto;">
+                <div class="nav-label">CONFIGURATION</div>
+                <div class="nav-item"><i class="icon">⚙️</i> System Settings</div>
+            </div>
+        </aside>
+
+        <main class="main-panel">
+
+            <!-- ELITE WITHDRAWAL TAB -->
+            <div id="tab-withdrawal" class="content-tab">
+                <div class="panel-header">
+                    <div>
+                        <h2>Elite Withdrawal System</h2>
+                        <p style="color: var(--text-muted); margin-top: 5px;">Secure Profit Liquidation & Smart Vault
+                            Management</p>
+                    </div>
+                    <div class="badge-success badge" style="padding: 10px 20px;">SAFE MODE ACTIVE</div>
+                </div>
+
+                <div class="vault-card">
+                    <div class="balance-hero">
+                        <div class="hero-stat">
+                            <div class="label">SECURE VAULT BALANCE</div>
+                            <div class="value profit">$2,847.50</div>
+                        </div>
+                        <div class="hero-stat">
+                            <div class="label">UNCLAIMED REWARDS</div>
+                            <div class="value">$1,102.40</div>
+                        </div>
+                        <div class="hero-stat">
+                            <div class="label">EST. NEXT PAYOUT</div>
+                            <div class="value" style="color: var(--accent-primary);">$500.00</div>
+                        </div>
+                    </div>
+
+                    <div class="vault-grid">
+                        <div class="config-section">
+                            <h3 style="margin-bottom: 1rem;">Liquidation Rules</h3>
+                            <div class="toggle-container">
+                                <button class="toggle-btn active" id="btn-auto">AUTONOMOUS</button>
+                                <button class="toggle-btn" id="btn-manual">MANUAL GATE</button>
+                            </div>
+
+                            <div class="input-group">
+                                <label>THRESHOLD LIQUIDATION (USD)</label>
+                                <input type="text" class="input-field" value="1,000.00">
+                            </div>
+
+                            <div class="input-group">
+                                <label>TARGET SMART WALLET</label>
+                                <input type="text" class="input-field" value="0x71C...8e21" readonly>
+                            </div>
+
+                            <button class="elite-btn">TRIGGER LIQUIDATION NOW</button>
+                        </div>
+
+                        <div class="history-section">
+                            <h3 style="margin-bottom: 1rem;">Recent Settlements</h3>
+                            <table class="history-mini-table">
+                                <tr>
+                                    <td><span class="badge badge-auto">AUTO</span></td>
+                                    <td class="mono">+$1,250.00</td>
+                                    <td class="text-muted">2026-02-04</td>
+                                    <td style="text-align: right;"><span class="badge-success badge">CONFIRMED</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge badge-auto">AUTO</span></td>
+                                    <td class="mono">+$800.00</td>
+                                    <td class="text-muted">2026-02-03</td>
+                                    <td style="text-align: right;"><span class="badge-success badge">CONFIRMED</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge" style="background: rgba(255,255,255,0.05);">MAN</span></td>
+                                    <td class="mono">+$500.00</td>
+                                    <td class="text-muted">2026-02-01</td>
+                                    <td style="text-align: right;"><span class="badge-success badge">CONFIRMED</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GEMINI ELITE TERMINAL TAB -->
+            <div id="tab-terminal" class="content-tab hidden" style="height: 100%;">
+                <div class="panel-header">
+                    <div>
+                        <h2>Gemini Co-Pilot Intelligence</h2>
+                        <p style="color: var(--text-muted); margin-top: 5px;">Continuous Optimization & Autonomous
+                            Deployment Agent</p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="toggle-btn active" style="padding: 10px 20px; border-radius: 8px;">AUTO-DEPLOY:
+                            ON</button>
+                    </div>
+                </div>
+
+                <div class="terminal-card">
+                    <div class="terminal-header">
+                        <div class="terminal-title"><i>✨</i> ALPHA-08-AI: ONLINE</div>
+                        <div style="font-size: 0.7rem; color: #888;">GCP / VERTEX-AI / PIPELINE-V8</div>
+                    </div>
+                    <div class="terminal-body" id="term-body">
+                        <div class="terminal-line ai">>> [SYSTEM] Alpha-08 Sovereign Intelligence Initialized.</div>
+                        <div class="terminal-line ai">>> [WATCH] Monitoring GitHub Repo: TemamAb/alpha-orion...</div>
+                        <div class="terminal-line cmd">>> Running Pre-flight Diagnostics on GKE Cluster [us-central1]...
+                        </div>
+                        <div class="terminal-line cmd">>> Result: 100% Benchmark Compliance [Wintermute Parity].</div>
+                        <div class="terminal-line ai">>> Ready to receive commits. Auto-deployment mode ACTIVE.</div>
+                    </div>
+                    <div class="terminal-footer">
+                        <div class="terminal-input-wrap">
+                            <span style="color: #3b82f6;">gemini@alpha-08:~$</span>
+                            <input type="text" class="terminal-input"
+                                placeholder="Initiate manual optimization or request system report...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DEPLOYMENT TABLE TAB -->
+            <div id="tab-deploy" class="content-tab hidden">
+                <div class="panel-header">
+                    <div>
+                        <h2>GCP Beginner Deployer</h2>
+                        <p style="color: var(--text-muted); margin-top: 5px;">Track your code as it flies from GitHub to
+                            the Google Cloud Cluster</p>
+                    </div>
+                </div>
+
+                <div class="deploy-card">
+                    <h3 style="margin-bottom: 0;">Incoming Code Stream</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2rem;">Every time you push to
+                        GitHub, our AI validates, containerizes, and deploys it here automatically.</p>
+                    <table class="deploy-table">
+                        <thead>
+                            <tr>
+                                <th>FILE/CHANGE NAME</th>
+                                <th>TIME ARRIVED</th>
+                                <th>IDENTIFIER (HASH)</th>
+                                <th>AI VERDICT</th>
+                                <th>GCP STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deploy-rows">
+                            <tr>
+                                <td><span style="font-weight: 700;">core/execution/kernel.py</span></td>
+                                <td>09:42:15 AM</td>
+                                <td class="hash">7fa12c9...</td>
+                                <td class="deploy-phrase">Secure & Optimized</td>
+                                <td><span class="badge-success badge">LIVE ON GKE</span></td>
+                            </tr>
+                            <tr>
+                                <td><span style="font-weight: 700;">contracts/FlashArb.sol</span></td>
+                                <td>09:30:02 AM</td>
+                                <td class="hash">a82d01b...</td>
+                                <td class="deploy-phrase">Gas-Optimized Binary</td>
+                                <td><span class="badge-success badge">LIVE ON GKE</span></td>
+                            </tr>
+                            <tr>
+                                <td><span style="font-weight: 700;">ui/mission-control.html</span></td>
+                                <td>09:12:44 AM</td>
+                                <td class="hash">2c77d4e...</td>
+                                <td class="deploy-phrase">UX Refinement</td>
+                                <td><span class="badge-success badge">LIVE ON GKE</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.content-tab').forEach(t => t.classList.add('hidden'));
+            // Remove active from all nav items
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+
+            // Show selected
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            // Add active class
+            event.currentTarget.classList.add('active');
+        }
+
+        // Terminal Mock
+        const termBody = document.getElementById('term-body');
+        const aiPhrases = [
+            "Analyzing performance drift in Liquidation Strategy...",
+            "Detected latency spike on BSC RPC. Diverting to Private Node...",
+            "Optimizing gas price for Atomic Swap #842...",
+            "BigQuery Stream: Data synced for Kelly Learning...",
+            "Security Audit: Cloud Armor blocked 2 probes from unauthorized IPs."
+        ];
+
+        // === COMMIT SIMULATION (NEW) ===
+        function simulateIncomingCommit(fileName, description) {
+            const time = new Date().toLocaleTimeString();
+            const hash = Math.random().toString(16).substring(2, 9);
+
+            // 1. Log to Terminal
+            const logs = [
+                `[SYSTEM] GitHub Hook: New push detected in 'main' branch.`,
+                `[AI] Intercepting file: ${fileName}...`,
+                `[AI] Analysis: ${description}. Security validation PASSED.`,
+                `[GCP] Cloud Build triggered. Containerizing binary...`,
+                `[GCP] Rollout initiated on GKE Cluster [alpha-orion-v8].`
+            ];
+
+            let delay = 0;
+            logs.forEach(text => {
+                setTimeout(() => {
+                    const line = document.createElement('div');
+                    line.className = 'terminal-line cmd';
+                    line.innerHTML = `>> ${text}`;
+                    termBody.appendChild(line);
+                    termBody.scrollTop = termBody.scrollHeight;
+                }, delay);
+                delay += 1000;
+            });
+
+            // 2. Add to Deploy Table
+            setTimeout(() => {
+                const deployRows = document.getElementById('deploy-rows');
+                const row = document.createElement('tr');
+                row.style.background = 'rgba(0, 255, 136, 0.05)';
+                row.style.animation = 'fadeIn 1s forwards';
+                row.innerHTML = `
+                    <td><span style="font-weight: 700;">${fileName}</span></td>
+                    <td>${time}</td>
+                    <td class="hash">${hash}...</td>
+                    <td class="deploy-phrase">Elite Code / AI Verified</td>
+                    <td><span class="badge-success badge">LIVE ON GKE</span></td>
+                `;
+                deployRows.insertBefore(row, deployRows.firstChild);
+            }, delay + 500);
+        }
+
+        // Trigger simulation after 3 seconds for demonstration
+        setTimeout(() => {
+            simulateIncomingCommit('strategies/arbitrage_v9.py', 'Advanced cross-dex triangular (V9 Upgrade)');
+        }, 3000);
+
+        setInterval(() => {
+            if (Math.random() > 0.5) {
+                const line = document.createElement('div');
+                line.className = 'terminal-line ai';
+                line.innerHTML = `>> [AI] ${aiPhrases[Math.floor(Math.random() * aiPhrases.length)]}`;
+                termBody.appendChild(line);
+                termBody.scrollTop = termBody.scrollHeight;
+            }
+        }, 4000);
+
+        setInterval(() => {
+            const line = document.createElement('div');
+            line.className = 'terminal-line cmd';
+            line.innerHTML = `>> Automated Optimization: Resource scaling complete (GKE Nodes ++).`;
+            termBody.appendChild(line);
+            termBody.scrollTop = termBody.scrollHeight;
+        }, 15000);
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,56 @@
+name: ALPHA-08 SOVEREIGN DEPLOYMENT
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'alpha-08/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    # Required for Workload Identity Federation
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Google Auth
+      id: auth
+      uses: google-github-actions/auth@v1
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+        service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Configure Docker
+      run: gcloud auth configure-docker --quiet
+
+    - name: Build and Push Calibration Engine
+      run: |
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/alpha-08-calibration:${{ github.sha }} -f alpha-08/engine/Dockerfile alpha-08/
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/alpha-08-calibration:${{ github.sha }}
+
+    - name: Build and Push Sovereign Hub
+      run: |
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/alpha-08-hub:${{ github.sha }} -f alpha-08/monitoring/Dockerfile alpha-08/
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/alpha-08-hub:${{ github.sha }}
+
+    - name: Get GKE Credentials
+      uses: google-github-actions/get-gke-credentials@v1
+      with:
+        cluster_name: alpha-08-sovereign
+        location: us-central1
+
+    - name: Deploy to GKE
+      run: |
+        # Replace placeholders in K8s manifest
+        sed -i "s/PROJECT_ID/${{ secrets.GCP_PROJECT_ID }}/g" alpha-08/infrastructure/k8s/deployment.yaml
+        sed -i "s/latest/${{ github.sha }}/g" alpha-08/infrastructure/k8s/deployment.yaml
+        kubectl apply -f alpha-08/infrastructure/k8s/deployment.yaml

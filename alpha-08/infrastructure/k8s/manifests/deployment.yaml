@@ -1,0 +1,58 @@
+# Alpha-Orion: GKE Manifest Setup
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alpha-orion-sa
+  namespace: default
+  annotations:
+    iam.gke.io/gcp-service-account: alpha-orion-sa@${PROJECT_ID}.iam.gserviceaccount.com
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpha-orion-engine
+  labels:
+    app: alpha-orion
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: alpha-orion
+  template:
+    metadata:
+      labels:
+        app: alpha-orion
+    spec:
+      serviceAccountName: alpha-orion-sa
+      nodeSelector:
+        workload: arbitrage-engine # Pin to C2 nodes
+      containers:
+      - name: engine
+        image: gcr.io/${PROJECT_ID}/alpha-orion:v08
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        env:
+        - name: PROJECT_ID
+          value: "${PROJECT_ID}"
+        - name: GCP_SECRET_RPC
+          value: "rpc-url-mainnet"
+        # Priority Class for HFT (Ensures this pod isn't evicted easily)
+        priorityClassName: system-cluster-critical
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alpha-orion-service
+spec:
+  selector:
+    app: alpha-orion
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: LoadBalancer
