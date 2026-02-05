@@ -370,6 +370,44 @@
             color: var(--text-main);
             border-bottom-left-radius: 2px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            white-space: pre-line;
+        }
+
+        .thinking {
+            font-size: 0.7rem;
+            color: var(--accent-primary);
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .thinking::after {
+            content: "";
+            width: 4px;
+            height: 4px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from {
+                opacity: 0.2;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .ai-header {
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: var(--accent-secondary);
+            margin-bottom: 4px;
+            text-transform: uppercase;
         }
 
         .chat-input-area {
@@ -776,8 +814,16 @@
                         </div>
                         <div class="chat-history" id="chat-history">
                             <div class="msg ai">
-                                Greetings, Sovereign. The Alpha-08 Intelligence Cluster is synchronized with Polygon
-                                Mainnet. How shall we optimize the execution kernel today?
+                                <div class="ai-header">Antigravity AI Agent</div>
+                                Greetings, Sovereign. This is the localized **Antigravity Intelligence Instance**.
+
+                                **Current Status:**
+                                - **GKE Cluster:** alpha-08-sovereign (Active)
+                                - **RPC Node:** Polygon Mainnet (Auditing)
+                                - **Last Stress Test:** 100% Success (519 Requests)
+
+                                I am ready to facilitate your audit of the **Alpha-08 Sovereign Machine**. How shall we
+                                proceed?
                             </div>
                         </div>
                         <div class="chat-input-area">
@@ -952,7 +998,7 @@
             }, 1500);
         }
 
-        // --- GEMINI COPILOT INTERACTIVE LOGIC ---
+        // --- ANTIGRAVITY AGENTIC INTERACTIVE LOGIC ---
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const history = document.getElementById('chat-history');
@@ -965,6 +1011,15 @@
             uMsg.innerText = val;
             history.appendChild(uMsg);
             input.value = '';
+
+            // Show Thinking State
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.id = 'temp-thinking';
+            thinkingDiv.className = 'thinking';
+            thinkingDiv.style.marginLeft = "10px";
+            thinkingDiv.innerText = "Antigravity is auditing system logs...";
+            history.appendChild(thinkingDiv);
+
             history.scrollTop = history.scrollHeight;
 
             // Handle specific commands visual flow
@@ -972,20 +1027,37 @@
                 executeTerminalCommand(val);
             }
 
-            // Simulate AI response
+            // Agentic Response Delay (Simulating reasoning)
             setTimeout(() => {
+                document.getElementById('temp-thinking').remove();
                 const aiMsg = document.createElement('div');
                 aiMsg.className = 'msg ai';
-                aiMsg.innerText = generateAIResponse(val);
+                aiMsg.innerHTML = `<div class="ai-header">Antigravity AI Agent</div>${generateAntigravityResponse(val)}`;
                 history.appendChild(aiMsg);
                 history.scrollTop = history.scrollHeight;
-            }, 800);
+            }, 1200);
         }
 
-        function generateAIResponse(query) {
-            if (query.toLowerCase().includes('profit')) return "Analyzing Alpha-08 yield curves. Current η-Gas is optimized at 14.2x. Profit flow is stable.";
-            if (query.toLowerCase().includes('execute')) return "Synchronizing with GKE NodePool us-central1-c2. Command dispatched to execution kernel.";
-            return "Acknowledged, Sovereign. Query processed by the active inference engine. All systems nominal.";
+        function generateAntigravityResponse(query) {
+            const q = query.toLowerCase();
+
+            if (q.includes('profit') || q.includes('yield')) {
+                return "Analyzing Alpha-08 **Yield Dynamics**. I have verified that the current **η-Gas (Profit/Gas)** stands at a robust **14.2x**. \n\n**Recommendation:** Maintain current liquidation thresholds. The cluster is successfully recycling capital with zero slippage drift detected.";
+            }
+
+            if (q.includes('execute') || q.includes('deploy')) {
+                return "Understood. Synchronizing with the **Variant Execution Kernel**. I am dispatching the instruction to the **GKE NodePool (us-central1)**. \n\nCheck the **Root Execution Terminal** on the right for the kernel delta.";
+            }
+
+            if (q.includes('status') || q.includes('health')) {
+                return "The **Alpha-08 Sovereign Cluster** is operating at 100% capacity. \n\n- **Node Load:** 12% (Optimization Headroom: High)\n- **Polygon Sync:** Block height is being audited in real-time.\n- **Risk State:** Circuit Breakers are **GREEN**.";
+            }
+
+            if (q.includes('security') || q.includes('wallet')) {
+                return "Sovereign, I have locked the **Withdrawal Architecture** into the verified Polygon wallet. Any override attempt will trigger a global confirmation banner as per your instructions.";
+            }
+
+            return "Acknowledge, Sovereign. Your intent is documented. I am continuously monitoring the **14-metric analytic stream** for any anomalies. How else can I assist in this session?";
         }
 
         function executeTerminalCommand(cmd) {
