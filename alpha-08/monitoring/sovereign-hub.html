@@ -466,37 +466,19 @@
     </div>
 
     <script>
-        const strategies = [
-            {
-                name: "Vulture Liquidation",
-                latency: "12ms", conflict: "0.2%",
-                gas: "12.4x", tps: "1850",
-                profit: "+$4,205", slippage: "0.001%",
-                score: 98.2,
-                weights: { lat: 40, prof: 30, gas: 20, risk: 10 },
-                action: "Pinned CPU buffer for sub-10ms sweep"
-            },
-            {
-                name: "Triangular Arb V9",
-                latency: "24ms", conflict: "1.4%",
-                gas: "8.2x", tps: "2400",
-                profit: "+$3,802", slippage: "0.005%",
-                score: 94.5,
-                weights: { lat: 20, prof: 40, gas: 30, risk: 10 },
-                action: "Adjusted gas-limit for congestion"
-            },
-            {
-                name: "Cross-Chain Velocity",
-                latency: "110ms", conflict: "0.0%",
-                gas: "15.1x", tps: "840",
-                profit: "+$2,100", slippage: "0.012%",
-                score: 96.1,
-                weights: { lat: 10, prof: 30, gas: 50, risk: 10 },
-                action: "Pivoting bridge relay to Across"
-            }
-        ];
+        const API_URL = "http://localhost:8000";
 
-        function populateTable() {
+        async function fetchStrategies() {
+            try {
+                const res = await fetch(`${API_URL}/api/strategies`);
+                const strategies = await res.json();
+                populateTable(strategies);
+            } catch (e) {
+                console.error("API Error:", e);
+            }
+        }
+
+        function populateTable(strategies) {
             const body = document.getElementById('strategy-body');
             body.innerHTML = '';
             strategies.forEach(s => {
@@ -551,25 +533,33 @@
             document.getElementById('tab-' + tabName).classList.remove('hidden');
         }
 
-        const log = document.getElementById('opt-log');
-        const tasks = [
-            "GKE: Hot-swapped node pool us-central1-a",
-            "Predictor: Drift reduction sequence active.",
-            "Analyzing block 184021... found 2 gaps.",
-            "WPS: Re-aligning strategy priorities...",
-            "Sovereign Guard: MEV bot blocked."
-        ];
+        async function fetchLogs() {
+            try {
+                const res = await fetch(`${API_URL}/api/logs`);
+                const data = await res.json();
+                const log = document.getElementById('opt-log');
+                
+                const line = document.createElement('div');
+                // Simple heuristic for styling based on content or random if generic
+                let className = 'opt-line';
+                if (data.log.includes("Predictor") || data.log.includes("WPS")) className += ' ai';
+                if (data.log.includes("Calibrating")) className += ' calib';
+                
+                line.className = className;
+                line.innerHTML = data.log;
+                log.appendChild(line);
+                log.scrollTop = log.scrollHeight;
+                if (log.childElementCount > 15) log.removeChild(log.firstChild);
+            } catch (e) {
+                console.error("Log API Error:", e);
+            }
+        }
 
-        setInterval(() => {
-            const line = document.createElement('div');
-            line.className = 'opt-line' + (Math.random() > 0.5 ? ' ai' : '');
-            line.innerHTML = `>> [ALPHA-08] ${tasks[Math.floor(Math.random() * tasks.length)]}`;
-            log.appendChild(line);
-            log.scrollTop = log.scrollHeight;
-            if (log.childElementCount > 15) log.removeChild(log.firstChild);
-        }, 5000);
-
-        window.onload = populateTable;
+        window.onload = () => {
+            fetchStrategies();
+            setInterval(fetchStrategies, 2000);
+            setInterval(fetchLogs, 4000);
+        };
     </script>
 </body>
 
