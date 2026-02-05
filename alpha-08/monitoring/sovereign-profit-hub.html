@@ -4,12 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALPHA-08 | Sovereign Profit Hub</title>
+    <title>Alpha-08 Profit Hub</title>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <style>
-        /* ALPHA-GRAFANA ENTERPRISE THEME v10.0 */
         :root {
             --bg-dark: #0b0c0e;
             --bg-panel: #111217;
@@ -22,7 +21,6 @@
             --text-main: #d8d9da;
             --text-muted: #9da2a7;
             --border-color: #2c3235;
-            --header-bg: #111217;
         }
 
         * {
@@ -34,62 +32,84 @@
         body {
             background-color: var(--bg-dark);
             color: var(--text-main);
-            font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
-            font-size: 13px;
-            line-height: 1.5;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            overflow-x: hidden;
         }
 
         .container {
-            max-width: 1600px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1rem;
         }
 
         /* HEADER */
         header {
-            background: var(--header-bg);
+            background: var(--bg-panel);
             border-bottom: 1px solid var(--border-color);
-            padding: 1rem 2rem;
-            margin: -2rem -2rem 2rem -2rem;
+            padding: 0.75rem 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .header-brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
+            font-size: 0.95rem;
         }
 
         .logo-box {
-            width: 32px;
-            height: 32px;
+            width: 20px;
+            height: 20px;
             background: var(--accent-primary);
             border-radius: 2px;
         }
 
-        .brand-text {
-            font-size: 1.3rem;
-            font-weight: 800;
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .refresh-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .refresh-select {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.3rem 0.5rem;
+            border-radius: 2px;
+            font-size: 0.7rem;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .live-badge {
             background: rgba(224, 47, 68, 0.1);
             border: 1px solid var(--accent-danger);
             color: var(--accent-danger);
-            padding: 4px 12px;
+            padding: 3px 8px;
             border-radius: 2px;
-            font-size: 0.7rem;
-            font-weight: 800;
+            font-size: 0.65rem;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
         }
 
         .live-pulse {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             background: var(--accent-danger);
             border-radius: 50%;
             animation: pulse 2s infinite;
@@ -100,103 +120,110 @@
             0%,
             100% {
                 opacity: 1;
-                transform: scale(1);
             }
 
             50% {
                 opacity: 0.5;
-                transform: scale(1.5);
             }
         }
 
-        /* CARDS & PANELS */
-        .data-card,
-        .stat-card,
+        /* MAIN LAYOUT */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
         .panel {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 4px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            padding: 1rem;
         }
 
         .panel-header {
-            font-size: 0.7rem;
-            font-weight: 800;
+            font-size: 0.65rem;
             color: var(--accent-primary);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 1rem;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid var(--border-color);
         }
 
-        /* PROFIT STATS GRID */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+        /* PROFIT DISPLAY */
+        .profit-display {
+            text-align: center;
+            padding: 1.5rem 0;
         }
 
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 800;
+        .profit-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .profit-value {
+            font-size: 2.5rem;
             font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-secondary);
             margin: 0.5rem 0;
         }
 
-        .stat-label {
-            font-size: 0.65rem;
+        .profit-subtitle {
+            font-size: 0.7rem;
             color: var(--text-muted);
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .stat-subtitle {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 0.25rem;
-        }
-
-        .m-pos {
-            color: var(--accent-secondary);
-        }
-
-        .m-neg {
-            color: var(--accent-danger);
-        }
-
-        .m-neutral {
-            color: var(--accent-primary);
         }
 
         /* WITHDRAWAL SECTION */
-        .withdrawal-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+        .input-group {
+            margin: 0.75rem 0;
+        }
+
+        .input-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 0.4rem;
+            display: block;
+        }
+
+        .input-field {
+            width: 100%;
+            background: #000;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.5rem 0.75rem;
+            border-radius: 2px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent-primary);
         }
 
         .mode-selector {
             display: flex;
-            gap: 1rem;
-            margin: 1rem 0;
+            gap: 0.5rem;
+            margin: 0.75rem 0;
         }
 
         .mode-btn {
             flex: 1;
-            padding: 0.75rem;
+            padding: 0.5rem;
             background: #202226;
             border: 1px solid var(--border-color);
             color: var(--text-main);
             border-radius: 2px;
-            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             text-align: center;
+            font-size: 0.7rem;
         }
 
         .mode-btn:hover {
@@ -207,41 +234,6 @@
             background: rgba(50, 116, 217, 0.2);
             border-color: var(--accent-primary);
             color: var(--accent-primary);
-        }
-
-        .input-group {
-            margin: 1rem 0;
-        }
-
-        .input-label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            margin-bottom: 0.5rem;
-            display: block;
-        }
-
-        .input-field {
-            width: 100%;
-            background: #000;
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 0.75rem 1rem;
-            border-radius: 2px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            outline: none;
-        }
-
-        .input-field:focus {
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 2px rgba(50, 116, 217, 0.1);
-        }
-
-        .input-field:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
         }
 
         .wallet-display {
@@ -255,15 +247,14 @@
         }
 
         .btn {
-            padding: 0.75rem 1.5rem;
+            padding: 0.5rem 1rem;
             border-radius: 2px;
-            font-weight: 600;
             cursor: pointer;
             border: none;
             transition: all 0.2s;
-            font-size: 0.85rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.03em;
         }
 
         .btn-primary {
@@ -271,18 +262,11 @@
             color: #fff;
         }
 
-        .btn-primary:hover {
-            filter: brightness(1.1);
-        }
-
         .btn-success {
             background: var(--accent-secondary);
             color: #fff;
-        }
-
-        .btn-danger {
-            background: var(--accent-danger);
-            color: #fff;
+            width: 100%;
+            margin-top: 0.75rem;
         }
 
         .btn-secondary {
@@ -291,37 +275,53 @@
             color: var(--text-main);
         }
 
-        .btn-secondary:hover {
-            background: #2c3235;
+        .btn:hover {
+            filter: brightness(1.1);
         }
 
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        /* BLOCKCHAIN INFO */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #202226;
+            font-size: 0.75rem;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-muted);
+        }
+
+        .info-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-main);
         }
 
         /* TRANSFER HISTORY */
         .transfer-table {
             width: 100%;
             border-collapse: collapse;
+            font-size: 0.7rem;
         }
 
         .transfer-table th {
             background: #202226;
-            padding: 0.6rem 1rem;
-            font-size: 0.7rem;
+            padding: 0.5rem;
+            font-size: 0.65rem;
             text-transform: uppercase;
             color: var(--accent-primary);
-            border-bottom: 2px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
             text-align: left;
-            font-weight: 700;
         }
 
         .transfer-table td {
-            padding: 0.8rem 1rem;
+            padding: 0.5rem;
             border-bottom: 1px solid #202226;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
         }
 
         .transfer-table tr:hover {
@@ -329,10 +329,9 @@
         }
 
         .status-badge {
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 2px;
-            font-weight: 700;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
         }
 
         .status-pending {
@@ -347,80 +346,23 @@
             border: 1px solid rgba(86, 166, 75, 0.2);
         }
 
-        .status-failed {
-            background: rgba(224, 47, 68, 0.1);
-            color: var(--accent-danger);
-            border: 1px solid rgba(224, 47, 68, 0.2);
-        }
-
         .tx-hash {
             color: var(--accent-primary);
             text-decoration: none;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
         }
 
         .tx-hash:hover {
             text-decoration: underline;
         }
 
-        /* BLOCKCHAIN BALANCE */
-        .blockchain-balance {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 1rem;
-            margin: 1rem 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .balance-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .balance-icon {
-            width: 40px;
-            height: 40px;
-            background: var(--accent-primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
-
-        .balance-text {
-            font-size: 1.5rem;
-            font-weight: 800;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent-secondary);
-        }
-
-        .refresh-btn {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            padding: 0.5rem 1rem;
-            border-radius: 2px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: all 0.2s;
-        }
-
-        .refresh-btn:hover {
-            border-color: var(--accent-primary);
-            color: var(--accent-primary);
-        }
-
-        /* NOTIFICATIONS */
+        /* NOTIFICATION */
         .notification {
-            padding: 1rem;
+            padding: 0.75rem;
             border-radius: 4px;
             margin-bottom: 1rem;
             display: none;
+            font-size: 0.75rem;
         }
 
         .notification.show {
@@ -452,36 +394,12 @@
             color: var(--accent-danger);
         }
 
-        .notification.info {
-            background: rgba(50, 116, 217, 0.1);
-            border: 1px solid var(--accent-primary);
-            color: var(--accent-primary);
-        }
-
-        /* LOADING SPINNER */
-        .spinner {
-            border: 2px solid var(--border-color);
-            border-top: 2px solid var(--accent-primary);
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-left: 8px;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
         .hidden {
             display: none !important;
+        }
+
+        .m-pos {
+            color: var(--accent-secondary);
         }
     </style>
 </head>
@@ -490,148 +408,104 @@
     <header>
         <div class="header-brand">
             <div class="logo-box"></div>
-            <span class="brand-text">ALPHA-08 <span style="color: var(--accent-primary)">SOVEREIGN PROFIT
-                    HUB</span></span>
+            <span>Alpha-08 Profit Hub</span>
         </div>
-        <div class="live-badge">
-            <span class="live-pulse"></span>
-            LIVE MAINNET
+        <div class="header-controls">
+            <div class="refresh-control">
+                <span>Currency:</span>
+                <select class="refresh-select" id="currency-selector" onchange="updateCurrency()">
+                    <option value="USD" selected>USD</option>
+                    <option value="ETH">ETH</option>
+                </select>
+            </div>
+            <div class="refresh-control">
+                <span>Refresh:</span>
+                <select class="refresh-select" id="refresh-interval" onchange="updateRefreshInterval()">
+                    <option value="1000">1s</option>
+                    <option value="2000">2s</option>
+                    <option value="5000" selected>5s</option>
+                    <option value="10000">10s</option>
+                    <option value="15000">15s</option>
+                    <option value="30000">30s</option>
+                </select>
+            </div>
+            <div class="live-badge">
+                <span class="live-pulse"></span>
+                LIVE
+            </div>
         </div>
     </header>
 
     <div class="container">
-        <!-- Notification Area -->
         <div id="notification" class="notification"></div>
 
-        <!-- Profit Statistics -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Session Profit</div>
-                <div class="stat-value m-pos" id="session-profit">$0.00</div>
-                <div class="stat-subtitle">Current session earnings</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Cumulative Profit</div>
-                <div class="stat-value m-pos" id="cumulative-profit">$0.00</div>
-                <div class="stat-subtitle">Total all-time earnings</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Blockchain Balance</div>
-                <div class="stat-value m-neutral" id="blockchain-balance">$0.00</div>
-                <div class="stat-subtitle">Real-time on-chain balance</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Withdrawable</div>
-                <div class="stat-value m-pos" id="withdrawable-balance">$0.00</div>
-                <div class="stat-subtitle">Available for withdrawal</div>
-            </div>
-        </div>
-
-        <!-- Withdrawal Controls -->
-        <div class="withdrawal-controls">
-            <!-- Mode Selection & Settings -->
+        <div class="main-grid">
+            <!-- Profit Balance -->
             <div class="panel">
-                <div class="panel-header">⚙️ Withdrawal Configuration</div>
+                <div class="panel-header">Profit Balance</div>
+                <div class="profit-display">
+                    <div class="profit-label">Withdrawable Balance</div>
+                    <div class="profit-value" id="profit-balance">$0.00</div>
+                    <div class="profit-subtitle">Real-time blockchain balance</div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <div class="info-row">
+                        <span class="info-label">Session Profit</span>
+                        <span class="info-value m-pos" id="session-profit">$0.00</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Cumulative Total</span>
+                        <span class="info-value m-pos" id="cumulative-profit">$0.00</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Last Updated</span>
+                        <span class="info-value" id="last-update">--:--:--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Withdrawal Control -->
+            <div class="panel">
+                <div class="panel-header">Withdrawal Control</div>
 
                 <div class="input-group">
-                    <label class="input-label">Withdrawal Mode</label>
+                    <label class="input-label">Mode</label>
                     <div class="mode-selector">
-                        <div class="mode-btn active" id="mode-manual" onclick="setMode('MANUAL')">
-                            🔒 MANUAL
-                        </div>
-                        <div class="mode-btn" id="mode-auto" onclick="setMode('AUTO')">
-                            ⚡ AUTO
-                        </div>
+                        <div class="mode-btn active" id="mode-manual" onclick="setMode('MANUAL')">Manual</div>
+                        <div class="mode-btn" id="mode-auto" onclick="setMode('AUTO')">Auto</div>
                     </div>
                 </div>
 
                 <div class="input-group" id="threshold-group" style="display: none;">
-                    <label class="input-label">Auto Withdrawal Threshold (USD)</label>
+                    <label class="input-label">Auto Threshold (USD)</label>
                     <input type="number" class="input-field" id="threshold-input" placeholder="1000.00" value="1000">
-                    <div class="stat-subtitle" style="margin-top: 0.5rem;">
-                        Automatically withdraw when balance exceeds this amount
-                    </div>
                 </div>
 
                 <div class="input-group" id="amount-group">
-                    <label class="input-label">Withdrawal Amount (USD)</label>
+                    <label class="input-label">Amount (USD)</label>
                     <input type="number" class="input-field" id="amount-input" placeholder="Enter amount">
                 </div>
 
                 <div class="input-group">
-                    <label class="input-label">Target Wallet Address</label>
+                    <label class="input-label">Wallet Address</label>
                     <div class="wallet-display">
-                        <input type="text" class="input-field" id="wallet-input" placeholder="0x..." value="">
-                        <button class="btn btn-secondary" onclick="saveWallet()">SAVE</button>
-                    </div>
-                    <div class="stat-subtitle" style="margin-top: 0.5rem;">
-                        This wallet will override any default settings
+                        <input type="text" class="input-field" id="wallet-input" placeholder="0x...">
+                        <button class="btn btn-secondary" onclick="saveWallet()">Save</button>
                     </div>
                 </div>
 
-                <button class="btn btn-success" onclick="executeWithdrawal()" style="width: 100%; margin-top: 1rem;">
-                    💸 EXECUTE WITHDRAWAL
-                </button>
-            </div>
-
-            <!-- Blockchain Balance Monitor -->
-            <div class="panel">
-                <div class="panel-header">⛓️ Real-Time Blockchain Monitor</div>
-
-                <div class="blockchain-balance">
-                    <div class="balance-info">
-                        <div class="balance-icon">💰</div>
-                        <div>
-                            <div class="stat-label">On-Chain Balance</div>
-                            <div class="balance-text" id="chain-balance">$0.00</div>
-                        </div>
-                    </div>
-                    <button class="refresh-btn" onclick="refreshBlockchainBalance()">
-                        🔄 REFRESH
-                    </button>
-                </div>
-
-                <div style="margin-top: 1.5rem;">
-                    <div class="stat-label" style="margin-bottom: 0.5rem;">WALLET INFO</div>
-                    <div
-                        style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 4px; border: 1px solid var(--border-color);">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                            <span style="color: var(--text-muted);">Address:</span>
-                            <span id="wallet-display"
-                                style="font-family: 'JetBrains Mono'; color: var(--accent-primary);">Not Set</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                            <span style="color: var(--text-muted);">Network:</span>
-                            <span style="font-weight: 600;">Polygon Mainnet</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span style="color: var(--text-muted);">Last Updated:</span>
-                            <span id="last-update">Never</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    style="margin-top: 1rem; padding: 0.75rem; background: rgba(50, 116, 217, 0.1); border: 1px solid var(--accent-primary); border-radius: 4px;">
-                    <div style="font-size: 0.75rem; color: var(--accent-primary);">
-                        <strong>ℹ️ Real-Time Sync:</strong> Balance updates every 10 seconds from Polygon blockchain
-                    </div>
-                </div>
+                <button class="btn btn-success" onclick="executeWithdrawal()">Execute Withdrawal</button>
             </div>
         </div>
 
         <!-- Transfer History -->
-        <div class="panel">
-            <div class="panel-header">📜 Transfer History</div>
-
+        <div class="panel" style="margin-top: 1rem;">
+            <div class="panel-header">Transfer History</div>
             <div style="overflow-x: auto;">
                 <table class="transfer-table">
                     <thead>
                         <tr>
-                            <th>Timestamp</th>
+                            <th>Time</th>
                             <th>Amount</th>
                             <th>Wallet</th>
                             <th>Mode</th>
@@ -641,8 +515,8 @@
                     </thead>
                     <tbody id="transfer-history">
                         <tr>
-                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                                No transfer history yet
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                No transfers yet
                             </td>
                         </tr>
                     </tbody>
@@ -655,60 +529,75 @@
         const API_BASE = 'http://localhost:8000';
         let currentMode = 'MANUAL';
         let updateInterval;
-        let blockchainInterval;
+        let refreshRate = 5000;
+        let currentCurrency = 'USD';
+        let ethPrice = 2500; // Default ETH price in USD
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', function () {
             loadSettings();
+            fetchEthPrice();
             fetchProfitData();
-            refreshBlockchainBalance();
             loadTransferHistory();
-
-            // Auto-refresh every 5 seconds
-            updateInterval = setInterval(fetchProfitData, 5000);
-
-            // Blockchain balance refresh every 10 seconds
-            blockchainInterval = setInterval(refreshBlockchainBalance, 10000);
+            startAutoRefresh();
         });
 
-        // Mode Selection
+        async function fetchEthPrice() {
+            // Fetch current ETH price (simulated - in production use CoinGecko API)
+            try {
+                ethPrice = 2500 + (Math.random() * 100 - 50); // Simulate price fluctuation
+            } catch (error) {
+                console.error('Error fetching ETH price:', error);
+            }
+        }
+
+        function formatCurrency(usdAmount) {
+            if (currentCurrency === 'USD') {
+                return `$${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            } else {
+                const ethAmount = usdAmount / ethPrice;
+                return `${ethAmount.toFixed(6)} ETH`;
+            }
+        }
+
+        function updateCurrency() {
+            currentCurrency = document.getElementById('currency-selector').value;
+            localStorage.setItem('alpha08_currency', currentCurrency);
+            fetchProfitData(); // Refresh display with new currency
+            showNotification(`Currency changed to ${currentCurrency}`, 'success');
+        }
+
+        function startAutoRefresh() {
+            if (updateInterval) clearInterval(updateInterval);
+            updateInterval = setInterval(fetchProfitData, refreshRate);
+        }
+
+        function updateRefreshInterval() {
+            refreshRate = parseInt(document.getElementById('refresh-interval').value);
+            startAutoRefresh();
+            showNotification(`Refresh interval set to ${refreshRate / 1000}s`, 'success');
+        }
+
         function setMode(mode) {
             currentMode = mode;
-
-            // Update UI
             document.getElementById('mode-manual').classList.toggle('active', mode === 'MANUAL');
             document.getElementById('mode-auto').classList.toggle('active', mode === 'AUTO');
-
-            // Show/hide relevant inputs
             document.getElementById('threshold-group').style.display = mode === 'AUTO' ? 'block' : 'none';
             document.getElementById('amount-group').style.display = mode === 'MANUAL' ? 'block' : 'none';
 
-            // Save to API
             fetch(`${API_BASE}/api/withdrawal/set-mode`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mode: mode })
             })
                 .then(response => response.json())
-                .then(data => {
-                    showNotification(`Withdrawal mode set to ${mode}`, 'success');
-                })
-                .catch(error => {
-                    showNotification(`Error setting mode: ${error.message}`, 'error');
-                });
+                .then(data => showNotification(`Mode set to ${mode}`, 'success'))
+                .catch(error => showNotification(`Error: ${error.message}`, 'error'));
         }
 
-        // Save Wallet
         function saveWallet() {
             const wallet = document.getElementById('wallet-input').value.trim();
-
-            if (!wallet) {
-                showNotification('Please enter a wallet address', 'error');
-                return;
-            }
-
-            if (!wallet.startsWith('0x') || wallet.length !== 42) {
-                showNotification('Invalid wallet address format', 'error');
+            if (!wallet || !wallet.startsWith('0x') || wallet.length !== 42) {
+                showNotification('Invalid wallet address', 'error');
                 return;
             }
 
@@ -719,131 +608,84 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('wallet-display').textContent = wallet.substring(0, 6) + '...' + wallet.substring(38);
                     localStorage.setItem('alpha08_wallet', wallet);
-                    showNotification('Wallet address saved successfully', 'success');
+                    showNotification('Wallet saved', 'success');
                 })
-                .catch(error => {
-                    showNotification(`Error saving wallet: ${error.message}`, 'error');
-                });
+                .catch(error => showNotification(`Error: ${error.message}`, 'error'));
         }
 
-        // Execute Withdrawal
         function executeWithdrawal() {
             const wallet = document.getElementById('wallet-input').value.trim();
-            let amount;
+            let amount = currentMode === 'MANUAL'
+                ? parseFloat(document.getElementById('amount-input').value)
+                : parseFloat(document.getElementById('threshold-input').value);
 
-            if (currentMode === 'MANUAL') {
-                amount = parseFloat(document.getElementById('amount-input').value);
-                if (!amount || amount <= 0) {
-                    showNotification('Please enter a valid withdrawal amount', 'error');
-                    return;
-                }
-            } else {
-                amount = parseFloat(document.getElementById('threshold-input').value);
-            }
-
-            if (!wallet) {
-                showNotification('Please set a wallet address first', 'error');
+            if (!amount || amount <= 0) {
+                showNotification('Enter valid amount', 'error');
                 return;
             }
 
-            if (confirm(`Confirm withdrawal of $${amount.toFixed(2)} to ${wallet}?`)) {
+            if (!wallet) {
+                showNotification('Set wallet address first', 'error');
+                return;
+            }
+
+            if (confirm(`Withdraw $${amount.toFixed(2)} to ${wallet.substring(0, 10)}...?`)) {
                 fetch(`${API_BASE}/api/withdrawal/request`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        amount_usd: amount,
-                        wallet_address: wallet
-                    })
+                    body: JSON.stringify({ amount_usd: amount, wallet_address: wallet })
                 })
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'ERROR') {
                             showNotification(data.message, 'error');
                         } else {
-                            showNotification(`Withdrawal request submitted! ID: ${data.request_id}`, 'success');
+                            showNotification(`Withdrawal submitted: ${data.request_id}`, 'success');
                             addTransferToHistory(data);
-                            if (currentMode === 'MANUAL') {
-                                document.getElementById('amount-input').value = '';
-                            }
+                            if (currentMode === 'MANUAL') document.getElementById('amount-input').value = '';
                         }
                     })
-                    .catch(error => {
-                        showNotification(`Error: ${error.message}`, 'error');
-                    });
+                    .catch(error => showNotification(`Error: ${error.message}`, 'error'));
             }
         }
 
-        // Fetch Profit Data
         async function fetchProfitData() {
             try {
                 const response = await fetch(`${API_BASE}/api/profit/current`);
                 const data = await response.json();
 
-                document.getElementById('session-profit').textContent =
-                    `$${data.session_profit_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-                document.getElementById('cumulative-profit').textContent =
-                    `$${data.cumulative_profit_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-                document.getElementById('withdrawable-balance').textContent =
-                    `$${data.withdrawable_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+                document.getElementById('profit-balance').textContent = formatCurrency(data.withdrawable_balance);
+                document.getElementById('session-profit').textContent = formatCurrency(data.session_profit_usd);
+                document.getElementById('cumulative-profit').textContent = formatCurrency(data.cumulative_profit_usd);
+                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
             } catch (error) {
                 console.error('Error fetching profit data:', error);
             }
         }
 
-        // Refresh Blockchain Balance
-        async function refreshBlockchainBalance() {
-            try {
-                // Simulate blockchain balance fetch (in production, this would call Web3/ethers.js)
-                const response = await fetch(`${API_BASE}/api/profit/current`);
-                const data = await response.json();
-
-                // Simulate blockchain balance (in production, fetch from actual blockchain)
-                const blockchainBalance = data.cumulative_profit_usd * 0.95; // Simulate some difference
-
-                document.getElementById('blockchain-balance').textContent =
-                    `$${blockchainBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-                document.getElementById('chain-balance').textContent =
-                    `$${blockchainBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-
-            } catch (error) {
-                console.error('Error fetching blockchain balance:', error);
-            }
-        }
-
-        // Load Transfer History
         function loadTransferHistory() {
             const history = JSON.parse(localStorage.getItem('alpha08_transfers') || '[]');
-
             if (history.length === 0) return;
 
             const tbody = document.getElementById('transfer-history');
             tbody.innerHTML = '';
 
-            history.reverse().forEach(transfer => {
+            history.reverse().slice(0, 10).forEach(transfer => {
                 const row = tbody.insertRow();
                 row.innerHTML = `
-                    <td>${new Date(transfer.timestamp).toLocaleString()}</td>
+                    <td>${new Date(transfer.timestamp).toLocaleTimeString()}</td>
                     <td class="m-pos">$${transfer.amount.toFixed(2)}</td>
                     <td>${transfer.wallet.substring(0, 6)}...${transfer.wallet.substring(38)}</td>
                     <td>${transfer.mode}</td>
                     <td><span class="status-badge status-${transfer.status.toLowerCase()}">${transfer.status}</span></td>
-                    <td>${transfer.tx_hash ? `<a href="https://polygonscan.com/tx/${transfer.tx_hash}" target="_blank" class="tx-hash">${transfer.tx_hash.substring(0, 10)}...</a>` : 'Pending'}</td>
+                    <td>${transfer.tx_hash ? `<a href="https://polygonscan.com/tx/${transfer.tx_hash}" target="_blank" class="tx-hash">${transfer.tx_hash.substring(0, 8)}...</a>` : '-'}</td>
                 `;
             });
         }
 
-        // Add Transfer to History
         function addTransferToHistory(data) {
             const history = JSON.parse(localStorage.getItem('alpha08_transfers') || '[]');
-
             history.push({
                 timestamp: data.timestamp,
                 amount: data.amount_usd,
@@ -853,30 +695,28 @@
                 tx_hash: null,
                 request_id: data.request_id
             });
-
             localStorage.setItem('alpha08_transfers', JSON.stringify(history));
             loadTransferHistory();
         }
 
-        // Load Settings
         function loadSettings() {
             const savedWallet = localStorage.getItem('alpha08_wallet');
             if (savedWallet) {
                 document.getElementById('wallet-input').value = savedWallet;
-                document.getElementById('wallet-display').textContent =
-                    savedWallet.substring(0, 6) + '...' + savedWallet.substring(38);
+            }
+
+            const savedCurrency = localStorage.getItem('alpha08_currency');
+            if (savedCurrency) {
+                currentCurrency = savedCurrency;
+                document.getElementById('currency-selector').value = savedCurrency;
             }
         }
 
-        // Show Notification
         function showNotification(message, type) {
             const notification = document.getElementById('notification');
             notification.textContent = message;
             notification.className = `notification ${type} show`;
-
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 5000);
+            setTimeout(() => notification.classList.remove('show'), 4000);
         }
     </script>
 </body>
