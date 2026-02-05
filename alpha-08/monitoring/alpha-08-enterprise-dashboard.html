@@ -305,6 +305,122 @@
             color: var(--accent-secondary);
             font-size: 0.85rem;
         }
+
+        /* WALLET MANAGEMENT */
+        .wallet-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .wallet-input-group {
+            position: relative;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .wallet-input-group.editing {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+
+        .wallet-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 800;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .wallet-status {
+            color: var(--accent-secondary);
+            font-size: 0.6rem;
+        }
+
+        .wallet-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .wallet-address-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'JetBrains Mono';
+            font-size: 1.1rem;
+            width: 100%;
+            outline: none;
+        }
+
+        .wallet-address-input:disabled {
+            color: var(--text-muted);
+        }
+
+        .btn-override {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-danger);
+            border: 1px solid var(--accent-danger);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-override:hover {
+            background: var(--accent-danger);
+            color: #fff;
+        }
+
+        .btn-action {
+            padding: 0.8rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 800;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: var(--border-color);
+            color: var(--text-main);
+        }
+
+        .confirm-banner {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-danger);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 
@@ -318,7 +434,8 @@
         <div style="display: flex; gap: 2rem;">
             <div style="text-align: right;">
                 <div class="stat-label">System Health</div>
-                <div class="mono" style="color: var(--accent-secondary); font-weight: 800;">Node-C2: ACTIVE (0.12ms)
+                <div id="system-health" class="mono" style="color: var(--accent-secondary); font-weight: 800;">Node-C2:
+                    ACTIVE (0.12ms)
                 </div>
             </div>
             <div style="text-align: right;">
@@ -446,13 +563,52 @@
                 </div>
                 <div
                     style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 12px;">
-                    <h3>Withdrawal Logic</h3>
-                    <div style="display: flex; gap: 2rem; align-items: center;">
-                        <input type="number" placeholder="Set Threshold"
-                            style="background:#000; border:1px solid var(--border-color); color:#fff; padding: 1rem; border-radius: 5px; flex: 1;">
-                        <button
-                            style="background: var(--accent-primary); color:#fff; border:none; padding:1rem 2rem; border-radius: 5px; font-weight: 800; cursor:pointer;">UPDATE
-                            POLICY</button>
+                    <h3>Sovereign Withdrawal Architecture</h3>
+
+                    <div class="wallet-section">
+                        <!-- Wallet Address Management -->
+                        <div class="wallet-input-group" id="wallet-group">
+                            <div class="wallet-label">
+                                <span>Target Settlement Wallet (Polygon Mainnet)</span>
+                                <span class="wallet-status" id="wallet-status">VERIFIED</span>
+                            </div>
+                            <div class="wallet-display">
+                                <input type="text" id="target-wallet" class="wallet-address-input"
+                                    value="0x89205A3A3b2A6646564652074652074652074652" disabled>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn-override" id="btn-edit"
+                                        onclick="toggleWalletEdit()">EDIT</button>
+                                    <button class="btn-override" id="btn-override" style="display:none;"
+                                        onclick="showOverrideConfirm()">SYSTEM OVERRIDE</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Override Confirmation -->
+                        <div id="override-confirm" class="confirm-banner">
+                            <div style="font-weight: 800; color: var(--accent-danger); margin-bottom: 5px;">⚠️ GLOBAL
+                                OVERRIDE DETECTED</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+                                You are about to override the primary settlement wallet. This will redirect all profit
+                                flows from every strategy in the cluster to the new address.
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <button class="btn-action btn-primary" style="background: var(--accent-danger);"
+                                    onclick="executeOverride()">CONFIRM & BROADCAST</button>
+                                <button class="btn-action btn-secondary" onclick="cancelOverride()">CANCEL</button>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
+                            <div>
+                                <div class="stat-label">Liquidation Threshold</div>
+                                <input type="number" placeholder="Set Threshold" value="1000"
+                                    style="background:#000; border:1px solid var(--border-color); color:#fff; padding: 1rem; border-radius: 5px; width: 100%;">
+                            </div>
+                            <div style="display: flex; align-items: flex-end;">
+                                <button class="btn-action btn-primary" style="width: 100%;">UPDATE VAULT POLICY</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -468,22 +624,41 @@
     </div>
 
     <script>
-        const strategies = [
-            { name: "Vulture Liquidation", lat: 8, tps: 2400, vel: "8.4x", gas: "15.2x", conf: "0.2%", drift: "+0.001", kelly: "12%", pTrade: "125.00", pHr: "8,200", pDay: "42,000", pWk: "180,000", score: 98.4, action: "Pinning C2 Affinity" },
-            { name: "Triangular Arb V9", lat: 18, tps: 1800, vel: "4.2x", gas: "9.1x", conf: "1.4%", drift: "-0.002", kelly: "8%", pTrade: "45.20", pHr: "4,500", pDay: "28,400", pWk: "145,000", score: 94.2, action: "Recalibrating Gas" },
-            { name: "Cross-Chain Velocity", lat: 112, tps: 850, vel: "22.5x", gas: "18.4x", conf: "0.0%", drift: "+0.015", kelly: "4%", pTrade: "210.50", pHr: "2,100", pDay: "12,800", pWk: "82,000", score: 96.8, action: "Rotating Bridge RPC" },
-            { name: "JIT Liquidity Alpha", lat: 24, tps: 1200, vel: "6.1x", gas: "12.2x", conf: "2.5%", drift: "+0.005", kelly: "15%", pTrade: "85.00", pHr: "5,800", pDay: "32,100", pWk: "152,000", score: 92.5, action: "Optimizing Swap Tick" },
-            { name: "Long-Tail Bot", lat: 250, tps: 450, vel: "1.8x", gas: "4.5x", conf: "0.1%", drift: "-0.010", kelly: "2%", pTrade: "312.00", pHr: "1,200", pDay: "8,500", pWk: "45,000", score: 88.1, action: "Scanning Exotic Dex" },
-            { name: "Statistical Arb V2", lat: 14, tps: 3200, vel: "12.4x", gas: "10.8x", conf: "0.5%", drift: "+0.002", kelly: "10%", pTrade: "18.40", pHr: "9,400", pDay: "52,000", pWk: "210,000", score: 95.9, action: "Refitting Lin-Reg" },
-            { name: "MEV Shield Relay", lat: 4, tps: 110, vel: "N/A", gas: "N/A", conf: "5.5%", drift: "0.000", kelly: "N/A", pTrade: "N/A", pHr: "N/A", pDay: "$2,400 SAVED", pWk: "12,000", score: 99.1, action: "Blocking Frontrun" },
-            { name: "Kelly Rebalancer", lat: 45, tps: 200, vel: "0.5x", gas: "2.1x", conf: "0.1%", drift: "+0.008", kelly: "100%", pTrade: "N/A", pHr: "N/A", pDay: "N/A", pWk: "N/A", score: 85.4, action: "Optimizing Stakes" }
-        ];
+        const API_URL = "";
+        let strategies = [];
+
+        async function fetchStrategies() {
+            try {
+                const res = await fetch(`${API_URL}/api/strategies`);
+                strategies = await res.json();
+                populateTable();
+            } catch (e) {
+                console.error("API Error:", e);
+            }
+        }
+
+        async function fetchLogs() {
+            try {
+                const res = await fetch(`${API_URL}/api/logs`);
+                const data = await res.json();
+                pushLog(data.log);
+
+                // Update Live Telemetry in Header
+                if (data.blockchain) {
+                    const healthEl = document.getElementById('system-health');
+                    healthEl.innerHTML = `BLOCK: ${data.blockchain.block} | GAS: ${data.blockchain.gas} Gwei`;
+                    healthEl.style.color = "#00ff88";
+                }
+            } catch (e) {
+                console.error("Log API Error:", e);
+            }
+        }
 
         function switchTab(t) {
             document.querySelectorAll('.content-area').forEach(c => c.classList.add('hidden'));
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             document.getElementById('tab-' + t).classList.remove('hidden');
-            event.currentTarget.classList.add('active');
+            if (event) event.currentTarget.classList.add('active');
         }
 
         function populateTable() {
@@ -493,46 +668,90 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="m-name">${s.name}</td>
-                    <td><div class="m-val">${s.lat}ms</div><div class="m-sub">Speed</div></td>
-                    <td><div class="m-val">${s.tps}</div><div class="m-sub">Throughput</div></td>
-                    <td><div class="m-val">${s.vel}</div><div class="m-sub">Velocity</div></td>
-                    <td><div class="m-val">${s.gas}</div><div class="m-sub">η-Gas</div></td>
-                    <td><div class="m-val ${parseFloat(s.conf) > 2 ? 'm-neg' : ''}">${s.conf}</div><div class="m-sub">Conflict</div></td>
-                    <td><div class="m-val">${s.drift}</div><div class="m-sub">Δ-Slip</div></td>
-                    <td><div class="m-val">${s.kelly}</div><div class="m-sub">Kelly %</div></td>
-                    <td><div class="m-val m-pos">$${s.pTrade}</div><div class="m-sub">Avg/Trade</div></td>
-                    <td><div class="m-val m-pos">$${s.pHr}</div><div class="m-sub">Realized/Hr</div></td>
-                    <td><div class="m-val m-pos">$${s.pDay}</div><div class="m-sub">Realized/Day</div></td>
-                    <td><div class="m-val m-pos">$${s.pWk}</div><div class="m-sub">Estimate/Wk</div></td>
-                    <td><span class="score-pill ${s.score > 93 ? 'score-90' : 'score-80'}">${s.score}</span></td>
+                    <td><div class="m-val">${s.latency}</div><div class="m-sub">Speed</div></td>
+                    <td><div class="m-val">${s.throughput}</div><div class="m-sub">Throughput</div></td>
+                    <td><div class="m-val">${s.cap_velocity}</div><div class="m-sub">Velocity</div></td>
+                    <td><div class="m-val">${s.eta_gas}</div><div class="m-sub">η-Gas</div></td>
+                    <td><div class="m-val">${s.mempool_conflict_rate}</div><div class="m-sub">Conflict</div></td>
+                    <td><div class="m-val">${s.slippage_drift}</div><div class="m-sub">Δ-Slip</div></td>
+                    <td><div class="m-val">${s.kelly_criterion}</div><div class="m-sub">Kelly %</div></td>
+                    <td><div class="m-val m-pos">${s.profit_trade}</div><div class="m-sub">Avg/Trade</div></td>
+                    <td><div class="m-val m-pos">${s.profit_hr}</div><div class="m-sub">Realized/Hr</div></td>
+                    <td><div class="m-val m-pos">${s.profit_day}</div><div class="m-sub">Realized/Day</div></td>
+                    <td><div class="m-val m-pos">${s.profit_wk}</div><div class="m-sub">Estimate/Wk</div></td>
+                    <td><span class="score-pill ${parseFloat(s.score) > 93 ? 'score-90' : 'score-80'}">${s.score}</span></td>
                     <td style="color: var(--accent-primary); font-style: italic;">${s.action}</td>
                 `;
                 body.appendChild(tr);
             });
         }
 
-        const logPhrases = [
-            "Analyzing memory pressure on GKE NodePool us-central1-c2...",
-            "Detected BSC mempool conflict spike. Routing via Flashbots Private RPC.",
-            "WPS Audit: Re-weighting 'Velocity' for Strategy #3 (Chain Congestion).",
-            "Sovereign Guard: Blocking sandwich attack targeting Vulture #4.",
-            "Optimizing CPU affinity for sub-millisecond execution loop.",
-            "Kelly Criterion update: Increasing Vulture principal weighting to 14.2%."
-        ];
-
-        function pushLog() {
+        function pushLog(message) {
             const box = document.getElementById('log-box');
             const l = document.createElement('div');
             l.style.marginTop = "8px";
-            l.innerHTML = `<span style="color: var(--text-muted)">[${new Date().toLocaleTimeString()}]</span> >> AI: ${logPhrases[Math.floor(Math.random() * logPhrases.length)]}`;
+            l.innerHTML = `<span style="color: var(--text-muted)">[${new Date().toLocaleTimeString()}]</span> >> AI: ${message}`;
             box.appendChild(l);
             box.scrollTop = box.scrollHeight;
             if (box.childElementCount > 30) box.removeChild(box.firstChild);
         }
 
+        // --- WALLET OVERRIDE LOGIC ---
+        let isEditing = false;
+
+        function toggleWalletEdit() {
+            const input = document.getElementById('target-wallet');
+            const group = document.getElementById('wallet-group');
+            const btnEdit = document.getElementById('btn-edit');
+            const btnOverride = document.getElementById('btn-override');
+            const status = document.getElementById('wallet-status');
+
+            isEditing = !isEditing;
+
+            if (isEditing) {
+                input.disabled = false;
+                input.focus();
+                group.classList.add('editing');
+                btnEdit.innerText = "LOCK";
+                btnOverride.style.display = "block";
+                status.innerText = "PENDING MODIFICATION";
+                status.style.color = "var(--accent-warning)";
+            } else {
+                input.disabled = true;
+                group.classList.remove('editing');
+                btnEdit.innerText = "EDIT";
+                btnOverride.style.display = "none";
+                status.innerText = "VERIFIED";
+                status.style.color = "var(--accent-secondary)";
+                cancelOverride(); // Hide banner if locked
+            }
+        }
+
+        function showOverrideConfirm() {
+            document.getElementById('override-confirm').style.display = 'block';
+        }
+
+        function cancelOverride() {
+            document.getElementById('override-confirm').style.display = 'none';
+        }
+
+        function executeOverride() {
+            const newWallet = document.getElementById('target-wallet').value;
+            pushLog(`SYSTEM OVERRIDE: Redirecting all liquidity to ${newWallet.substring(0, 10)}...`);
+
+            // Simulation of broad-spectrum override
+            setTimeout(() => {
+                pushLog("OVERRIDE SUCCESSFUL: All 8 Alphas recalibrated to new target.");
+                toggleWalletEdit();
+                document.getElementById('override-confirm').style.display = 'none';
+            }, 1500);
+        }
+
         window.onload = () => {
-            populateTable();
-            setInterval(pushLog, 4000);
+            fetchStrategies();
+            fetchLogs();
+            setInterval(fetchStrategies, 2000);
+            setInterval(fetchLogs, 4000);
         };
     </script>
 </body>
