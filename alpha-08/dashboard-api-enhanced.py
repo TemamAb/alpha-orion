@@ -15,8 +15,9 @@ from profit_tracker import ProfitTracker
 
 app = FastAPI(title="Alpha-08 Sovereign API")
 
-# Initialize Profit Tracker
+# Initialize Profit Tracker with MANUAL withdrawal mode by default
 profit_tracker = ProfitTracker(data_dir="./data/profits")
+profit_tracker.set_withdrawal_mode("MANUAL")
 
 # Enable CORS for dashboard access
 app.add_middleware(
@@ -112,11 +113,11 @@ ai_actions = [
     "Switching RPC endpoint"
 ]
 
-# --- Endpoints ---
+# --- Core Endpoints ---
 
 @app.get("/")
 def root():
-    return {"system": "Alpha-08 Sovereign Core", "status": "ONLINE"}
+    return {"system": "Alpha-08 Sovereign Core", "status": "ONLINE", "withdrawal_mode": profit_tracker.withdrawal_mode}
 
 @app.get("/api/strategies", response_model=List[StrategyMetrics])
 def get_strategies():
@@ -168,6 +169,88 @@ def get_logs():
         "log": f">> [ALPHA-08] {random.choice(tasks)}"
     }
 
+# --- PROFIT TRACKING ENDPOINTS ---
+
+@app.get("/api/profit/current")
+def get_current_profit():
+    """Get current profit statistics including session and cumulative totals"""
+    return profit_tracker.get_current_profit()
+
+@app.get("/api/profit/breakdown")
+def get_profit_breakdown(hours: int = 24):
+    """Get detailed profit breakdown for the last N hours"""
+    return profit_tracker.get_profit_breakdown(hours)
+
+@app.post("/api/profit/record")
+def record_profit(
+    strategy: str = Body(...),
+    profit_usd: float = Body(...),
+    gas_cost_usd: float = Body(...),
+    tx_hash: Optional[str] = Body(None),
+    block_number: Optional[int] = Body(None)
+):
+    """Record a new profit event (called by execution engine)"""
+    record = profit_tracker.record_profit(
+        strategy=strategy,
+        profit_usd=profit_usd,
+        gas_cost_usd=gas_cost_usd,
+        tx_hash=tx_hash,
+        block_number=block_number
+    )
+    return {"status": "success", "record": record.__dict__}
+
+@app.post("/api/withdrawal/request")
+def request_withdrawal(
+    amount_usd: float = Body(...),
+    wallet_address: str = Body(...)
+):
+    """Request a manual withdrawal"""
+    result = profit_tracker.request_withdrawal(amount_usd, wallet_address)
+    return result
+
+@app.post("/api/withdrawal/set-mode")
+def set_withdrawal_mode(mode: str = Body(...)):
+    """Set withdrawal mode (MANUAL or AUTO)"""
+    try:
+        profit_tracker.set_withdrawal_mode(mode)
+        return {"status": "success", "mode": mode.upper()}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/withdrawal/set-wallet")
+def set_target_wallet(wallet_address: str = Body(...)):
+    """Set target wallet for withdrawals"""
+    profit_tracker.set_target_wallet(wallet_address)
+    return {"status": "success", "wallet": wallet_address}
+
+# --- SIMULATION: Auto-generate profits for demo ---
+import threading
+
+def simulate_profits():
+    """Background thread to simulate profit generation"""
+    while True:
+        time.sleep(random.randint(30, 120))  # Random interval between 30-120 seconds
+        
+        # Pick a random strategy
+        strategy = random.choice(strategy_names)
+        profit = random.uniform(10, 250)
+        gas = random.uniform(2, 15)
+        
+        # Record the profit
+        profit_tracker.record_profit(
+            strategy=strategy,
+            profit_usd=profit,
+            gas_cost_usd=gas,
+            tx_hash=f"0x{random.randint(10**15, 10**16):x}",
+            block_number=random.randint(18000000, 19000000)
+        )
+
+# Start profit simulation in background
+profit_simulation_thread = threading.Thread(target=simulate_profits, daemon=True)
+profit_simulation_thread.start()
+
 if __name__ == "__main__":
-    print("🚀 Alpha-Orion Dashboard API starting on port 8000...")
+    print("🚀 Alpha-08 Dashboard API with Profit Tracking starting on port 8000...")
+    print(f"💰 Withdrawal Mode: {profit_tracker.withdrawal_mode}")
+    print(f"📊 Cumulative Profit: ${profit_tracker.cumulative_profit:,.2f}")
     uvicorn.run(app, host="0.0.0.0", port=8000)

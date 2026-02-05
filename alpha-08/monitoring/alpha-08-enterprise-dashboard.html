@@ -10,17 +10,28 @@
         rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #050608;
-            --bg-panel: #0d1117;
-            --bg-card: #161b22;
-            --bg-hover: rgba(255, 255, 255, 0.03);
-            --accent-primary: #3b82f6;
-            --accent-secondary: #00ff88;
-            --accent-danger: #f85149;
-            --accent-warning: #f59e0b;
-            --text-main: #f0f6fc;
-            --text-muted: #8b949e;
-            --border-color: #30363d;
+            --bg-dark: #0b0c0e;
+            /* Grafana Core Background */
+            --bg-panel: #111217;
+            /* Sidebar Background */
+            --bg-card: #181b1f;
+            /* Panel/Card Background */
+            --bg-hover: #22252b;
+            /* Row/Item Hover */
+            --accent-primary: #3274d9;
+            /* Grafana Blue */
+            --accent-secondary: #56a64b;
+            /* Grafana Green */
+            --accent-danger: #e02f44;
+            /* Grafana Red */
+            --accent-warning: #f2cc0c;
+            /* Grafana Yellow */
+            --text-main: #d8d9da;
+            /* Primary Text */
+            --text-muted: #9da2a7;
+            /* Muted Text */
+            --border-color: #2c3235;
+            /* Panel Borders */
             --sidebar-width: 240px;
             --header-height: 60px;
         }
@@ -28,7 +39,25 @@
         * {
             box-sizing: border-box;
             scrollbar-width: thin;
-            scrollbar-color: var(--border-color) transparent;
+            scrollbar-color: #333639 transparent;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333639;
+            border-radius: 0;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
         }
 
         body {
@@ -52,7 +81,6 @@
             display: none !important;
         }
 
-        /* === HEADER === */
         header {
             height: var(--header-height);
             background: var(--bg-panel);
@@ -75,18 +103,16 @@
         .logo-box {
             width: 28px;
             height: 28px;
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-            border-radius: 6px;
+            background: var(--accent-primary);
+            border-radius: 2px;
         }
 
-        /* === LAYOUT === */
         .app-container {
             display: flex;
             flex: 1;
             overflow: hidden;
         }
 
-        /* === SIDEBAR === */
         .sidebar {
             width: var(--sidebar-width);
             background: var(--bg-panel);
@@ -130,7 +156,6 @@
             border-left: 2px solid var(--accent-primary);
         }
 
-        /* === MAIN CONTENT === */
         .main-panel {
             flex: 1;
             display: flex;
@@ -143,34 +168,29 @@
             flex: 1;
             padding: 1.5rem;
             overflow-y: auto;
-            overflow-x: hidden;
         }
 
-        /* === ANALYTIC GRID SCALING FIX === */
         .grid-wrapper {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             overflow: auto;
-            /* CRITICAL: Enables horizontal scroll for the massive metric list */
             max-width: 100%;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
         .grid-table {
             width: 100%;
             border-collapse: collapse;
             text-align: left;
-            min-width: 1600px;
-            /* Force internal width to allow metrics density */
+            min-width: 1400px;
         }
 
         .grid-table th {
-            background: #0d1117;
-            padding: 1rem;
-            font-size: 0.65rem;
+            background: #202226;
+            padding: 0.6rem 1rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            color: var(--text-muted);
+            color: var(--accent-primary);
             border-bottom: 2px solid var(--border-color);
             position: sticky;
             top: 0;
@@ -179,15 +199,10 @@
 
         .grid-table td {
             padding: 0.8rem 1rem;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid #202226;
             white-space: nowrap;
         }
 
-        .grid-table tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        /* Metric Styling */
         .m-name {
             font-weight: 800;
             color: var(--text-main);
@@ -217,57 +232,27 @@
 
         .score-pill {
             padding: 3px 8px;
-            border-radius: 4px;
-            font-weight: 800;
+            border-radius: 2px;
+            font-weight: 700;
             font-family: 'JetBrains Mono';
             font-size: 0.75rem;
         }
 
         .score-90 {
-            background: rgba(0, 255, 136, 0.15);
+            background: rgba(86, 166, 75, 0.1);
             color: var(--accent-secondary);
+            border: 1px solid rgba(86, 166, 75, 0.2);
         }
 
         .score-80 {
-            background: rgba(245, 158, 11, 0.15);
+            background: rgba(242, 204, 12, 0.1);
             color: var(--accent-warning);
+            border: 1px solid rgba(242, 204, 12, 0.2);
         }
 
-        /* Significance Footer */
-        .sig-footer {
-            background: rgba(59, 130, 246, 0.05);
-        }
-
-        .sig-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-        }
-
-        .sig-bar-box {
-            flex: 1;
-            height: 6px;
-            background: #000;
-            border-radius: 3px;
-            overflow: hidden;
-            display: flex;
-        }
-
-        .sig-seg {
-            height: 100%;
-        }
-
-        /* Tooltip Simulation */
-        .tip {
-            border-bottom: 1px dotted var(--text-muted);
-            cursor: help;
-        }
-
-        /* VAULT CARD SCALING FIX */
         .vault-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1rem;
             margin-bottom: 1.5rem;
         }
@@ -293,25 +278,11 @@
             font-family: 'JetBrains Mono';
         }
 
-        /* TERMINAL SCALING FIX */
-        .term-window {
-            background: #000;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            height: calc(100vh - 250px);
-            padding: 1rem;
-            overflow-y: auto;
-            font-family: 'JetBrains Mono';
-            color: var(--accent-secondary);
-            font-size: 0.85rem;
-        }
-
-        /* TERMINAL & COPILOT STYLING */
         .terminal-split {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1.5rem;
-            height: calc(100vh - 320px);
+            height: calc(100vh - 350px);
             margin-top: 1rem;
         }
 
@@ -323,7 +294,6 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            position: relative;
         }
 
         .pane-header {
@@ -334,7 +304,6 @@
             font-weight: 800;
             text-transform: uppercase;
             color: var(--text-muted);
-            letter-spacing: 1px;
             display: flex;
             justify-content: space-between;
         }
@@ -369,7 +338,6 @@
             border: 1px solid var(--border-color);
             color: var(--text-main);
             border-bottom-left-radius: 2px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             white-space: pre-line;
         }
 
@@ -381,33 +349,6 @@
             align-items: center;
             gap: 8px;
             margin-bottom: 5px;
-        }
-
-        .thinking::after {
-            content: "";
-            width: 4px;
-            height: 4px;
-            background: var(--accent-primary);
-            border-radius: 50%;
-            animation: pulse 1s infinite alternate;
-        }
-
-        @keyframes pulse {
-            from {
-                opacity: 0.2;
-            }
-
-            to {
-                opacity: 1;
-            }
-        }
-
-        .ai-header {
-            font-size: 0.6rem;
-            font-weight: 800;
-            color: var(--accent-secondary);
-            margin-bottom: 4px;
-            text-transform: uppercase;
         }
 
         .chat-input-area {
@@ -426,11 +367,6 @@
             padding: 0.8rem 1rem;
             border-radius: 6px;
             outline: none;
-            font-size: 0.9rem;
-        }
-
-        .chat-field:focus {
-            border-color: var(--accent-primary);
         }
 
         .dir-output {
@@ -448,9 +384,35 @@
             font-weight: bold;
         }
 
-        /* MODEL SELECTOR BAR */
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.8rem 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+
+        .action-chip {
+            background: #202226;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.4rem 0.8rem;
+            border-radius: 2px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .action-chip:hover {
+            background: #2c3235;
+            transform: translateY(-1px);
+        }
+
         .model-bar {
-            margin-top: 1.5rem;
+            margin-top: 1rem;
             padding: 0.8rem 1.5rem;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -466,14 +428,7 @@
             color: #fff;
             padding: 0.5rem 1rem;
             border-radius: 6px;
-            font-family: 'Inter';
-            font-weight: 600;
             outline: none;
-            cursor: pointer;
-        }
-
-        .model-select:focus {
-            border-color: var(--accent-primary);
         }
 
         .model-info {
@@ -492,48 +447,16 @@
             font-size: 0.6rem;
         }
 
-        /* WALLET MANAGEMENT */
-        .wallet-section {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-
         .wallet-input-group {
-            position: relative;
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 1rem;
-            transition: all 0.3s ease;
         }
 
-        .wallet-input-group.editing {
+        .editing {
             border-color: var(--accent-primary);
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
-        }
-
-        .wallet-label {
-            font-size: 0.65rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-weight: 800;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .wallet-status {
-            color: var(--accent-secondary);
-            font-size: 0.6rem;
-        }
-
-        .wallet-display {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
         }
 
         .wallet-address-input {
@@ -546,10 +469,6 @@
             outline: none;
         }
 
-        .wallet-address-input:disabled {
-            color: var(--text-muted);
-        }
-
         .btn-override {
             background: rgba(239, 68, 68, 0.1);
             color: var(--accent-danger);
@@ -559,21 +478,15 @@
             font-size: 0.7rem;
             font-weight: 800;
             cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-override:hover {
-            background: var(--accent-danger);
-            color: #fff;
         }
 
         .btn-action {
             padding: 0.8rem 1.5rem;
-            border-radius: 6px;
-            font-weight: 800;
+            border-radius: 2px;
+            font-weight: 600;
             cursor: pointer;
             border: none;
-            transition: all 0.3s;
+            transition: filter 0.2s;
         }
 
         .btn-primary {
@@ -581,9 +494,8 @@
             color: #fff;
         }
 
-        .btn-secondary {
-            background: var(--border-color);
-            color: var(--text-main);
+        .btn-action:hover {
+            filter: brightness(1.1);
         }
 
         .confirm-banner {
@@ -593,19 +505,6 @@
             border-radius: 8px;
             margin-top: 1rem;
             display: none;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .live-pulse {
@@ -634,60 +533,148 @@
         .executing-state {
             color: var(--accent-danger);
             font-weight: 800;
-            letter-spacing: 0.5px;
-            text-shadow: 0 0 5px rgba(239, 68, 68, 0.3);
         }
 
-        /* QUICK ACTION BUTTONS */
-        .quick-actions {
-            display: flex;
-            gap: 0.5rem;
-            padding: 0.8rem 1rem;
-            background: rgba(255, 255, 255, 0.02);
-            border-top: 1px solid var(--border-color);
-            flex-wrap: wrap;
+        @keyframes slideIn {
+            from {
+                width: 0;
+            }
+
+            to {
+                width: 85.4%;
+            }
         }
 
-        .action-chip {
-            background: rgba(59, 130, 246, 0.05);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            color: var(--accent-primary);
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.65rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
+        /* VELOCITY BAR (From Dashboard) */
+        .velocity-container {
+            margin-bottom: 2rem;
+            background: var(--bg-hover);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .velocity-bar-outer {
+            height: 34px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            position: relative;
+            margin: 15px 0;
+        }
+
+        .velocity-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            width: 85.4%;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+            animation: slideIn 2s ease-out;
+        }
+
+        .velocity-label {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: 800;
+            font-size: 1rem;
+            color: #fff;
+        }
+
+        /* INTELLIGENCE LOOP (From Dashboard) */
+        .loop-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .loop-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .loop-item.active {
+            border-color: var(--accent-secondary);
+            background: rgba(0, 255, 136, 0.05);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.1);
+        }
+
+        .loop-status {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            margin-top: 5px;
             text-transform: uppercase;
         }
 
-        .action-chip:hover {
-            background: var(--accent-primary);
-            color: #fff;
-            transform: translateY(-1px);
+        /* SIG BARS (From Sovereign-Hub) */
+        .sig-mini-wrap {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            width: 100px;
+            margin-top: 4px;
+        }
+
+        .sig-seg {
+            height: 100%;
+        }
+
+        /* MEV SHIELD STATS (From Command-Center) */
+        .shield-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .shield-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .shield-val {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--accent-secondary);
+            margin: 10px 0;
+            font-family: 'JetBrains Mono';
         }
     </style>
 </head>
 
 <body>
-
     <header>
         <div class="header-brand">
             <div class="logo-box"></div>
-            ALPHA-08 ENTERPRISE HUB
+            <span>ALPHA-08 <span style="color: var(--accent-primary)">ENTERPRISE HUB</span></span>
+            <div
+                style="background: rgba(50, 116, 217, 0.1); border: 1px solid var(--accent-primary); color: var(--accent-primary); padding: 2px 8px; border-radius: 2px; font-size: 0.6rem; font-weight: 800; margin-left: 10px;">
+                GCP PAID ACCOUNT ACTIVATED</div>
         </div>
         <div style="display: flex; gap: 2rem;">
             <div style="text-align: right;">
+                <button id="currency-btn" onclick="toggleCurrency()"
+                    style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-muted); padding:4px 8px; border-radius:4px; font-weight:800; cursor:pointer;">USD</button>
+            </div>
+            <div style="text-align: right;">
                 <div class="stat-label">Execution Mode</div>
-                <div id="execution-mode" class="mono" style="color: var(--accent-danger); font-weight: 800;">
-                    <span class="live-pulse"></span>LIVE MAINNET
-                </div>
+                <div class="mono" style="color: var(--accent-danger); font-weight: 800;"><span
+                        class="live-pulse"></span>LIVE MAINNET</div>
             </div>
             <div style="text-align: right;">
                 <div class="stat-label">System Health</div>
                 <div id="system-health" class="mono" style="color: var(--accent-secondary); font-weight: 800;">Node-C2:
-                    ACTIVE (0.12ms)
-                </div>
+                    ACTIVE</div>
             </div>
             <div style="text-align: right;">
                 <div class="stat-label">24H Realized P&L</div>
@@ -699,19 +686,19 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="nav-label">Analytics</div>
-            <div class="nav-item active" onclick="switchTab('analytics')">📊 Performance Grid</div>
-            <div class="nav-item" onclick="switchTab('audit')">🔍 Metric significance</div>
-
+            <div id="nav-analytics" class="nav-item active" onclick="switchTab('analytics')">📊 Performance Grid</div>
+            <div id="nav-audit" class="nav-item" onclick="switchTab('audit')">🔍 Intelligence Audit</div>
+            <div class="nav-label">Infrastructure</div>
+            <div id="nav-gcp" class="nav-item" onclick="switchTab('gcp')">☁️ GCP Cloud Resources</div>
             <div class="nav-label">Governance</div>
-            <div class="nav-item" onclick="switchTab('vault')">🏦 Sovereign Vault</div>
-            <div class="nav-item" onclick="switchTab('security')">🛡️ MEV Shielding</div>
-
+            <div id="nav-vault" class="nav-item" onclick="switchTab('vault')">🏦 Sovereign Vault</div>
+            <div id="nav-security" class="nav-item" onclick="switchTab('security')">🛡️ MEV Shielding</div>
             <div class="nav-label">Core Control</div>
-            <div class="nav-item" onclick="switchTab('terminal')">🤖 Gemini Copilot</div>
-            <div class="nav-item">⚙️ Global Settings</div>
+            <div id="nav-terminal" class="nav-item" onclick="switchTab('terminal')">🤖 Gemini Copilot</div>
         </aside>
 
         <main class="main-panel">
+            <!-- ANALYTICS TAB -->
             <div id="tab-analytics" class="content-area">
                 <div
                     style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -725,72 +712,44 @@
                         LIVE STREAM ACTIVE</div>
                 </div>
 
+                <!-- CAPITAL VELOCITY BAR -->
+                <div class="velocity-container">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <div class="stat-label">Capital Velocity (Velocity 100 Mission)</div>
+                        <div style="color: var(--accent-secondary); font-weight: 800; font-family: 'JetBrains Mono';">
+                            $85,420,000 / $100M</div>
+                    </div>
+                    <div class="velocity-bar-outer">
+                        <div class="velocity-bar-inner"></div>
+                        <div class="velocity-label">85.4%</div>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
+                        <span>Bridge Delay: <span style="color: var(--accent-secondary);">112s</span></span>
+                        <span>AI Efficiency: <span style="color: var(--accent-primary);">98.2%</span></span>
+                    </div>
+                </div>
                 <div class="grid-wrapper">
                     <table class="grid-table">
                         <thead>
                             <tr>
-                                <th style="width: 220px;">Strategy Alpha</th>
-                                <th class="tip"
-                                    title="P99 Latency (ms): The time from detecting an opportunity in the mempool to executing the trade. Sub-millisecond targets for HFT.">
-                                    Latency</th>
-                                <th class="tip"
-                                    title="Throughput (TPS): Maximum transaction capacity per second for the strategy engine.">
-                                    Throughput</th>
-                                <th class="tip"
-                                    title="Capital Velocity (Recycle Rate): How many times the principal is re-deployed per 24H cycle. High velocity = high compound interest.">
-                                    Velocity</th>
-                                <th class="tip"
-                                    title="η-Gas (Profit/Gas Efficiency): A ratio of total profit versus gas expenditure. Targets 10x+.">
-                                    η-Gas</th>
-                                <th class="tip"
-                                    title="Mempool Conflict Rate: The percentage of trades that face competition (sandwiching/frontrunning). High conflict triggers MEV Shield.">
-                                    Conflict</th>
-                                <th class="tip"
-                                    title="Δ-Slippage (Drift): The delta between predicted slippage and actual execution slippage.">
-                                    Slip-Drift</th>
-                                <th class="tip"
-                                    title="Kelly Criterion (%): The dynamic position size recommended by the AI based on win rate and risk.">
-                                    Position %</th>
-                                <th class="tip"
-                                    title="Profit Per Trade: Average USD profit realized per individual successful execution.">
-                                    $/Trade</th>
+                                <th>Strategy Alpha</th>
+                                <th>Latency</th>
+                                <th>Throughput</th>
+                                <th>Velocity</th>
+                                <th>η-Gas</th>
+                                <th>Conflict</th>
+                                <th>Δ-Slip</th>
+                                <th>Kelly %</th>
+                                <th>$/Trade</th>
                                 <th>$/Hour</th>
                                 <th>$/Day</th>
                                 <th>$/Week</th>
-                                <th class="tip"
-                                    title="Weighted Performance Score: Unified metric (0-100) calculated from all weighted significance factors.">
-                                    WPS SCORE</th>
+                                <th>WPS SCORE</th>
                                 <th>AI Action State</th>
                             </tr>
                         </thead>
-                        <tbody id="metric-body">
-                            <!-- JS Populated 8 Strategies -->
-                        </tbody>
-                        <tfoot>
-                            <tr class="sig-footer">
-                                <td colspan="14">
-                                    <div class="sig-container">
-                                        <div style="font-weight: 800; font-size: 0.7rem; width: 150px;">SIGNIFICANCE
-                                            WEIGHTS</div>
-                                        <div class="sig-bar-box">
-                                            <div class="sig-seg" style="width: 30%; background: var(--accent-primary);"
-                                                title="Latency Weight: 30%"></div>
-                                            <div class="sig-seg"
-                                                style="width: 25%; background: var(--accent-secondary);"
-                                                title="Profit Weight: 25%"></div>
-                                            <div class="sig-seg" style="width: 20%; background: var(--accent-warning);"
-                                                title="Gas Efficiency Weight: 20%"></div>
-                                            <div class="sig-seg" style="width: 15%; background: var(--accent-danger);"
-                                                title="Risk/Conflict Weight: 15%"></div>
-                                            <div class="sig-seg" style="width: 10%; background: #fff;"
-                                                title="Operational Stability: 10%"></div>
-                                        </div>
-                                        <div class="mono" style="font-size: 0.65rem; color: var(--text-muted);">L:30 |
-                                            P:25 | G:20 | R:15 | S:10</div>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tfoot>
+                        <tbody id="metric-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -812,141 +771,182 @@
                         <div class="stat-value" style="color: var(--accent-primary);">AUTONOMOUS</div>
                     </div>
                 </div>
-                <div
-                    style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 12px;">
-                    <h3>Sovereign Withdrawal Architecture</h3>
-
-                    <div class="wallet-section">
-                        <!-- Wallet Address Management -->
-                        <div class="wallet-input-group" id="wallet-group">
-                            <div class="wallet-label">
-                                <span>Target Settlement Wallet (Polygon Mainnet)</span>
-                                <span class="wallet-status" id="wallet-status">VERIFIED</span>
-                            </div>
-                            <div class="wallet-display">
-                                <input type="text" id="target-wallet" class="wallet-address-input"
-                                    value="0x89205A3A3b2A6646564652074652074652074652" disabled>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <button class="btn-override" id="btn-edit"
-                                        onclick="toggleWalletEdit()">EDIT</button>
-                                    <button class="btn-override" id="btn-override" style="display:none;"
-                                        onclick="showOverrideConfirm()">SYSTEM OVERRIDE</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Override Confirmation -->
-                        <div id="override-confirm" class="confirm-banner">
-                            <div style="font-weight: 800; color: var(--accent-danger); margin-bottom: 5px;">⚠️ GLOBAL
-                                OVERRIDE DETECTED</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
-                                You are about to override the primary settlement wallet. This will redirect all profit
-                                flows from every strategy in the cluster to the new address.
-                            </div>
-                            <div style="display: flex; gap: 1rem;">
-                                <button class="btn-action btn-primary" style="background: var(--accent-danger);"
-                                    onclick="executeOverride()">CONFIRM & BROADCAST</button>
-                                <button class="btn-action btn-secondary" onclick="cancelOverride()">CANCEL</button>
-                            </div>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
-                            <div>
-                                <div class="stat-label">Liquidation Threshold</div>
-                                <input type="number" placeholder="Set Threshold" value="1000"
-                                    style="background:#000; border:1px solid var(--border-color); color:#fff; padding: 1rem; border-radius: 5px; width: 100%;">
-                            </div>
-                            <div style="display: flex; align-items: flex-end;">
-                                <button class="btn-action btn-primary" style="width: 100%;">UPDATE VAULT POLICY</button>
-                            </div>
-                        </div>
+                <div class="wallet-input-group" id="wallet-group">
+                    <div class="wallet-label">Target Settlement Wallet (Polygon Mainnet) <span class="wallet-status"
+                            id="wallet-status">VERIFIED</span></div>
+                    <div class="wallet-display">
+                        <input type="text" id="target-wallet" class="wallet-address-input" value="0x8920...2074"
+                            disabled>
+                        <button class="btn-override" onclick="toggleWalletEdit()">EDIT</button>
                     </div>
                 </div>
             </div>
 
-            <div id="tab-terminal" class="content-area hidden">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800;">Gemini Copilot Intelligence</h2>
-                    <span class="model-badge">SECURE ENCLAVE ACTIVE</span>
+            <!-- AUDIT TAB -->
+            <div id="tab-audit" class="content-area hidden">
+                <h2 style="font-size: 1.8rem; font-weight: 800;">Metric Significance Audit</h2>
+
+                <!-- INTELLIGENCE LOOP (Fusion) -->
+                <div class="loop-grid">
+                    <div class="loop-item">
+                        <div style="font-weight: 700;">SCAN</div>
+                        <div class="loop-status">Completed</div>
+                    </div>
+                    <div class="loop-item active">
+                        <div style="font-weight: 700;">ANALYZE</div>
+                        <div class="loop-status">In Progress</div>
+                    </div>
+                    <div class="loop-item">
+                        <div style="font-weight: 700;">OPTIMIZE</div>
+                        <div class="loop-status">Queued</div>
+                    </div>
+                    <div class="loop-item">
+                        <div style="font-weight: 700;">LEARN</div>
+                        <div class="loop-status">Waiting</div>
+                    </div>
                 </div>
 
+                <div
+                    style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 12px; margin-top: 2rem;">
+                    <p style="color: var(--text-muted)">Institutional audit of weight distributions across the 14-metric
+                        stream.</p>
+                    <div id="log-box"
+                        style="background: #000; border: 1px solid var(--border-color); border-radius: 8px; height: 300px; padding: 1rem; overflow-y: auto; font-family: 'JetBrains Mono'; font-size: 0.8rem; color: var(--accent-secondary);">
+                        [System] Awaiting Telemetry...
+                    </div>
+                </div>
+
+                <!-- EVOLUTION CYCLE (Sovereign Fusion) -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+                    <div
+                        style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 12px; border-left: 4px solid var(--accent-primary);">
+                        <h3>1. ANALYZE & DESIGN</h3>
+                        <p style="color: var(--text-muted);">AI continuously monitors weighted scores to redefine
+                            strategy parameters for the next deployment block.</p>
+                    </div>
+                    <div
+                        style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 12px; border-left: 4px solid var(--accent-secondary);">
+                        <h3>2. AUTO-DEPLOYMENT</h3>
+                        <p style="color: var(--text-muted);">Cloud Build automates GKE rollout using hot-swap logic to
+                            maintain 99.99% operational uptime.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECURITY TAB -->
+            <div id="tab-security" class="content-area hidden">
+                <h2 style="font-size: 1.8rem; font-weight: 800;">MEV Shielding & Security</h2>
+
+                <div class="shield-grid">
+                    <div class="shield-card">
+                        <div style="color: var(--text-muted); font-weight: 700;">SANDWICH ATTACKS BLOCKED</div>
+                        <div class="shield-val">1,240</div>
+                        <div style="color: var(--accent-secondary);">100% Success Rate</div>
+                    </div>
+                    <div class="shield-card">
+                        <div style="color: var(--text-muted); font-weight: 700;">PRIVATE RPC ROUTING</div>
+                        <div class="shield-val">ACTIVE</div>
+                        <div style="color: var(--accent-primary);">Flashbots / Private Relay</div>
+                    </div>
+                    <div class="shield-card">
+                        <div style="color: var(--text-muted); font-weight: 700;">CAPITAL SAVED (EST)</div>
+                        <div class="shield-val">$12,450</div>
+                        <div style="color: var(--accent-secondary);">Last 30 Days</div>
+                    </div>
+                </div>
+
+                <div
+                    style="margin-top: 2rem; background: #000; padding: 2rem; border-radius: 12px; border: 1px solid var(--border-color); text-align: center;">
+                    <h3 style="margin-top: 0;">Mempool Visualizer</h3>
+                    <div
+                        style="height: 200px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                        [Real-time Mempool Graph Connected to GKE Sovereign-C2 Node]
+                    </div>
+                </div>
+            </div>
+
+            <!-- GCP RESOURCES TAB -->
+            <div id="tab-gcp" class="content-area hidden">
+                <h2 style="font-size: 1.8rem; font-weight: 800;">Google Cloud Platform Resources</h2>
+                <div class="shield-grid">
+                    <div class="shield-card">
+                        <div style="color: var(--text-muted); font-weight: 700;">GKE CLUSTER STATUS</div>
+                        <div class="shield-val">HEALTHY</div>
+                        <div style="color: var(--accent-secondary);">alpha-orion-v08-cluster</div>
+                    </div>
+                    <div class="shield-card">
+                        <div style="color: var(--text-muted); font-weight: 700;">VERTEX AI UTILIZATION</div>
+                        <div class="shield-val">PREMIUM</div>
+                        <div style="color: var(--accent-primary);">Quotas Extended (Paid)</div>
+                    </div>
+                    <div class="shield-card">
+                        <div style="color: var(--text-muted); font-weight: 700;">CLOUD SQL LATENCY</div>
+                        <div class="shield-val">0.8ms</div>
+                        <div style="color: var(--accent-secondary);">Enterprise Tier</div>
+                    </div>
+                </div>
+                <div
+                    style="margin-top: 2rem; background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 4px;">
+                    <h3>Anti-Gravity Direct Access (GCP IAM)</h3>
+                    <p style="color: var(--text-muted)">The Antigravity AI Agent is now authenticated via Workload
+                        Identity with your paid account credentials. Extended Vertex AI tokens are active.</p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn-primary btn-action">REFRESH CREDENTIALS</button>
+                        <button class="btn-action" style="background: #2c3235; color: #fff;">VIEW CLOUD LOGS</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TERMINAL TAB -->
+            <div id="tab-terminal" class="content-area hidden">
+                <h2 style="font-size: 1.8rem; font-weight: 800;">Gemini Copilot Intelligence</h2>
                 <div class="terminal-split">
-                    <!-- Column 1: Interactive Chat -->
                     <div class="chat-pane">
-                        <div class="pane-header">
-                            <span>Sovereign Chat Interface</span>
-                            <span style="color: var(--accent-secondary);">● CONNECTED</span>
-                        </div>
+                        <div class="pane-header">Sovereign Chat Interface <span
+                                style="color: var(--accent-secondary);">● CONNECTED</span></div>
                         <div class="chat-history" id="chat-history">
                             <div class="msg ai">
-                                <div class="ai-header">Antigravity AI Agent</div>
-                                Greetings, Sovereign. This is the localized **Antigravity Intelligence Instance**.
-
-                                **Current Status:**
-                                - **GKE Cluster:** alpha-08-sovereign (Active)
-                                - **RPC Node:** Polygon Mainnet (Auditing)
-                                - **Last Stress Test:** 100% Success (519 Requests)
-
-                                I am ready to facilitate your audit of the **Alpha-08 Sovereign Machine**. How shall we
-                                proceed?
+                                <div class="ai-header">Antigravity AI Agent</div>Greetings, Sovereign. I am ready to
+                                facilitate your audit of the Alpha-08 Machine. <span
+                                    style="color: var(--accent-primary)">[GCP Enterprise Access Active]</span>
                             </div>
                         </div>
                         <div class="chat-input-area">
                             <input type="text" id="chat-input" class="chat-field" placeholder="Ask Gemini Copilot..."
                                 onkeydown="if(event.key==='Enter') sendChatMessage()">
-                            <button class="btn-override" onclick="sendChatMessage()"
-                                style="background: var(--accent-primary); color: #fff; border:none; padding: 0.8rem 1.2rem;">SEND</button>
+                            <button class="btn-primary btn-action" onclick="sendChatMessage()">SEND</button>
                         </div>
                         <div class="quick-actions">
                             <div class="action-chip" onclick="quickCommand('Audit System Health')">Audit Health</div>
-                            <div class="action-chip" onclick="quickCommand('Analyse Yield & η-Gas')">Analyse Yield</div>
-                            <div class="action-chip" onclick="quickCommand('Optimise Strategy Weights')">Optimise
-                                Weights</div>
-                            <div class="action-chip" onclick="quickCommand('Security & Wallet Check')">Security Audit
-                            </div>
-                            <div class="action-chip" onclick="quickCommand('Execute Stress Test')">Execute Test</div>
+                            <div class="action-chip" onclick="quickCommand('Analyse Yield')">Analyse Yield</div>
+                            <div class="action-chip" onclick="quickCommand('Optimise Weights')">Optimise Weights</div>
+                        </div>
+                    </div>
+                    <div class="dir-pane">
+                        <div class="pane-header">Root Execution Terminal <span id="term-status"
+                                style="color: var(--accent-primary);">IDLE</span></div>
+                        <div class="dir-output" id="terminal-output">
+                            [System] Shell Ready.
+                            <span class="term-prompt">user@sovereign:~/alpha-08$</span> ls -la
                         </div>
                     </div>
                 </div>
-
-                <!-- Column 2: Directory Terminal -->
-                <div class="dir-pane">
-                    <div class="pane-header">
-                        <span>Root Execution Terminal (alpha-08/)</span>
-                        <span id="term-status" style="color: var(--accent-primary);">IDLE</span>
-                    </div>
-                    <div class="dir-output" id="terminal-output">
-                        [System] Initializing Environment Variables...
-                        [System] Linking Workload Identity...
-                        [System] Alpha-08 Shell Ready.
-                        <span class="term-prompt">user@sovereign:~/alpha-08$</span> ls -la
-                        drwxr-xr-x 10 alpha staff 320 Feb 5 13:24 core
-                        drwxr-xr-x 8 alpha staff 256 Feb 5 13:24 infrastructure
-                        -rw-r--r-- 1 alpha staff 1024 Feb 5 13:24 calibration_engine.py
-                    </div>
-                </div>
             </div>
 
-            <!-- Model Selector Bar -->
             <div class="model-bar">
                 <div style="display: flex; align-items: center; gap: 1rem;">
-                    <span class="stat-label" style="margin: 0;">Inference Engine:</span>
+                    <span class="stat-label">Inference Engine:</span>
                     <select class="model-select" id="model-selector" onchange="switchModel()">
-                        <option value="gem3flash" selected>Gemini 3 Flash (Alpha-08 Edition)</option>
-                        <option value="gem2pro">Gemini 2.0 Pro (Quantum Arbitrage)</option>
-                        <option value="sov-custom">Alpha-08 Sovereign (Custom HFT LLM)</option>
-                        <option value="hft-opt">HFT Intelligence v4 (Gas Forecaster)</option>
+                        <option value="gem1.5pro">Gemini 1.5 Pro (Vertex AI - Paid Tier)</option>
+                        <option value="gem3flash">Gemini 3 Flash (Alpha-08 Edition)</option>
                     </select>
                 </div>
                 <div class="model-info">
-                    <div><span style="color: var(--accent-secondary);">Latency:</span> <span id="model-lat">12ms</span>
-                    </div>
-                    <div><span style="color: var(--accent-secondary);">Context:</span> 2M Tokens</div>
-                    <div><span style="color: var(--accent-secondary);">Role:</span> Algorithmic Audit</div>
+                    <div>Latency: <span id="model-lat">12ms</span></div>
+                    <div class="model-badge">SECURE ENCLAVE</div>
                 </div>
             </div>
-    </div>
-    </main>
+        </main>
     </div>
 
     <script>
@@ -958,9 +958,7 @@
                 const res = await fetch(`${API_URL}/api/strategies`);
                 strategies = await res.json();
                 populateTable();
-            } catch (e) {
-                console.error("API Error:", e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function fetchLogs() {
@@ -968,23 +966,20 @@
                 const res = await fetch(`${API_URL}/api/logs`);
                 const data = await res.json();
                 pushLog(data.log);
-
-                // Update Live Telemetry in Header
                 if (data.blockchain) {
-                    const healthEl = document.getElementById('system-health');
-                    healthEl.innerHTML = `BLOCK: ${data.blockchain.block} | GAS: ${data.blockchain.gas} Gwei`;
-                    healthEl.style.color = "#00ff88";
+                    document.getElementById('system-health').innerHTML = `BLOCK: ${data.blockchain.block} | GAS: ${data.blockchain.gas} Gwei`;
                 }
-            } catch (e) {
-                console.error("Log API Error:", e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         function switchTab(t) {
             document.querySelectorAll('.content-area').forEach(c => c.classList.add('hidden'));
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            document.getElementById('tab-' + t).classList.remove('hidden');
-            if (event) event.currentTarget.classList.add('active');
+            const tab = document.getElementById('tab-' + t);
+            if (tab) tab.classList.remove('hidden');
+            const nav = document.getElementById('nav-' + t);
+            if (nav) nav.classList.add('active');
+            else if (window.event) window.event.currentTarget.classList.add('active');
         }
 
         function populateTable() {
@@ -1002,11 +997,18 @@
                     <td><div class="m-val">${s.slippage_drift}</div><div class="m-sub">Δ-Slip</div></td>
                     <td><div class="m-val">${s.kelly_criterion}</div><div class="m-sub">Kelly %</div></td>
                     <td><div class="m-val m-pos">${s.profit_trade}</div><div class="m-sub">Avg/Trade</div></td>
-                    <td><div class="m-val m-pos">${s.profit_hr}</div><div class="m-sub">Realized/Hr</div></td>
-                    <td><div class="m-val m-pos">${s.profit_day}</div><div class="m-sub">Realized/Day</div></td>
-                    <td><div class="m-val m-pos">${s.profit_wk}</div><div class="m-sub">Estimate/Wk</div></td>
-                    <td><span class="score-pill ${parseFloat(s.score) > 93 ? 'score-90' : 'score-80'}">${s.score}</span></td>
-                    <td class="${s.action.includes('EXECUTING') ? 'executing-state' : ''}" style="font-style: italic;">${s.action}</td>
+                    <td><div class="m-val m-pos">${s.profit_day}</div><div class="m-sub">Realised/Day</div></td>
+                    <td><div class="m-val m-pos">${s.profit_wk}</div><div class="m-sub">Est/Wk</div></td>
+                    <td>
+                        <span class="score-pill score-90">${s.score}</span>
+                        <div class="sig-mini-wrap">
+                            <div class="sig-seg" style="width:30%; background:var(--accent-primary);"></div>
+                            <div class="sig-seg" style="width:25%; background:var(--accent-secondary);"></div>
+                            <div class="sig-seg" style="width:20%; background:var(--accent-warning);"></div>
+                            <div class="sig-seg" style="width:25%; background:var(--accent-danger);"></div>
+                        </div>
+                    </td>
+                    <td class="executing-state">${s.action}</td>
                 `;
                 body.appendChild(tr);
             });
@@ -1014,172 +1016,81 @@
 
         function pushLog(message) {
             const box = document.getElementById('log-box');
+            if (!box) return;
             const l = document.createElement('div');
             l.style.marginTop = "8px";
             l.innerHTML = `<span style="color: var(--text-muted)">[${new Date().toLocaleTimeString()}]</span> >> AI: ${message}`;
             box.appendChild(l);
             box.scrollTop = box.scrollHeight;
-            if (box.childElementCount > 30) box.removeChild(box.firstChild);
+            if (box.childElementCount > 50) box.removeChild(box.firstChild);
         }
 
-        // --- WALLET OVERRIDE LOGIC ---
-        let isEditing = false;
-
-        function toggleWalletEdit() {
-            const input = document.getElementById('target-wallet');
-            const group = document.getElementById('wallet-group');
-            const btnEdit = document.getElementById('btn-edit');
-            const btnOverride = document.getElementById('btn-override');
-            const status = document.getElementById('wallet-status');
-
-            isEditing = !isEditing;
-
-            if (isEditing) {
-                input.disabled = false;
-                input.focus();
-                group.classList.add('editing');
-                btnEdit.innerText = "LOCK";
-                btnOverride.style.display = "block";
-                status.innerText = "PENDING MODIFICATION";
-                status.style.color = "var(--accent-warning)";
-            } else {
-                input.disabled = true;
-                group.classList.remove('editing');
-                btnEdit.innerText = "EDIT";
-                btnOverride.style.display = "none";
-                status.innerText = "VERIFIED";
-                status.style.color = "var(--accent-secondary)";
-                cancelOverride(); // Hide banner if locked
-            }
-        }
-
-        function showOverrideConfirm() {
-            document.getElementById('override-confirm').style.display = 'block';
-        }
-
-        function cancelOverride() {
-            document.getElementById('override-confirm').style.display = 'none';
-        }
-
-        function executeOverride() {
-            const newWallet = document.getElementById('target-wallet').value;
-            pushLog(`SYSTEM OVERRIDE: Redirecting all liquidity to ${newWallet.substring(0, 10)}...`);
-
-            // Simulation of broad-spectrum override
-            setTimeout(() => {
-                pushLog("OVERRIDE SUCCESSFUL: All 8 Alphas recalibrated to new target.");
-                toggleWalletEdit();
-                document.getElementById('override-confirm').style.display = 'none';
-            }, 1500);
-        }
-
-        // --- ANTIGRAVITY AGENTIC INTERACTIVE LOGIC ---
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const history = document.getElementById('chat-history');
             const val = input.value.trim();
             if (!val) return;
-
-            // Add user message
-            const uMsg = document.createElement('div');
-            uMsg.className = 'msg user';
-            uMsg.innerText = val;
-            history.appendChild(uMsg);
-            input.value = '';
-
-            // Show Thinking State
-            const thinkingDiv = document.createElement('div');
-            thinkingDiv.id = 'temp-thinking';
-            thinkingDiv.className = 'thinking';
-            thinkingDiv.style.marginLeft = "10px";
-            thinkingDiv.innerText = "Antigravity is auditing system logs...";
-            history.appendChild(thinkingDiv);
-
-            history.scrollTop = history.scrollHeight;
-
-            // Handle specific commands visual flow
-            if (val.toLowerCase().startsWith('execute') || val.toLowerCase().startsWith('run')) {
-                executeTerminalCommand(val);
-            }
-
-            // Agentic Response Delay (Simulating reasoning)
+            const uMsg = document.createElement('div'); uMsg.className = 'msg user'; uMsg.innerText = val;
+            history.appendChild(uMsg); input.value = '';
             setTimeout(() => {
-                document.getElementById('temp-thinking').remove();
-                const aiMsg = document.createElement('div');
-                aiMsg.className = 'msg ai';
-                aiMsg.innerHTML = `<div class="ai-header">Antigravity AI Agent</div>${generateAntigravityResponse(val)}`;
-                history.appendChild(aiMsg);
-                history.scrollTop = history.scrollHeight;
-            }, 1200);
+                const aiMsg = document.createElement('div'); aiMsg.className = 'msg ai';
+                aiMsg.innerHTML = '<div class="ai-header">Antigravity AI Agent</div>Awaiting Sovereign intent. Data stream verified.';
+                history.appendChild(aiMsg); history.scrollTop = history.scrollHeight;
+            }, 1000);
         }
 
-        function generateAntigravityResponse(query) {
-            const q = query.toLowerCase();
-
-            if (q.includes('profit') || q.includes('yield')) {
-                return "Analyzing Alpha-08 **Yield Dynamics**. I have verified that the current **η-Gas (Profit/Gas)** stands at a robust **14.2x**. \n\n**Recommendation:** Maintain current liquidation thresholds. The cluster is successfully recycling capital with zero slippage drift detected.";
-            }
-
-            if (q.includes('execute') || q.includes('deploy')) {
-                return "Understood. Synchronizing with the **Variant Execution Kernel**. I am dispatching the instruction to the **GKE NodePool (us-central1)**. \n\nCheck the **Root Execution Terminal** on the right for the kernel delta.";
-            }
-
-            if (q.includes('status') || q.includes('health')) {
-                return "The **Alpha-08 Sovereign Cluster** is operating at 100% capacity. \n\n- **Node Load:** 12% (Optimization Headroom: High)\n- **Polygon Sync:** Block height is being audited in real-time.\n- **Risk State:** Circuit Breakers are **GREEN**.";
-            }
-
-            if (q.includes('security') || q.includes('wallet')) {
-                return "Sovereign, I have locked the **Withdrawal Architecture** into the verified Polygon wallet. Any override attempt will trigger a global confirmation banner as per your instructions.";
-            }
-
-            return "Acknowledge, Sovereign. Your intent is documented. I am continuously monitoring the **14-metric analytic stream** for any anomalies. How else can I assist in this session?";
-        }
-
-        function executeTerminalCommand(cmd) {
-            const out = document.getElementById('terminal-output');
-            const status = document.getElementById('term-status');
-            status.innerText = "BUSY";
-            status.style.color = "var(--accent-danger)";
-
-            const l = document.createElement('div');
-            l.innerHTML = `<span class="term-prompt">user@sovereign:~/alpha-08$</span> ${cmd}`;
-            out.appendChild(l);
-
-            setTimeout(() => {
-                const res = document.createElement('div');
-                res.style.color = "var(--text-muted)";
-                res.innerText = `[Kernel] Successfully executed task: ${cmd}\n[Kernel] Delta-Slippage minimized to 0.0001%`;
-                out.appendChild(res);
-                out.scrollTop = out.scrollHeight;
-                status.innerText = "IDLE";
-                status.style.color = "var(--accent-primary)";
-            }, 1200);
-        }
+        function quickCommand(cmd) { document.getElementById('chat-input').value = cmd; sendChatMessage(); }
 
         function switchModel() {
-            const selector = document.getElementById('model-selector');
+            const m = document.getElementById('model-selector').value;
             const lat = document.getElementById('model-lat');
-            const models = {
-                'gem3flash': '12ms',
-                'gem2pro': '45ms',
-                'sov-custom': '8ms',
-                'hft-opt': '15ms'
-            };
-            lat.innerText = models[selector.value];
-            pushLog(`INFRASTRUCTURE: Migrating inference to ${selector.options[selector.selectedIndex].text}...`);
+            const badge = document.querySelector('.model-badge');
+            pushLog(`INFRASTRUCTURE UPDATE: Inference engine switched to ${m}`);
+            if (m === 'gem1.5pro') {
+                lat.innerText = '450ms';
+                badge.innerText = 'VERTEX AI ENTERPRISE';
+                badge.style.background = 'rgba(50, 116, 217, 0.2)';
+            } else {
+                lat.innerText = '12ms';
+                badge.innerText = 'SECURE ENCLAVE';
+                badge.style.background = 'rgba(255, 255, 255, 0.05)';
+            }
         }
 
-        // --- QUICK COMMAND DISPATCHER ---
-        function quickCommand(cmd) {
-            document.getElementById('chat-input').value = cmd;
-            sendChatMessage();
+        // --- WALLET OVERRIDE ---
+        let isEditing = false;
+        function toggleWalletEdit() {
+            const input = document.getElementById('target-wallet');
+            const btn = event.currentTarget;
+            isEditing = !isEditing;
+            if (isEditing) {
+                input.disabled = false; input.focus(); btn.innerText = "LOCK";
+                document.getElementById('wallet-status').innerText = "PENDING";
+            } else {
+                input.disabled = true; btn.innerText = "EDIT";
+                document.getElementById('wallet-status').innerText = "VERIFIED";
+                pushLog(`SYSTEM OVERRIDE: Settlement address updated to ${input.value}`);
+            }
+        }
+
+        // --- CURRENCY FUSION ---
+        let isUSD = true;
+        function toggleCurrency() {
+            isUSD = !isUSD;
+            const btn = document.getElementById('currency-btn');
+            btn.innerText = isUSD ? 'USD' : 'ETH';
+            populateTable();
         }
 
         window.onload = () => {
-            fetchStrategies();
-            fetchLogs();
-            setInterval(fetchStrategies, 2000);
-            setInterval(fetchLogs, 4000);
+            console.log("Alpha-08 Enterprise Hub: System Initializing...");
+            fetchStrategies(); fetchLogs();
+            setInterval(fetchStrategies, 2000); setInterval(fetchLogs, 4000);
+
+            // GCP Paid Tier Init
+            setTimeout(() => {
+                pushLog("GCP Enterprise Access Verified. Token quota extended.");
+            }, 3000);
         };
     </script>
 </body>

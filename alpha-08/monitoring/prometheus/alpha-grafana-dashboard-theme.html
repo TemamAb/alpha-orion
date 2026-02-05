@@ -1,0 +1,98 @@
+/* ALPHA-GRAFANA ENTERPRISE THEME v10.0 */
+:root {
+--bg-dark: #0b0c0e; /* Grafana Core Background */
+--bg-panel: #111217; /* Sidebar Background */
+--bg-card: #181b1f; /* Panel/Card Background */
+--bg-hover: #22252b; /* Row/Item Hover */
+--accent-primary: #3274d9; /* Grafana Blue */
+--accent-secondary: #56a64b; /* Grafana Green */
+--accent-danger: #e02f44; /* Grafana Red */
+--accent-warning: #f2cc0c; /* Grafana Yellow */
+--text-main: #d8d9da; /* Primary Text */
+--text-muted: #9da2a7; /* Muted Text */
+--border-color: #2c3235; /* Panel Borders */
+--header-bg: #111217;
+--sidebar-width: 240px;
+}
+
+/* GLOBAL RESET */
+body {
+background-color: var(--bg-dark);
+color: var(--text-main);
+font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+}
+
+/* PANELS & CARDS */
+.data-card, .stat-card, .grid-wrapper, .velocity-container, .chat-pane, .dir-pane, .shield-card {
+background: var(--bg-card) !important;
+border: 1px solid var(--border-color) !important;
+border-radius: 4px !important; /* Grafana uses sharper edges */
+box-shadow: none !important;
+}
+
+/* HEADER & BRANDING */
+header {
+background: var(--header-bg) !important;
+border-bottom: 1px solid var(--border-color) !important;
+padding: 0 1rem !important;
+}
+
+.logo-box {
+border-radius: 2px !important;
+background: var(--accent-primary) !important;
+}
+
+/* TABLES & GRIDS */
+.grid-table th {
+background: #202226 !important;
+font-weight: 600 !important;
+color: var(--accent-primary) !important;
+padding: 0.5rem 1rem !important;
+font-size: 0.7rem !important;
+}
+
+.grid-table td {
+border-bottom: 1px solid #202226 !important;
+}
+
+/* BUTTONS & ACTIONS */
+.btn-primary, .btn-action {
+background: var(--accent-primary) !important;
+border-radius: 2px !important;
+font-weight: 500 !important;
+text-transform: none !important;
+letter-spacing: 0 !important;
+}
+
+.action-chip {
+background: #202226 !important;
+border: 1px solid var(--border-color) !important;
+border-radius: 2px !important;
+color: var(--text-main) !important;
+}
+
+.action-chip:hover {
+background: #2c3235 !important;
+}
+
+/* TERMINAL & LOGS */
+#log-box, .dir-output, .terminal-window {
+background: #000000 !important;
+border-color: var(--border-color) !important;
+color: var(--accent-secondary) !important;
+}
+
+/* SUCCESS/ERROR COLORS */
+.m-pos, .score-90, .shield-val {
+color: var(--accent-secondary) !important;
+}
+
+.m-neg, .executing-state, .live-pulse {
+color: var(--accent-danger) !important;
+}
+
+/* SCROLLBARS */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: #333639; border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
