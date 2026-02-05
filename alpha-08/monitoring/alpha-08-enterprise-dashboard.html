@@ -607,6 +607,65 @@
                 transform: translateY(0);
             }
         }
+
+        .live-pulse {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-danger);
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: 0 0 10px var(--accent-danger);
+            animation: pulse-red 1s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+
+        .executing-state {
+            color: var(--accent-danger);
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 5px rgba(239, 68, 68, 0.3);
+        }
+
+        /* QUICK ACTION BUTTONS */
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.8rem 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+
+        .action-chip {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            color: var(--accent-primary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .action-chip:hover {
+            background: var(--accent-primary);
+            color: #fff;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 
@@ -618,6 +677,12 @@
             ALPHA-08 ENTERPRISE HUB
         </div>
         <div style="display: flex; gap: 2rem;">
+            <div style="text-align: right;">
+                <div class="stat-label">Execution Mode</div>
+                <div id="execution-mode" class="mono" style="color: var(--accent-danger); font-weight: 800;">
+                    <span class="live-pulse"></span>LIVE MAINNET
+                </div>
+            </div>
             <div style="text-align: right;">
                 <div class="stat-label">System Health</div>
                 <div id="system-health" class="mono" style="color: var(--accent-secondary); font-weight: 800;">Node-C2:
@@ -832,46 +897,56 @@
                             <button class="btn-override" onclick="sendChatMessage()"
                                 style="background: var(--accent-primary); color: #fff; border:none; padding: 0.8rem 1.2rem;">SEND</button>
                         </div>
-                    </div>
-
-                    <!-- Column 2: Directory Terminal -->
-                    <div class="dir-pane">
-                        <div class="pane-header">
-                            <span>Root Execution Terminal (alpha-08/)</span>
-                            <span id="term-status" style="color: var(--accent-primary);">IDLE</span>
-                        </div>
-                        <div class="dir-output" id="terminal-output">
-                            [System] Initializing Environment Variables...
-                            [System] Linking Workload Identity...
-                            [System] Alpha-08 Shell Ready.
-                            <span class="term-prompt">user@sovereign:~/alpha-08$</span> ls -la
-                            drwxr-xr-x 10 alpha staff 320 Feb 5 13:24 core
-                            drwxr-xr-x 8 alpha staff 256 Feb 5 13:24 infrastructure
-                            -rw-r--r-- 1 alpha staff 1024 Feb 5 13:24 calibration_engine.py
+                        <div class="quick-actions">
+                            <div class="action-chip" onclick="quickCommand('Audit System Health')">Audit Health</div>
+                            <div class="action-chip" onclick="quickCommand('Analyse Yield & η-Gas')">Analyse Yield</div>
+                            <div class="action-chip" onclick="quickCommand('Optimise Strategy Weights')">Optimise
+                                Weights</div>
+                            <div class="action-chip" onclick="quickCommand('Security & Wallet Check')">Security Audit
+                            </div>
+                            <div class="action-chip" onclick="quickCommand('Execute Stress Test')">Execute Test</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Model Selector Bar -->
-                <div class="model-bar">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span class="stat-label" style="margin: 0;">Inference Engine:</span>
-                        <select class="model-select" id="model-selector" onchange="switchModel()">
-                            <option value="gem3flash" selected>Gemini 3 Flash (Alpha-08 Edition)</option>
-                            <option value="gem2pro">Gemini 2.0 Pro (Quantum Arbitrage)</option>
-                            <option value="sov-custom">Alpha-08 Sovereign (Custom HFT LLM)</option>
-                            <option value="hft-opt">HFT Intelligence v4 (Gas Forecaster)</option>
-                        </select>
+                <!-- Column 2: Directory Terminal -->
+                <div class="dir-pane">
+                    <div class="pane-header">
+                        <span>Root Execution Terminal (alpha-08/)</span>
+                        <span id="term-status" style="color: var(--accent-primary);">IDLE</span>
                     </div>
-                    <div class="model-info">
-                        <div><span style="color: var(--accent-secondary);">Latency:</span> <span
-                                id="model-lat">12ms</span></div>
-                        <div><span style="color: var(--accent-secondary);">Context:</span> 2M Tokens</div>
-                        <div><span style="color: var(--accent-secondary);">Role:</span> Algorithmic Audit</div>
+                    <div class="dir-output" id="terminal-output">
+                        [System] Initializing Environment Variables...
+                        [System] Linking Workload Identity...
+                        [System] Alpha-08 Shell Ready.
+                        <span class="term-prompt">user@sovereign:~/alpha-08$</span> ls -la
+                        drwxr-xr-x 10 alpha staff 320 Feb 5 13:24 core
+                        drwxr-xr-x 8 alpha staff 256 Feb 5 13:24 infrastructure
+                        -rw-r--r-- 1 alpha staff 1024 Feb 5 13:24 calibration_engine.py
                     </div>
                 </div>
             </div>
-        </main>
+
+            <!-- Model Selector Bar -->
+            <div class="model-bar">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span class="stat-label" style="margin: 0;">Inference Engine:</span>
+                    <select class="model-select" id="model-selector" onchange="switchModel()">
+                        <option value="gem3flash" selected>Gemini 3 Flash (Alpha-08 Edition)</option>
+                        <option value="gem2pro">Gemini 2.0 Pro (Quantum Arbitrage)</option>
+                        <option value="sov-custom">Alpha-08 Sovereign (Custom HFT LLM)</option>
+                        <option value="hft-opt">HFT Intelligence v4 (Gas Forecaster)</option>
+                    </select>
+                </div>
+                <div class="model-info">
+                    <div><span style="color: var(--accent-secondary);">Latency:</span> <span id="model-lat">12ms</span>
+                    </div>
+                    <div><span style="color: var(--accent-secondary);">Context:</span> 2M Tokens</div>
+                    <div><span style="color: var(--accent-secondary);">Role:</span> Algorithmic Audit</div>
+                </div>
+            </div>
+    </div>
+    </main>
     </div>
 
     <script>
@@ -931,7 +1006,7 @@
                     <td><div class="m-val m-pos">${s.profit_day}</div><div class="m-sub">Realized/Day</div></td>
                     <td><div class="m-val m-pos">${s.profit_wk}</div><div class="m-sub">Estimate/Wk</div></td>
                     <td><span class="score-pill ${parseFloat(s.score) > 93 ? 'score-90' : 'score-80'}">${s.score}</span></td>
-                    <td style="color: var(--accent-primary); font-style: italic;">${s.action}</td>
+                    <td class="${s.action.includes('EXECUTING') ? 'executing-state' : ''}" style="font-style: italic;">${s.action}</td>
                 `;
                 body.appendChild(tr);
             });
@@ -1092,6 +1167,12 @@
             };
             lat.innerText = models[selector.value];
             pushLog(`INFRASTRUCTURE: Migrating inference to ${selector.options[selector.selectedIndex].text}...`);
+        }
+
+        // --- QUICK COMMAND DISPATCHER ---
+        function quickCommand(cmd) {
+            document.getElementById('chat-input').value = cmd;
+            sendChatMessage();
         }
 
         window.onload = () => {
