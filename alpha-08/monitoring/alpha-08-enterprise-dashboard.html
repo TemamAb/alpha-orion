@@ -306,6 +306,154 @@
             font-size: 0.85rem;
         }
 
+        /* TERMINAL & COPILOT STYLING */
+        .terminal-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            height: calc(100vh - 320px);
+            margin-top: 1rem;
+        }
+
+        .chat-pane,
+        .dir-pane {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .pane-header {
+            padding: 0.8rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .chat-history {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .msg {
+            max-width: 85%;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .msg.user {
+            align-self: flex-end;
+            background: var(--accent-primary);
+            color: #fff;
+            border-bottom-right-radius: 2px;
+        }
+
+        .msg.ai {
+            align-self: flex-start;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-bottom-left-radius: 2px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .chat-input-area {
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 1rem;
+        }
+
+        .chat-field {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 0.8rem 1rem;
+            border-radius: 6px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        .chat-field:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .dir-output {
+            flex: 1;
+            padding: 1rem;
+            font-family: 'JetBrains Mono';
+            color: var(--accent-secondary);
+            font-size: 0.8rem;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .term-prompt {
+            color: var(--accent-primary);
+            font-weight: bold;
+        }
+
+        /* MODEL SELECTOR BAR */
+        .model-bar {
+            margin-top: 1.5rem;
+            padding: 0.8rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .model-select {
+            background: #000;
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-family: 'Inter';
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .model-select:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .model-info {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 2rem;
+        }
+
+        .model-badge {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 0.6rem;
+        }
+
         /* WALLET MANAGEMENT */
         .wallet-section {
             display: flex;
@@ -613,11 +761,68 @@
                 </div>
             </div>
 
-            <!-- TERMINAL TAB -->
             <div id="tab-terminal" class="content-area hidden">
-                <h2 style="font-size: 1.8rem; font-weight: 800;">Gemini Copilot Reasoning Log</h2>
-                <div class="term-window" id="log-box">
-                    <div style="color: var(--text-muted);">[System] Initializing Sovereign Analytic Stream...</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800;">Gemini Copilot Intelligence</h2>
+                    <span class="model-badge">SECURE ENCLAVE ACTIVE</span>
+                </div>
+
+                <div class="terminal-split">
+                    <!-- Column 1: Interactive Chat -->
+                    <div class="chat-pane">
+                        <div class="pane-header">
+                            <span>Sovereign Chat Interface</span>
+                            <span style="color: var(--accent-secondary);">● CONNECTED</span>
+                        </div>
+                        <div class="chat-history" id="chat-history">
+                            <div class="msg ai">
+                                Greetings, Sovereign. The Alpha-08 Intelligence Cluster is synchronized with Polygon
+                                Mainnet. How shall we optimize the execution kernel today?
+                            </div>
+                        </div>
+                        <div class="chat-input-area">
+                            <input type="text" id="chat-input" class="chat-field" placeholder="Ask Gemini Copilot..."
+                                onkeydown="if(event.key==='Enter') sendChatMessage()">
+                            <button class="btn-override" onclick="sendChatMessage()"
+                                style="background: var(--accent-primary); color: #fff; border:none; padding: 0.8rem 1.2rem;">SEND</button>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Directory Terminal -->
+                    <div class="dir-pane">
+                        <div class="pane-header">
+                            <span>Root Execution Terminal (alpha-08/)</span>
+                            <span id="term-status" style="color: var(--accent-primary);">IDLE</span>
+                        </div>
+                        <div class="dir-output" id="terminal-output">
+                            [System] Initializing Environment Variables...
+                            [System] Linking Workload Identity...
+                            [System] Alpha-08 Shell Ready.
+                            <span class="term-prompt">user@sovereign:~/alpha-08$</span> ls -la
+                            drwxr-xr-x 10 alpha staff 320 Feb 5 13:24 core
+                            drwxr-xr-x 8 alpha staff 256 Feb 5 13:24 infrastructure
+                            -rw-r--r-- 1 alpha staff 1024 Feb 5 13:24 calibration_engine.py
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Selector Bar -->
+                <div class="model-bar">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="stat-label" style="margin: 0;">Inference Engine:</span>
+                        <select class="model-select" id="model-selector" onchange="switchModel()">
+                            <option value="gem3flash" selected>Gemini 3 Flash (Alpha-08 Edition)</option>
+                            <option value="gem2pro">Gemini 2.0 Pro (Quantum Arbitrage)</option>
+                            <option value="sov-custom">Alpha-08 Sovereign (Custom HFT LLM)</option>
+                            <option value="hft-opt">HFT Intelligence v4 (Gas Forecaster)</option>
+                        </select>
+                    </div>
+                    <div class="model-info">
+                        <div><span style="color: var(--accent-secondary);">Latency:</span> <span
+                                id="model-lat">12ms</span></div>
+                        <div><span style="color: var(--accent-secondary);">Context:</span> 2M Tokens</div>
+                        <div><span style="color: var(--accent-secondary);">Role:</span> Algorithmic Audit</div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -745,6 +950,76 @@
                 toggleWalletEdit();
                 document.getElementById('override-confirm').style.display = 'none';
             }, 1500);
+        }
+
+        // --- GEMINI COPILOT INTERACTIVE LOGIC ---
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const history = document.getElementById('chat-history');
+            const val = input.value.trim();
+            if (!val) return;
+
+            // Add user message
+            const uMsg = document.createElement('div');
+            uMsg.className = 'msg user';
+            uMsg.innerText = val;
+            history.appendChild(uMsg);
+            input.value = '';
+            history.scrollTop = history.scrollHeight;
+
+            // Handle specific commands visual flow
+            if (val.toLowerCase().startsWith('execute') || val.toLowerCase().startsWith('run')) {
+                executeTerminalCommand(val);
+            }
+
+            // Simulate AI response
+            setTimeout(() => {
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'msg ai';
+                aiMsg.innerText = generateAIResponse(val);
+                history.appendChild(aiMsg);
+                history.scrollTop = history.scrollHeight;
+            }, 800);
+        }
+
+        function generateAIResponse(query) {
+            if (query.toLowerCase().includes('profit')) return "Analyzing Alpha-08 yield curves. Current η-Gas is optimized at 14.2x. Profit flow is stable.";
+            if (query.toLowerCase().includes('execute')) return "Synchronizing with GKE NodePool us-central1-c2. Command dispatched to execution kernel.";
+            return "Acknowledged, Sovereign. Query processed by the active inference engine. All systems nominal.";
+        }
+
+        function executeTerminalCommand(cmd) {
+            const out = document.getElementById('terminal-output');
+            const status = document.getElementById('term-status');
+            status.innerText = "BUSY";
+            status.style.color = "var(--accent-danger)";
+
+            const l = document.createElement('div');
+            l.innerHTML = `<span class="term-prompt">user@sovereign:~/alpha-08$</span> ${cmd}`;
+            out.appendChild(l);
+
+            setTimeout(() => {
+                const res = document.createElement('div');
+                res.style.color = "var(--text-muted)";
+                res.innerText = `[Kernel] Successfully executed task: ${cmd}\n[Kernel] Delta-Slippage minimized to 0.0001%`;
+                out.appendChild(res);
+                out.scrollTop = out.scrollHeight;
+                status.innerText = "IDLE";
+                status.style.color = "var(--accent-primary)";
+            }, 1200);
+        }
+
+        function switchModel() {
+            const selector = document.getElementById('model-selector');
+            const lat = document.getElementById('model-lat');
+            const models = {
+                'gem3flash': '12ms',
+                'gem2pro': '45ms',
+                'sov-custom': '8ms',
+                'hft-opt': '15ms'
+            };
+            lat.innerText = models[selector.value];
+            pushLog(`INFRASTRUCTURE: Migrating inference to ${selector.options[selector.selectedIndex].text}...`);
         }
 
         window.onload = () => {
