@@ -32,7 +32,8 @@ class ProfitTracker:
     
     def __init__(self, data_dir: str = "./data"):
         self.data_dir = Path(data_dir)
-        self.data_dir.mkdir(exist_ok=True)
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+
         
         self.profit_file = self.data_dir / "profit_records.json"
         self.cumulative_file = self.data_dir / "cumulative_profit.json"

@@ -250,7 +250,8 @@ profit_simulation_thread = threading.Thread(target=simulate_profits, daemon=True
 profit_simulation_thread.start()
 
 if __name__ == "__main__":
-    print("🚀 Alpha-08 Dashboard API with Profit Tracking starting on port 8000...")
-    print(f"💰 Withdrawal Mode: {profit_tracker.withdrawal_mode}")
-    print(f"📊 Cumulative Profit: ${profit_tracker.cumulative_profit:,.2f}")
+    print("Alpha-08 Dashboard API with Profit Tracking starting on port 8000...")
+    print(f"Withdrawal Mode: {profit_tracker.withdrawal_mode}")
+    print(f"Cumulative Profit: ${profit_tracker.cumulative_profit:,.2f}")
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
