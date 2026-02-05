@@ -1,4 +1,12 @@
-# CI/CD Pipeline Stub for future phases
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/$PROJECT_ID/alpha-orion-engine:$SHORT_SHA', '.']
+  # Build Calibration Engine
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-08/engine:latest', '-f', 'Dockerfile.engine', '.']
+  
+  # Build Sovereign Hub
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-08/hub:latest', '-f', 'Dockerfile.hub', '.']
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-08/engine:latest'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-08/hub:latest'
