@@ -53,6 +53,10 @@ resource "google_container_node_pool" "c2_nodes" {
   }
 }
 
+output "cluster_endpoint" {
+  value = google_container_cluster.primary.endpoint
+}
+
 variable "project_id" {}
 variable "region" {}
 variable "cluster_name" { default = "alpha-08-sovereign" }
