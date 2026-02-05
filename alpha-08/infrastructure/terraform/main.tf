@@ -8,7 +8,7 @@ module "vpc_native_cluster" {
   project_id   = var.project_id
   region       = var.region
   cluster_name = "alpha-08-sovereign"
-  node_count   = 3
+  node_count   = 1
 }
 
 module "security_armor" {

@@ -1,9 +1,32 @@
+resource "google_compute_network" "vpc" {
+  name                    = "alpha-08-vpc"
+  auto_create_subnetworks = false
+}
+
+resource "google_compute_subnetwork" "subnet" {
+  name          = "alpha-08-subnet"
+  region        = var.region
+  network       = google_compute_network.vpc.id
+  ip_cidr_range = "10.0.0.0/16"
+
+  secondary_ip_range {
+    range_name    = "pods"
+    ip_cidr_range = "10.1.0.0/16"
+  }
+
+  secondary_ip_range {
+    range_name    = "services"
+    ip_cidr_range = "10.2.0.0/16"
+  }
+}
+
 resource "google_container_cluster" "primary" {
   name     = var.cluster_name
   location = var.region
 
-  # We're using a VPC-native cluster
   networking_mode = "VPC_NATIVE"
+  network         = google_compute_network.vpc.name
+  subnetwork      = google_compute_subnetwork.subnet.name
 
   remove_default_node_pool = true
   initial_node_count       = 1
@@ -24,23 +47,17 @@ resource "google_container_cluster" "primary" {
   }
 }
 
-resource "google_container_node_pool" "c2_nodes" {
-  name       = "hft-c2-pool"
+resource "google_container_node_pool" "primary_nodes" {
+  name       = "alpha-08-node-pool"
   location   = var.region
   cluster    = google_container_cluster.primary.name
   node_count = var.node_count
 
   node_config {
-    # C2 nodes are compute-optimized for low-latency HFT
-    machine_type = "c2-standard-4"
+    machine_type = "n2-standard-4"
 
     labels = {
       workload = "alpha-08-hft"
-    }
-
-    # High-performance networking
-    network_performance_config {
-      total_egress_bandwidth_tier = "TIER_1"
     }
 
     workload_metadata_config {
@@ -60,4 +77,4 @@ output "cluster_endpoint" {
 variable "project_id" {}
 variable "region" {}
 variable "cluster_name" { default = "alpha-08-sovereign" }
-variable "node_count" { default = 3 }
+variable "node_count" { default = 1 }
