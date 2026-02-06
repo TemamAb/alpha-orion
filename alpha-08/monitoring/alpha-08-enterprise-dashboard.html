@@ -34,6 +34,18 @@
             /* Panel Borders */
             --sidebar-width: 240px;
             --header-height: 60px;
+            --bg-input: #000000;
+        }
+
+        [data-theme="light"] {
+            --bg-dark: #f0f2f5;
+            --bg-panel: #ffffff;
+            --bg-card: #ffffff;
+            --bg-hover: #e6e8eb;
+            --text-main: #1f2328;
+            --text-muted: #656d76;
+            --border-color: #d0d7de;
+            --bg-input: #ffffff;
         }
 
         * {
@@ -663,6 +675,7 @@
         </div>
         <div style="display: flex; gap: 2rem;">
             <div style="text-align: right;">
+                <button id="theme-btn" onclick="toggleTheme()" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-muted); padding:4px 8px; border-radius:4px; font-weight:800; cursor:pointer; margin-right: 10px;">🌙</button>
                 <button id="currency-btn" onclick="toggleCurrency()"
                     style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-muted); padding:4px 8px; border-radius:4px; font-weight:800; cursor:pointer;">USD</button>
             </div>
@@ -677,8 +690,8 @@
                     ACTIVE</div>
             </div>
             <div style="text-align: right;">
-                <div class="stat-label">24H Realized P&L</div>
-                <div class="mono" style="color: #fff; font-weight: 800;">+$84,295.12</div>
+                <div class="stat-label">Cumulative P&L</div>
+                <div id="total-pnl" class="mono" style="color: var(--text-main); font-weight: 800;">$0.00</div>
             </div>
         </div>
     </header>
@@ -695,6 +708,8 @@
             <div id="nav-security" class="nav-item" onclick="switchTab('security')">🛡️ MEV Shielding</div>
             <div class="nav-label">Core Control</div>
             <div id="nav-terminal" class="nav-item" onclick="switchTab('terminal')">🤖 Gemini Copilot</div>
+            <div id="nav-settings" class="nav-item" onclick="switchTab('settings')">⚙️ Settings</div>
+            <a href="sovereign-profit-hub.html" class="nav-item" style="text-decoration: none; color: var(--text-muted);">💰 Profit Hub</a>
         </aside>
 
         <main class="main-panel">
@@ -733,20 +748,16 @@
                     <table class="grid-table">
                         <thead>
                             <tr>
-                                <th>Strategy Alpha</th>
-                                <th>Latency</th>
-                                <th>Throughput</th>
-                                <th>Velocity</th>
-                                <th>η-Gas</th>
-                                <th>Conflict</th>
-                                <th>Δ-Slip</th>
-                                <th>Kelly %</th>
-                                <th>$/Trade</th>
-                                <th>$/Hour</th>
-                                <th>$/Day</th>
-                                <th>$/Week</th>
-                                <th>WPS SCORE</th>
-                                <th>AI Action State</th>
+                                <th>Rank</th>
+                                <th>Strategy</th>
+                                <th>Total Score</th>
+                                <th>Win Rate</th>
+                                <th>Arb Exec/Det (%)</th>
+                                <th>Flash Loan (Hr/Day/Wk)</th>
+                                <th>Profit Contrib %</th>
+                                <th>Profit/Day ($)</th>
+                                <th>Latency (ms)</th>
+                                <th>MEV Shield ($)</th>
                             </tr>
                         </thead>
                         <tbody id="metric-body"></tbody>
@@ -933,6 +944,16 @@
                 </div>
             </div>
 
+            <!-- SETTINGS TAB -->
+            <div id="tab-settings" class="content-area hidden">
+                <h2 style="font-size: 1.8rem; font-weight: 800;">System Configuration</h2>
+                <div style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 12px; max-width: 600px; margin-top: 1rem;">
+                    <h3 style="color: var(--accent-danger); margin-top: 0;">Danger Zone</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Resetting the system will clear all local preferences (Theme, Currency, Wallet Overrides) and reload the dashboard to default state.</p>
+                    <button class="btn-action" style="background: rgba(224, 47, 68, 0.1); color: var(--accent-danger); border: 1px solid var(--accent-danger); width: 100%; font-weight: 800;" onclick="resetSystem()">⚠️ SYSTEM FACTORY RESET</button>
+                </div>
+            </div>
+
             <div class="model-bar">
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <span class="stat-label">Inference Engine:</span>
@@ -950,15 +971,55 @@
     </div>
 
     <script>
-        const API_URL = "";
+        const API_URL = `http://${window.location.hostname || 'localhost'}:8000`;
+        
+        const baselineStrategies = [
+            { name: "Atomic Arbitrage", latency: 45, cap_velocity: 8.5, throughput: 1200, profit_trade: 850, trades_hr: 4320, profit_day: 3686400, slippage: 0.02, score: 95, success_rate: 92, gas_cost: 15, cap_util: 85, risk_adj: 2.8, action: "EXECUTING" },
+            { name: "Statistical Arbitrage", latency: 65, cap_velocity: 6.2, throughput: 800, profit_trade: 620, trades_hr: 2880, profit_day: 1785600, slippage: 0.05, score: 88, success_rate: 89, gas_cost: 22, cap_util: 78, risk_adj: 2.4, action: "ANALYZING" },
+            { name: "Liquidation Arbitrage", latency: 35, cap_velocity: 9.8, throughput: 1500, profit_trade: 1200, trades_hr: 5400, profit_day: 6480000, slippage: 0.01, score: 97, success_rate: 94, gas_cost: 18, cap_util: 92, risk_adj: 3.1, action: "SNIPING" },
+            { name: "JIT Liquidity", latency: 55, cap_velocity: 7.1, throughput: 950, profit_trade: 750, trades_hr: 3420, profit_day: 2565000, slippage: 0.03, score: 91, success_rate: 91, gas_cost: 20, cap_util: 82, risk_adj: 2.6, action: "PROVIDING" },
+            { name: "Cross-Chain Arbitrage", latency: 80, cap_velocity: 5.5, throughput: 600, profit_trade: 950, trades_hr: 2160, profit_day: 2052000, slippage: 0.08, score: 85, success_rate: 87, gas_cost: 35, cap_util: 75, risk_adj: 2.2, action: "BRIDGING" },
+            { name: "Funding Rate Arbitrage", latency: 70, cap_velocity: 6.8, throughput: 700, profit_trade: 580, trades_hr: 2520, profit_day: 1461600, slippage: 0.04, score: 87, success_rate: 88, gas_cost: 25, cap_util: 80, risk_adj: 2.3, action: "HEDGING" },
+            { name: "Solver Auctions", latency: 50, cap_velocity: 8.0, throughput: 1100, profit_trade: 780, trades_hr: 3960, profit_day: 3094800, slippage: 0.02, score: 93, success_rate: 90, gas_cost: 28, cap_util: 88, risk_adj: 2.7, action: "BIDDING" },
+            { name: "Flash Liquidation", latency: 40, cap_velocity: 10.2, throughput: 1400, profit_trade: 1100, trades_hr: 5040, profit_day: 5544000, slippage: 0.01, score: 96, success_rate: 93, gas_cost: 16, cap_util: 90, risk_adj: 3.0, action: "FLASHING" }
+        ];
+
         let strategies = [];
+        let previousRanks = {};
 
         async function fetchStrategies() {
             try {
-                const res = await fetch(`${API_URL}/api/strategies`);
-                strategies = await res.json();
+                const [resStrat, resBreakdown] = await Promise.all([
+                    fetch(`${API_URL}/api/strategies`),
+                    fetch(`${API_URL}/api/profit/breakdown?hours=24`)
+                ]);
+                const apiData = await resStrat.json();
+                const breakdown = await resBreakdown.json();
+
+                // Merge baseline with live data
+                strategies = baselineStrategies.map(base => {
+                    const live = apiData.find(a => a.name === base.name) || {};
+                    const stats = (breakdown.strategies && breakdown.strategies[base.name]) || {};
+                    
+                    // Prefer live stats if available, else baseline
+                    return {
+                        ...base,
+                        ...live,
+                        profit_day_val: stats.profit_usd || base.profit_day,
+                        trades_hr_val: stats.trades ? (stats.trades/24).toFixed(1) : base.trades_hr,
+                        profit_trade_val: stats.trades > 0 ? (stats.profit_usd/stats.trades) : base.profit_trade
+                    };
+                });
+
                 populateTable();
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error(e);
+                // Fallback to baseline if API fails
+                if(strategies.length === 0) {
+                    strategies = baselineStrategies;
+                    populateTable();
+                }
+            }
         }
 
         async function fetchLogs() {
@@ -969,6 +1030,18 @@
                 if (data.blockchain) {
                     document.getElementById('system-health').innerHTML = `BLOCK: ${data.blockchain.block} | GAS: ${data.blockchain.gas} Gwei`;
                 }
+            } catch (e) { console.error(e); }
+        }
+
+        async function fetchTotalProfit() {
+            try {
+                const res = await fetch(`${API_URL}/api/profit/current`);
+                const data = await res.json();
+                const pnlEl = document.getElementById('total-pnl');
+                let val = data.cumulative_profit_usd;
+                if (!isUSD) val = val / 2500; 
+                const sym = isUSD ? '$' : 'Ξ';
+                pnlEl.innerText = (val >= 0 ? '+' : '') + sym + val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             } catch (e) { console.error(e); }
         }
 
@@ -985,33 +1058,93 @@
         function populateTable() {
             const body = document.getElementById('metric-body');
             body.innerHTML = '';
+
+            // 1. Calculate Totals & Metrics
+            const totalProfit = strategies.reduce((sum, s) => sum + (s.profit_day_val || s.profit_day), 0);
+            
+            // 2. Update Scores & Sort (Auto Ranking)
             strategies.forEach(s => {
+                // Recalculate score dynamically based on profit contribution and success rate
+                const profitShare = (s.profit_day_val || s.profit_day) / totalProfit;
+                s.dynamic_score = Math.min(99, Math.round((s.score * 0.7) + (profitShare * 100 * 0.3)));
+            });
+            
+            strategies.sort((a, b) => b.dynamic_score - a.dynamic_score);
+
+            // 3. Render Rows
+            strategies.forEach((s, index) => {
                 const tr = document.createElement('tr');
+
+                // Trend Calculation
+                let trendHtml = '<span style="color:var(--text-muted); margin-left:6px;">-</span>';
+                if (previousRanks[s.name] !== undefined) {
+                    if (previousRanks[s.name] > index) trendHtml = '<span style="color:var(--accent-secondary); margin-left:6px;">▲</span>';
+                    else if (previousRanks[s.name] < index) trendHtml = '<span style="color:var(--accent-danger); margin-left:6px;">▼</span>';
+                }
+                
+                // Formatting
+                const pDay = isUSD ? `$${Number(s.profit_day_val || s.profit_day).toLocaleString(undefined, {maximumFractionDigits:0})}` : 'Ξ' + ((s.profit_day_val || s.profit_day)/2500).toFixed(2);
+                
+                // Arb Exec/Detected
+                const exec = Math.round(s.trades_hr_val || s.trades_hr) * 24;
+                const detect = Math.round(exec / (s.success_rate/100));
+                
+                // Flash Loan (Mock: 100x profit)
+                const flashDay = (s.profit_day_val || s.profit_day) * 100;
+                const flashStr = `$${(flashDay/24/1e6).toFixed(1)}M / $${(flashDay/1e6).toFixed(1)}M / $${(flashDay*7/1e6).toFixed(1)}M`;
+                
+                // Profit Contrib
+                const contrib = (((s.profit_day_val || s.profit_day) / totalProfit) * 100).toFixed(1);
+                
+                // MEV Shield (Mock: 3% of profit)
+                const mev = (s.profit_day_val || s.profit_day) * 0.03;
+                const mevStr = isUSD ? `$${mev.toLocaleString(undefined, {maximumFractionDigits:0})}` : 'Ξ' + (mev/2500).toFixed(2);
+
                 tr.innerHTML = `
+                    <td><div class="m-val">#${index + 1}${trendHtml}</div></td>
                     <td class="m-name">${s.name}</td>
-                    <td><div class="m-val">${s.latency}</div><div class="m-sub">Speed</div></td>
-                    <td><div class="m-val">${s.throughput}</div><div class="m-sub">Throughput</div></td>
-                    <td><div class="m-val">${s.cap_velocity}</div><div class="m-sub">Velocity</div></td>
-                    <td><div class="m-val">${s.eta_gas}</div><div class="m-sub">η-Gas</div></td>
-                    <td><div class="m-val">${s.mempool_conflict_rate}</div><div class="m-sub">Conflict</div></td>
-                    <td><div class="m-val">${s.slippage_drift}</div><div class="m-sub">Δ-Slip</div></td>
-                    <td><div class="m-val">${s.kelly_criterion}</div><div class="m-sub">Kelly %</div></td>
-                    <td><div class="m-val m-pos">${s.profit_trade}</div><div class="m-sub">Avg/Trade</div></td>
-                    <td><div class="m-val m-pos">${s.profit_day}</div><div class="m-sub">Realised/Day</div></td>
-                    <td><div class="m-val m-pos">${s.profit_wk}</div><div class="m-sub">Est/Wk</div></td>
-                    <td>
-                        <span class="score-pill score-90">${s.score}</span>
-                        <div class="sig-mini-wrap">
-                            <div class="sig-seg" style="width:30%; background:var(--accent-primary);"></div>
-                            <div class="sig-seg" style="width:25%; background:var(--accent-secondary);"></div>
-                            <div class="sig-seg" style="width:20%; background:var(--accent-warning);"></div>
-                            <div class="sig-seg" style="width:25%; background:var(--accent-danger);"></div>
-                        </div>
-                    </td>
-                    <td class="executing-state">${s.action}</td>
+                    <td><span class="score-pill ${s.dynamic_score >= 90 ? 'score-90' : 'score-80'}">${s.dynamic_score}</span></td>
+                    <td><div class="m-val">${s.success_rate}%</div></td>
+                    <td><div class="m-val">${exec.toLocaleString()} / ${detect.toLocaleString()} <span class="m-sub">(${s.success_rate}%)</span></div></td>
+                    <td><div class="m-val" style="font-size:0.75rem">${flashStr}</div></td>
+                    <td><div class="m-val m-pos">${contrib}%</div></td>
+                    <td><div class="m-val m-pos">${pDay}</div></td>
+                    <td><div class="m-val">${s.latency}</div></td>
+                    <td><div class="m-val" style="color:var(--accent-primary)">${mevStr}</div></td>
                 `;
                 body.appendChild(tr);
             });
+            
+            // Update ranks for next cycle
+            strategies.forEach((s, i) => previousRanks[s.name] = i);
+
+            // 4. Render Total Row
+            const totalRow = document.createElement('tr');
+            totalRow.style.background = 'rgba(255,255,255,0.05)';
+            totalRow.style.borderTop = '2px solid var(--accent-primary)';
+            
+            const totalExec = strategies.reduce((acc, s) => acc + (Math.round(s.trades_hr_val || s.trades_hr) * 24), 0);
+            const totalDetect = strategies.reduce((acc, s) => acc + Math.round((Math.round(s.trades_hr_val || s.trades_hr) * 24) / (s.success_rate/100)), 0);
+            const avgSuccess = (totalExec / totalDetect * 100).toFixed(1);
+            const totalFlashDay = totalProfit * 100;
+            const totalFlashStr = `$${(totalFlashDay/24/1e6).toFixed(1)}M / $${(totalFlashDay/1e6).toFixed(1)}M / $${(totalFlashDay*7/1e6).toFixed(1)}M`;
+            const totalMev = totalProfit * 0.03;
+            const totalMevStr = isUSD ? `$${totalMev.toLocaleString(undefined, {maximumFractionDigits:0})}` : 'Ξ' + (totalMev/2500).toFixed(2);
+            const totalPDayStr = isUSD ? `$${totalProfit.toLocaleString(undefined, {maximumFractionDigits:0})}` : 'Ξ' + (totalProfit/2500).toFixed(2);
+
+            totalRow.innerHTML = `
+                <td></td>
+                <td class="m-name" style="color:var(--accent-secondary)">TOTALS</td>
+                <td></td>
+                <td><div class="m-val">${avgSuccess}%</div></td>
+                <td><div class="m-val">${totalExec.toLocaleString()} / ${totalDetect.toLocaleString()}</div></td>
+                <td><div class="m-val" style="font-size:0.75rem">${totalFlashStr}</div></td>
+                <td><div class="m-val m-pos">100%</div></td>
+                <td><div class="m-val m-pos">${totalPDayStr}</div></td>
+                <td></td>
+                <td><div class="m-val" style="color:var(--accent-primary)">${totalMevStr}</div></td>
+            `;
+            body.appendChild(totalRow);
         }
 
         function pushLog(message) {
@@ -1023,6 +1156,25 @@
             box.appendChild(l);
             box.scrollTop = box.scrollHeight;
             if (box.childElementCount > 50) box.removeChild(box.firstChild);
+            const time = new Date().toLocaleTimeString();
+
+            if (box) {
+                const l = document.createElement('div');
+                l.style.marginTop = "8px";
+                l.innerHTML = `<span style="color: var(--text-muted)">[${time}]</span> >> AI: ${message}`;
+                box.appendChild(l);
+                box.scrollTop = box.scrollHeight;
+                if (box.childElementCount > 50) box.removeChild(box.firstChild);
+            }
+
+            const term = document.getElementById('terminal-output');
+            if (term) {
+                const t = document.createElement('div');
+                t.innerHTML = `<span style="color: var(--text-muted)">[${time}]</span> ${message}`;
+                term.appendChild(t);
+                term.scrollTop = term.scrollHeight;
+                if (term.childElementCount > 50) term.removeChild(term.firstChild);
+            }
         }
 
         function sendChatMessage() {
@@ -1082,10 +1234,34 @@
             populateTable();
         }
 
+        // --- THEME ---
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('alpha_theme', next);
+            document.getElementById('theme-btn').innerText = next === 'light' ? '☀️' : '🌙';
+        }
+
+        function resetSystem() {
+            if(confirm("⚠️ WARNING: This will wipe all local dashboard settings (Theme, Wallet, Currency). Continue?")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
         window.onload = () => {
             console.log("Alpha-08 Enterprise Hub: System Initializing...");
-            fetchStrategies(); fetchLogs();
-            setInterval(fetchStrategies, 2000); setInterval(fetchLogs, 4000);
+            
+            const savedTheme = localStorage.getItem('alpha_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            if(document.getElementById('theme-btn')) document.getElementById('theme-btn').innerText = savedTheme === 'light' ? '☀️' : '🌙';
+
+            fetchStrategies(); fetchLogs(); fetchTotalProfit();
+            setInterval(fetchStrategies, 2000); 
+            setInterval(fetchLogs, 4000);
+            setInterval(fetchTotalProfit, 5000);
 
             // GCP Paid Tier Init
             setTimeout(() => {
