@@ -23,16 +23,14 @@ done
 # 2. Find Google Cloud SDK
 echo "🔍 Searching for Google Cloud SDK..."
 
-# Define potential paths
 PATHS_TO_CHECK=(
     "/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin"
     "/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin"
-    "/c/Users/$USERNAME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
+    "$HOME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
     "/c/google-cloud-sdk/bin"
 )
 
 GCLOUD_BIN_PATH=""
-
 for PATH_CHECK in "${PATHS_TO_CHECK[@]}"; do
     if [ -d "$PATH_CHECK" ]; then
         GCLOUD_BIN_PATH="$PATH_CHECK"
@@ -42,12 +40,7 @@ done
 
 if [ -z "$GCLOUD_BIN_PATH" ]; then
     echo "❌ Could not auto-detect Google Cloud SDK location."
-    echo "   Checked locations:"
-    for PATH_CHECK in "${PATHS_TO_CHECK[@]}"; do
-        echo "    - $PATH_CHECK"
-    done
-    echo ""
-    echo "👉 Please manually add the 'bin' folder of your Google Cloud SDK to your PATH."
+    echo "   Please manually add the 'bin' folder of your Google Cloud SDK to your PATH, or reinstall it."
     exit 1
 fi
 

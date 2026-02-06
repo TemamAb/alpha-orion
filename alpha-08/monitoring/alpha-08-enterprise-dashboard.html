@@ -971,7 +971,8 @@
     </div>
 
     <script>
-        const API_URL = `http://${window.location.hostname || 'localhost'}:8000`;
+        const urlParams = new URLSearchParams(window.location.search);
+        const API_URL = urlParams.get('api') || `http://${window.location.hostname || '196.190.60.169'}:8000`;
         
         const baselineStrategies = [
             { name: "Atomic Arbitrage", latency: 45, cap_velocity: 8.5, throughput: 1200, profit_trade: 850, trades_hr: 4320, profit_day: 3686400, slippage: 0.02, score: 95, success_rate: 92, gas_cost: 15, cap_util: 85, risk_adj: 2.8, action: "EXECUTING" },

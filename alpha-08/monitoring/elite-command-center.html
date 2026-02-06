@@ -4,25 +4,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALPHA-08 | Enterprise Sovereign Dashboard</title>
+    <title>Alpha-08 Enterprise Dashboard</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
         rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #050608;
-            --bg-panel: #0d1117;
-            --bg-card: #161b22;
-            --bg-hover: rgba(255, 255, 255, 0.03);
-            --accent-primary: #3b82f6;
-            --accent-secondary: #00ff88;
-            --accent-danger: #f85149;
-            --accent-warning: #d29922;
-            --text-main: #f0f6fc;
-            --text-muted: #8b949e;
-            --border-color: #30363d;
-            --sidebar-width: 260px;
-            --header-height: 64px;
+            --bg-dark: #111217;
+            --bg-panel: #141619;
+            --bg-card: #181b1f;
+            --bg-hover: #22252b;
+            --accent-primary: #3274d9;
+            --accent-secondary: #56a64b;
+            --accent-danger: #e02f44;
+            --accent-warning: #f2cc0c;
+            --text-main: #ccccdc;
+            --text-muted: #8e8e8e;
+            --border-color: #2c3235;
+            --sidebar-width: 240px;
+            --header-height: 56px;
+            --bg-input: #000000;
+        }
+
+        [data-theme="light"] {
+            --bg-dark: #f0f2f5;
+            --bg-panel: #ffffff;
+            --bg-card: #ffffff;
+            --bg-hover: #e6e8eb;
+            --text-main: #1f2328;
+            --text-muted: #656d76;
+            --border-color: #d0d7de;
+            --bg-input: #ffffff;
         }
 
         * {
@@ -117,9 +129,9 @@
 
         .main-panel {
             flex: 1;
-            padding: 2rem;
+            padding: 1rem;
             overflow-y: auto;
-            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.05), transparent 40%);
+            background: var(--bg-dark);
         }
 
         /* === MONITORING TABLE === */
@@ -181,7 +193,7 @@
         
         input[type="range"] { width: 100%; accent-color: var(--accent-secondary); }
         .toggle-btn {
-            background: #000; border: 1px solid var(--border-color); color: var(--text-muted);
+            background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-muted);
             padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600;
         }
         .toggle-btn.active { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
@@ -228,7 +240,7 @@
             padding: 6px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.75rem; outline: none;
         }
         .input-field {
-            width: 100%; background: #000; border: 1px solid var(--border-color); color: #fff;
+            width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main);
             padding: 0.75rem; border-radius: 6px; font-family: 'JetBrains Mono'; margin-top: 5px;
         }
         .action-btn {
@@ -247,10 +259,11 @@
     <header>
         <div class="header-brand">
             <div class="logo-box"></div>
-            ALPHA-08 ENTERPRISE
+            Alpha-08 Enterprise
         </div>
         <div style="display: flex; gap: 2rem; align-items: center;">
             <div style="display: flex; gap: 10px; align-items: center; margin-right: 1rem; border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+                <button class="header-btn" onclick="toggleTheme()" id="theme-btn">🌙</button>
                 <button class="header-btn" onclick="toggleCurrency()" id="currency-btn">USD</button>
                 <select class="header-select" onchange="updateRefreshRate(this.value)" title="Data Refresh Rate">
                     <option value="1000">1s</option>
@@ -278,6 +291,7 @@
             <div class="nav-item" onclick="switchTab('mev')"><i>🛡️</i> MEV Protection</div>
             <div class="nav-item" onclick="switchTab('copilot')"><i>🤖</i> Gemini Copilot</div>
             <div class="nav-item" onclick="switchTab('settings')"><i>⚙️</i> Settings</div>
+            <a href="sovereign-profit-hub.html" class="nav-item" style="text-decoration: none;"><i>💰</i> Profit Hub</a>
         </aside>
 
         <main class="main-panel">
@@ -366,46 +380,6 @@
                             Controls the percentage of realized profit automatically added back to the trading principal for the next epoch.
                         </p>
                     </div>
-
-                    <div class="setting-card">
-                        <h3>Profit Withdrawal</h3>
-                        <div class="control-group">
-                            <label class="control-label">WITHDRAWAL MODE</label>
-                            <div style="display: flex; gap: 10px;">
-                                <button class="toggle-btn active" onclick="setWithdrawMode('auto', this)">AUTO</button>
-                                <button class="toggle-btn" onclick="setWithdrawMode('manual', this)">MANUAL</button>
-                            </div>
-                        </div>
-                        <div class="control-group">
-                            <label class="control-label">DESTINATION WALLET</label>
-                            <input type="text" value="0x71C...8e21" readonly style="width: 100%; background: #000; border: 1px solid var(--border-color); color: #fff; padding: 0.5rem; border-radius: 6px; font-family: 'JetBrains Mono';">
-                        </div>
-
-                        <!-- Auto Mode -->
-                        <div id="withdraw-auto-panel">
-                            <div class="control-group">
-                                <label class="control-label">TRIGGER THRESHOLD (<span class="currency-sym">$</span>)</label>
-                                <input type="number" class="input-field" value="1000">
-                            </div>
-                            <button class="action-btn" onclick="alert('Configuration Saved')">SAVE CONFIGURATION</button>
-                        </div>
-
-                        <!-- Manual Mode -->
-                        <div id="withdraw-manual-panel" class="hidden">
-                            <div class="control-group">
-                                <label class="control-label">WITHDRAWAL AMOUNT (<span class="currency-sym">$</span>)</label>
-                                <input type="number" class="input-field" placeholder="0.00">
-                            </div>
-                            <button class="action-btn" onclick="confirmWithdrawal()">CONFIRM WITHDRAWAL</button>
-                        </div>
-
-                        <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                            <label class="control-label" style="margin-bottom: 10px;">TRANSFER HISTORY</label>
-                            <table class="history-table" id="history-table">
-                                <!-- Populated via JS -->
-                            </table>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -413,7 +387,7 @@
     </div>
 
     <script>
-        const API_URL = "http://localhost:8000";
+        const API_URL = `http://${window.location.hostname || 'localhost'}:8000`;
         let refreshInterval = 2000;
         let intervalId = null;
         let isUSD = true;
@@ -430,9 +404,14 @@
             });
         }
 
-        function toggleBtn(btn) {
-            btn.parentElement.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        // --- THEME ---
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('alpha_theme', next);
+            document.getElementById('theme-btn').innerText = next === 'light' ? '☀️' : '🌙';
         }
 
         // --- NEW FEATURES ---
@@ -441,60 +420,64 @@
             document.getElementById('currency-btn').innerText = isUSD ? 'USD' : 'ETH';
             document.querySelectorAll('.currency-sym').forEach(el => el.innerText = isUSD ? '$' : 'Ξ');
             
-            // Mock conversion for display
-            const pnlEl = document.getElementById('total-pnl');
-            let val = parseFloat(pnlEl.innerText.replace(/[^0-9.-]+/g,""));
-            if(!isUSD) val = val / 2800; // Mock ETH price
-            else val = val * 2800;
-            
-            pnlEl.innerText = (isUSD ? '$' : 'Ξ') + val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            fetchTotalProfit();
             fetchStrategies(); // Refresh table with new currency
         }
 
         function updateRefreshRate(ms) {
             refreshInterval = parseInt(ms);
             clearInterval(intervalId);
-            intervalId = setInterval(fetchStrategies, refreshInterval);
-        }
-
-        function setWithdrawMode(mode, btn) {
-            toggleBtn(btn);
-            if(mode === 'auto') {
-                document.getElementById('withdraw-auto-panel').classList.remove('hidden');
-                document.getElementById('withdraw-manual-panel').classList.add('hidden');
-            } else {
-                document.getElementById('withdraw-auto-panel').classList.add('hidden');
-                document.getElementById('withdraw-manual-panel').classList.remove('hidden');
-            }
-        }
-
-        function confirmWithdrawal() {
-            if(confirm("Confirm withdrawal initiation?")) {
-                alert("Withdrawal broadcasted to network.");
-                addHistoryEntry("MANUAL", "500.00");
-            }
-        }
-
-        function addHistoryEntry(type, amount) {
-            const tbody = document.getElementById('history-table');
-            const row = document.createElement('tr');
-            const sym = isUSD ? '$' : 'Ξ';
-            row.innerHTML = `
-                <td><span style="color: ${type === 'AUTO' ? 'var(--accent-primary)' : '#fff'}; font-weight:700;">${type}</span></td>
-                <td style="text-align:right;" class="mono">${sym}${amount}</td>
-                <td style="text-align:right; color: var(--accent-secondary);">CONFIRMED</td>
-            `;
-            tbody.insertBefore(row, tbody.firstChild);
+            intervalId = setInterval(() => {
+                fetchStrategies();
+                fetchTotalProfit();
+            }, refreshInterval);
         }
 
         // --- DATA FETCHING ---
         async function fetchStrategies() {
             try {
-                const res = await fetch(`${API_URL}/api/strategies`);
-                const strategies = await res.json();
+                const [resStrat, resBreakdown] = await Promise.all([
+                    fetch(`${API_URL}/api/strategies`),
+                    fetch(`${API_URL}/api/profit/breakdown?hours=24`)
+                ]);
+                
+                const strategies = await resStrat.json();
+                const breakdown = await resBreakdown.json();
+
+                // Merge live profit data
+                strategies.forEach(s => {
+                    if (breakdown.strategies && breakdown.strategies[s.name]) {
+                        const data = breakdown.strategies[s.name];
+                        const profit = data.profit_usd || 0;
+                        const trades = data.trades || 0;
+                        
+                        s.trades_day = trades;
+                        s.profit_day = '$' + profit.toFixed(2);
+                        s.profit_trade = trades > 0 ? '$' + (profit / trades).toFixed(2) : '$0.00';
+                        s.trades_hr = (trades / 24).toFixed(1);
+                        s.profit_hr = '$' + (profit / 24).toFixed(2);
+                    }
+                });
+
                 renderTable(strategies);
             } catch (e) {
                 console.error("API Error:", e);
+            }
+        }
+
+        async function fetchTotalProfit() {
+            try {
+                const res = await fetch(`${API_URL}/api/profit/current`);
+                const data = await res.json();
+                const pnlEl = document.getElementById('total-pnl');
+                
+                let val = data.cumulative_profit_usd;
+                if (!isUSD) val = val / 2800; // Mock ETH price
+                
+                const sym = isUSD ? '$' : 'Ξ';
+                pnlEl.innerText = sym + val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            } catch (e) {
+                console.error("Profit API Error:", e);
             }
         }
 
@@ -553,13 +536,18 @@
 
         // --- INITIALIZATION ---
         window.onload = () => {
+            const savedTheme = localStorage.getItem('alpha_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            if(document.getElementById('theme-btn')) 
+                document.getElementById('theme-btn').innerText = savedTheme === 'light' ? '☀️' : '🌙';
+
             fetchStrategies();
-            intervalId = setInterval(fetchStrategies, refreshInterval);
+            fetchTotalProfit();
+            intervalId = setInterval(() => {
+                fetchStrategies();
+                fetchTotalProfit();
+            }, refreshInterval);
             setInterval(fetchLogs, 3000);
-            
-            // Init history
-            addHistoryEntry("AUTO", "1,250.00");
-            addHistoryEntry("AUTO", "800.00");
         };
     </script>
 

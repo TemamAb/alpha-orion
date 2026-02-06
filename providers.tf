@@ -3,6 +3,8 @@
 # Please make changes to the application template instead.
 
 provider "google" {
+  project     = "alpha-orion-485207"
+  region      = "us-east4"
   default_labels = {
     goog-adc-tf-deployment = "export"
   }

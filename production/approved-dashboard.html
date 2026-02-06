@@ -747,27 +747,24 @@
         </div>
 
         <nav class="nav-section">
-            <div class="nav-label">Performance</div>
-            <button class="nav-item" data-category="strategy-execution">
-                <span class="icon">🎯</span> Strategy
+            <div class="nav-label">Benchmark Monitoring</div>
+            <button class="nav-item" data-category="latency-execution">
+                <span class="icon">⚡</span> Latency & Exec
             </button>
-            <button class="nav-item" data-category="execution-infrastructure">
-                <span class="icon">🚀</span> Infrastructure
+            <button class="nav-item" data-category="profit-volume">
+                <span class="icon">💰</span> Profit & Vol
+            </button>
+            <button class="nav-item" data-category="chain-connectivity">
+                <span class="icon">🌐</span> Chain Connect
+            </button>
+            <button class="nav-item" data-category="infrastructure-scaling">
+                <span class="icon">🚀</span> Infra & Scale
             </button>
             <button class="nav-item" data-category="risk-management">
-                <span class="icon">🛡️</span> Risk
+                <span class="icon">🛡️</span> Risk Mgmt
             </button>
-            <button class="nav-item" data-category="market-coverage">
-                <span class="icon">🌐</span> Coverage
-            </button>
-            <button class="nav-item" data-category="compliance">
-                <span class="icon">📋</span> Compliance
-            </button>
-            <button class="nav-item" data-category="performance">
-                <span class="icon">⚡</span> Performance
-            </button>
-            <button class="nav-item" data-category="profit-analytics">
-                <span class="icon">💰</span> Profit
+            <button class="nav-item" data-category="inventory-liquidity">
+                <span class="icon">⚖️</span> Inventory
             </button>
         </nav>
 
@@ -786,85 +783,209 @@
     <main class="main-content">
         <div class="content-scroll">
             
-            <!-- PROFIT ANALYTICS -->
-            <div id="category-profit-analytics" class="performance-card">
+            <!-- LATENCY & EXECUTION (Default) -->
+            <div id="category-latency-execution" class="performance-card">
                 <div class="card-header">
-                    <h2 class="card-title">💰 Profit Analytics</h2>
-                    <span class="card-status status-optimal">OPTIMAL</span>
+                    <h2 class="card-title">⚡ Latency & Execution (Benchmark)</h2>
+                    <span class="card-status status-warning">OPTIMIZING</span>
                 </div>
                 <table class="performance-table">
                     <thead>
                         <tr>
                             <th>Metric</th>
-                            <th>Value</th>
+                            <th>Wintermute (BM)</th>
+                            <th>Alpha-Orion</th>
+                            <th>Gap</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>
-                                <div class="metric-name">Average Profit/Trade</div>
-                                <div class="metric-desc">Net profit after gas costs</div>
-                            </td>
-                            <td><span class="actual-value" id="val-avg-profit">$485.32</span></td>
+                            <td><div class="metric-name">P99 Latency</div></td>
+                            <td><span class="design-value">&lt;50ms</span></td>
+                            <td><span class="actual-value" id="val-latency">Measuring...</span></td>
+                            <td><span class="gap-badge gap-positive">TBD</span></td>
                         </tr>
                         <tr>
-                            <td>
-                                <div class="metric-name">Trades/Hour</div>
-                                <div class="metric-desc">Execution rate</div>
-                            </td>
-                            <td><span class="actual-value" id="val-trades-hour">127</span></td>
+                            <td><div class="metric-name">Throughput (TPS)</div></td>
+                            <td><span class="design-value">2000+</span></td>
+                            <td><span class="actual-value">1000+</span></td>
+                            <td><span class="gap-badge gap-negative">-50%</span></td>
                         </tr>
                         <tr>
-                            <td>
-                                <div class="metric-name">Total Trades</div>
-                                <div class="metric-desc">All-time successful trades</div>
-                            </td>
-                            <td><span class="actual-value" id="val-total-trades">2,847</span></td>
+                            <td><div class="metric-name">Success Rate</div></td>
+                            <td><span class="design-value">&gt;99%</span></td>
+                            <td><span class="actual-value" id="val-success-rate">92.4%</span></td>
+                            <td><span class="gap-badge gap-neutral">-6.6%</span></td>
                         </tr>
                         <tr>
-                            <td>
-                                <div class="metric-name">Available Balance</div>
-                                <div class="metric-desc">Ready for withdrawal</div>
-                            </td>
-                            <td><span class="actual-value" id="val-balance">$2,847.50</span></td>
+                            <td><div class="metric-name">Arb Opportunities</div></td>
+                            <td><span class="design-value">High Freq</span></td>
+                            <td><span class="actual-value" id="val-arb-opps">287/day</span></td>
+                            <td><span class="gap-badge gap-positive">Active</span></td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- STRATEGY EXECUTION -->
-            <div id="category-strategy-execution" class="performance-card hidden">
+            <!-- PROFIT & VOLUME -->
+            <div id="category-profit-volume" class="performance-card hidden">
                 <div class="card-header">
-                    <h2 class="card-title">🎯 Strategy Execution</h2>
-                    <span class="card-status status-optimal">OPTIMAL</span>
+                    <h2 class="card-title">💰 Profit & Volume Capacity</h2>
+                    <span class="card-status status-optimal">COMPLIANT</span>
                 </div>
                 <table class="performance-table">
                     <thead>
                         <tr>
                             <th>Metric</th>
-                            <th>Design</th>
+                            <th>Wintermute (BM)</th>
+                            <th>Alpha-Orion</th>
+                            <th>Gap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><div class="metric-name">Daily Volume Capacity</div></td>
+                            <td><span class="design-value">$100M+</span></td>
+                            <td><span class="actual-value">$100M+</span></td>
+                            <td><span class="gap-badge gap-positive">0%</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="metric-name">Monthly Profit Target</div></td>
+                            <td><span class="design-value">$1.5M - $9M</span></td>
+                            <td><span class="actual-value" id="val-avg-profit">$485.32 (Avg)</span></td>
+                            <td><span class="gap-badge gap-neutral">Scaling</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="metric-name">ROI Target</div></td>
+                            <td><span class="design-value">300-900%</span></td>
+                            <td><span class="actual-value">300-900%</span></td>
+                            <td><span class="gap-badge gap-positive">Aligned</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="metric-name">Available Balance</div></td>
+                            <td><span class="design-value">N/A</span></td>
+                            <td><span class="actual-value" id="val-balance">$2,847.50</span></td>
+                            <td><span class="gap-badge gap-positive">Liquid</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- INVENTORY & LIQUIDITY -->
+            <div id="category-inventory-liquidity" class="performance-card hidden">
+                <div class="card-header">
+                    <h2 class="card-title">⚖️ Inventory & Liquidity</h2>
+                    <span class="card-status status-warning">OPTIMIZING</span>
+                </div>
+                <table class="performance-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Wintermute (BM)</th>
                             <th>Actual</th>
                             <th>Gap</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td><div class="metric-name">Strategy Success Rate</div></td>
-                            <td><span class="design-value">>85%</span></td>
-                            <td><span class="actual-value" id="val-success-rate">92.4%</span></td>
-                            <td><span class="gap-badge gap-positive">+7.4%</span></td>
+                            <td><div class="metric-name">Inventory Turnover</div></td>
+                            <td><span class="design-value">15x/day</span></td>
+                            <td><span class="actual-value">12x/day</span></td>
+                            <td><span class="gap-badge gap-neutral">-20%</span></td>
                         </tr>
                         <tr>
-                            <td><div class="metric-name">Execution Latency</div></td>
-                            <td><span class="design-value"><50ms</span></td>
-                            <td><span class="actual-value" id="val-latency">42ms</span></td>
-                            <td><span class="gap-badge gap-positive">+16%</span></td>
+                            <td><div class="metric-name">Rebalancing Cost</div></td>
+                            <td><span class="design-value"><0.1%</span></td>
+                            <td><span class="actual-value">0.08%</span></td>
+                            <td><span class="gap-badge gap-positive">Optimal</span></td>
                         </tr>
                         <tr>
-                            <td><div class="metric-name">Arbitrage Opportunities</div></td>
-                            <td><span class="design-value">200+/day</span></td>
-                            <td><span class="actual-value" id="val-arb-opps">287/day</span></td>
-                            <td><span class="gap-badge gap-positive">+43%</span></td>
+                            <td><div class="metric-name">Token Exposure Skew</div></td>
+                            <td><span class="design-value"><5%</span></td>
+                            <td><span class="actual-value">3.2%</span></td>
+                            <td><span class="gap-badge gap-positive">Safe</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- CHAIN CONNECTIVITY -->
+            <div id="category-chain-connectivity" class="performance-card hidden">
+                <div class="card-header">
+                    <h2 class="card-title">🌐 Chain Connectivity</h2>
+                    <span class="card-status status-warning">PARTIAL</span>
+                </div>
+                <table class="performance-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Wintermute (BM)</th>
+                            <th>Alpha-Orion</th>
+                            <th>Gap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><div class="metric-name">Active Chains</div></td>
+                            <td><span class="design-value">8 Chains</span></td>
+                            <td><span class="actual-value" id="val-chains">6 Chains</span></td>
+                            <td><span class="gap-badge gap-negative">-25%</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="metric-name">Trading Pairs</div></td>
+                            <td><span class="design-value">300+</span></td>
+                            <td><span class="actual-value">200+</span></td>
+                            <td><span class="gap-badge gap-negative">-33%</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="metric-name">Ethereum Mainnet</div></td>
+                            <td><span class="design-value">Active</span></td>
+                            <td><span class="actual-value" style="color: var(--accent-danger)">❌ Needs Fix</span></td>
+                            <td><span class="gap-badge gap-negative">Critical</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="metric-name">BNB Smart Chain</div></td>
+                            <td><span class="design-value">Active</span></td>
+                            <td><span class="actual-value" style="color: var(--accent-danger)">❌ Needs Fix</span></td>
+                            <td><span class="gap-badge gap-negative">Critical</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- INFRASTRUCTURE & SCALING -->
+            <div id="category-infrastructure-scaling" class="performance-card hidden">
+                <div class="card-header">
+                    <h2 class="card-title">🚀 Infrastructure & Scaling</h2>
+                    <span class="card-status status-optimal">COMPLIANT</span>
+                </div>
+                <table class="performance-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Wintermute (BM)</th>
+                            <th>Alpha-Orion</th>
+                            <th>Gap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><div class="metric-name">Auto-scaling Tests</div></td>
+                            <td><span class="design-value">Dynamic</span></td>
+                            <td><span class="actual-value" id="val-scaling">8/8 Passed</span></td>
+                            <td><span class="gap-badge gap-positive">100%</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="metric-name">Uptime SLA</div></td>
+                            <td><span class="design-value">99.99%</span></td>
+                            <td><span class="actual-value" id="val-uptime">99.99%</span></td>
+                            <td><span class="gap-badge gap-positive">0%</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="metric-name">Message Throughput</div></td>
+                            <td><span class="design-value">100k/sec</span></td>
+                            <td><span class="actual-value">100k/sec</span></td>
+                            <td><span class="gap-badge gap-positive">0%</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -874,29 +995,23 @@
             <div id="category-risk-management" class="performance-card hidden">
                 <div class="card-header">
                     <h2 class="card-title">🛡️ Risk Management</h2>
-                    <span class="card-status status-optimal">OPTIMAL</span>
+                    <span class="card-status status-optimal">COMPLIANT</span>
                 </div>
                 <table class="performance-table">
                     <thead>
                         <tr>
                             <th>Metric</th>
-                            <th>Design</th>
-                            <th>Actual</th>
+                            <th>Wintermute (BM)</th>
+                            <th>Alpha-Orion</th>
                             <th>Gap</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td><div class="metric-name">VaR (95%)</div></td>
-                            <td><span class="design-value"><2%</span></td>
+                            <td><span class="design-value">Active</span></td>
                             <td><span class="actual-value" id="val-var">1.2%</span></td>
-                            <td><span class="gap-badge gap-positive">+40%</span></td>
-                        </tr>
-                        <tr>
-                            <td><div class="metric-name">Max Drawdown</div></td>
-                            <td><span class="design-value"><10%</span></td>
-                            <td><span class="actual-value" id="val-drawdown">4.8%</span></td>
-                            <td><span class="gap-badge gap-positive">+52%</span></td>
+                            <td><span class="gap-badge gap-positive">Safe</span></td>
                         </tr>
                         <tr>
                             <td><div class="metric-name">Circuit Breakers</div></td>
@@ -904,149 +1019,17 @@
                             <td><span class="actual-value" id="val-circuit">Active</span></td>
                             <td><span class="gap-badge gap-positive">100%</span></td>
                         </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- INFRASTRUCTURE -->
-            <div id="category-execution-infrastructure" class="performance-card hidden">
-                <div class="card-header">
-                    <h2 class="card-title">🚀 Infrastructure</h2>
-                    <span class="card-status status-optimal">OPTIMAL</span>
-                </div>
-                <table class="performance-table">
-                    <thead>
                         <tr>
-                            <th>Metric</th>
-                            <th>Design</th>
-                            <th>Actual</th>
-                            <th>Gap</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><div class="metric-name">Auto-scaling</div></td>
-                            <td><span class="design-value">Dynamic</span></td>
-                            <td><span class="actual-value" id="val-scaling">8/8 Passed</span></td>
+                            <td><div class="metric-name">MEV Protection</div></td>
+                            <td><span class="design-value">Active</span></td>
+                            <td><span class="actual-value">Active</span></td>
                             <td><span class="gap-badge gap-positive">100%</span></td>
                         </tr>
                         <tr>
-                            <td><div class="metric-name">Uptime</div></td>
-                            <td><span class="design-value">99.99%</span></td>
-                            <td><span class="actual-value" id="val-uptime">99.97%</span></td>
-                            <td><span class="gap-badge gap-neutral">-0.02%</span></td>
-                        </tr>
-                        <tr>
-                            <td><div class="metric-name">Multi-chain</div></td>
-                            <td><span class="design-value">8 chains</span></td>
-                            <td><span class="actual-value" id="val-chains">6 chains</span></td>
-                            <td><span class="gap-badge gap-negative">-25%</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- MARKET COVERAGE -->
-            <div id="category-market-coverage" class="performance-card hidden">
-                <div class="card-header">
-                    <h2 class="card-title">🌐 Market Coverage</h2>
-                    <span class="card-status status-optimal">OPTIMAL</span>
-                </div>
-                <table class="performance-table">
-                    <thead>
-                        <tr>
-                            <th>Metric</th>
-                            <th>Design</th>
-                            <th>Actual</th>
-                            <th>Gap</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><div class="metric-name">Trading Pairs</div></td>
-                            <td><span class="design-value">300+</span></td>
-                            <td><span class="actual-value">287</span></td>
-                            <td><span class="gap-badge gap-neutral">-4.3%</span></td>
-                        </tr>
-                        <tr>
-                            <td><div class="metric-name">DEX Coverage</div></td>
-                            <td><span class="design-value">50+</span></td>
-                            <td><span class="actual-value">52</span></td>
-                            <td><span class="gap-badge gap-positive">+4%</span></td>
-                        </tr>
-                        <tr>
-                            <td><div class="metric-name">Chains Supported</div></td>
-                            <td><span class="design-value">8</span></td>
-                            <td><span class="actual-value">6</span></td>
-                            <td><span class="gap-badge gap-negative">-25%</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- COMPLIANCE -->
-            <div id="category-compliance" class="performance-card hidden">
-                <div class="card-header">
-                    <h2 class="card-title">📋 Compliance</h2>
-                    <span class="card-status status-optimal">OPTIMAL</span>
-                </div>
-                <table class="performance-table">
-                    <thead>
-                        <tr>
-                            <th>Metric</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><div class="metric-name">KYC/AML Compliance</div></td>
-                            <td><span class="actual-value" style="color: var(--accent-secondary);">✓ Compliant</span></td>
-                        </tr>
-                        <tr>
-                            <td><div class="metric-name">Sanctions Screening</div></td>
-                            <td><span class="actual-value" style="color: var(--accent-secondary);">✓ Active</span></td>
-                        </tr>
-                        <tr>
-                            <td><div class="metric-name">Audit Status</div></td>
-                            <td><span class="actual-value" style="color: var(--accent-warning);">○ In Progress</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- PERFORMANCE -->
-            <div id="category-performance" class="performance-card hidden">
-                <div class="card-header">
-                    <h2 class="card-title">⚡ Performance</h2>
-                    <span class="card-status status-optimal">OPTIMAL</span>
-                </div>
-                <table class="performance-table">
-                    <thead>
-                        <tr>
-                            <th>Metric</th>
-                            <th>Design</th>
-                            <th>Actual</th>
-                            <th>Gap</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><div class="metric-name">Throughput (TPS)</div></td>
-                            <td><span class="design-value">2000+</span></td>
-                            <td><span class="actual-value">1000+</span></td>
-                            <td><span class="gap-badge gap-negative">-50%</span></td>
-                        </tr>
-                        <tr>
-                            <td><div class="metric-name">P99 Latency</div></td>
-                            <td><span class="design-value"><50ms</span></td>
-                            <td><span class="actual-value">42ms</span></td>
-                            <td><span class="gap-badge gap-positive">+16%</span></td>
-                        </tr>
-                        <tr>
-                            <td><div class="metric-name">Daily Volume</div></td>
-                            <td><span class="design-value">$100M+</span></td>
-                            <td><span class="actual-value">$50M</span></td>
-                            <td><span class="gap-badge gap-neutral">-50%</span></td>
+                            <td><div class="metric-name">Max Drawdown</div></td>
+                            <td><span class="design-value">&lt;10%</span></td>
+                            <td><span class="actual-value" id="val-drawdown">4.8%</span></td>
+                            <td><span class="gap-badge gap-positive">Safe</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -1304,7 +1287,7 @@
             });
             
             // Set default category
-            showCategory('profit-analytics');
+            showCategory('latency-execution');
         });
     </script>
 </body>

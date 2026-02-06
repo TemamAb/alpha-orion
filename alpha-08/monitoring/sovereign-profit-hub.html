@@ -682,7 +682,8 @@
 
     <script>
         // Dynamic API Base for Auto-Deployment compatibility
-        const API_BASE = `http://${window.location.hostname || 'localhost'}:8000`;
+        const urlParams = new URLSearchParams(window.location.search);
+        const API_BASE = urlParams.get('api') || `http://${window.location.hostname || '196.190.60.169'}:8000`;
         
         let currentMode = 'MANUAL';
         let updateInterval;
