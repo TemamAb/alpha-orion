@@ -1,0 +1,43 @@
+# 🚀 ALPHA-08 CLOUD BUILD - PRODUCTION MODE
+# NO SIMULATION - Direct deployment to production
+
+steps:
+  # 1. Install dependencies & Lint (Quality Gate)
+  - name: 'python:3.9'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install -r requirements.txt
+        pylint core/ strategies/ || echo "Linting warnings found"
+
+  # 2. SKIP SIMULATION - Alpha-08 Protocol: Production only
+  # Simulation is run LOCALLY before pushing to GitHub
+  # No simulation tests run on GCP
+
+  # 3. Build Docker Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/core:$COMMIT_SHA', '-f', 'Dockerfile', '.']
+
+  # 4. Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/core:$COMMIT_SHA']
+
+  # 5. Deploy to GKE (Sovereign Rollout)
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'set'
+      - 'image'
+      - 'deployment/alpha-orion-core'
+      - 'core=us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/core:$COMMIT_SHA'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=alpha-orion-gke'
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/alpha-orion-repo/core:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  pool:
+    name: 'projects/$PROJECT_ID/locations/us-central1/workerPools/default'

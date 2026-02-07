@@ -1,28 +1,28 @@
-# 🌌 ALPHA-ORION: ENTERPRISE EDITION (v08)
+# 🦅 ALPHA-08: SOVEREIGN ARBITRAGE SYSTEM (v08)
 
-**Status**: ✅ PRODUCTION LIVE
-**Target**: $100M Daily Volume
-**Architecture**: Microservices / HFT
+Welcome to the **100/100 Maturity** version of Alpha-Orion. This directory contains the hardened, GCP-native architecture designed for **$500M Daily Capital Velocity**.
 
-## 📂 Directory Map
-- `core/`: The Brain (Execution, Risk, Mempool)
-- `strategies/`: The 8 Killer Strategies (Isolated)
-- `infrastructure/`: Terraform for C2 Compute & GKE
-- `contracts/`: Solidity Smart Contracts
-- `tests/`: Unit, Integration, and Simulation tests
-- `docs/`: System architecture and strategy documentation
+## 📊 V08 MISSION CONTROL
+- **Master Plan**: [`MASTER_PLAN.md`](./MASTER_PLAN.md)
+- **AI Mission**: `gemini-alpha-08-copilot.md`
+- **Executive Deck**: `monitoring/executive-deck.html` (Profit & Withdrawals)
+- **Enterprise Command**: `monitoring/enterprise.html` (Engineering & Logs)
 
-## 🚀 Quick Start
+## 🏗️ ARCHITECTURAL CORE
+- **`infrastructure/`**: Terraform for VPC-native GKE clusters with C2 Compute nodes.
+- **`core/scanner/`**: Vectorized NumPy engine for sub-10ms liquidation scanning.
+- **`core/execution/`**: Variant Kernel V8 with MEV-Shield and AI Slippage Prediction.
+- **`contracts/`**: FlashArbExecutor and CircuitBreaker logic.
 
-1.  **Verify Logic**: Run the $100M simulation to confirm profit models.
-    ```bash
-    python tests/simulation/simulate_100m.py
-    ```
-2.  **Deploy Infrastructure**: Provision the HFT infrastructure on GCP.
-    ```bash
-    cd infrastructure/terraform/environments/prod && terraform apply
-    ```
-3.  **Deploy Application**: Deploy the v08 engine to Cloud Run.
-    ```bash
-    python deploy_v08_cloud.py
-    ```
+## 🛡️ OPERATIONAL STATUS
+- **Networking**: VPC Private Service Connect (Secure RPC).
+- **Security**: Cloud Armor WAF enabled.
+- **Intelligence**: 30s EIL Loop via Alpha-08-AI.
+
+## 🚀 GETTING STARTED
+1. Initialize Phase 0: `python setup_phase0.py`
+2. Deploy Infrastructure: `cd infrastructure/terraform/environments/prod && terraform init && terraform apply`
+3. Launch Scanner: `python core/scanner/engine.py`
+
+---
+*Authoritative root for all v08 operations: `C:\Users\op\Desktop\alpha-orion\alpha-08`*

@@ -1,0 +1,1165 @@
+threa<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alpha-08 // Wealth Deck</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="dashboard-config.js" onerror="window.ALPHA_CONFIG={API_BASE:'http://localhost:8000'}"></script>
+    <style>
+        :root {
+            --bg-dark: #000000;
+            --panel-bg: #111111;
+            --text-primary: #ffffff;
+            --text-secondary: #999999;
+            --accent-green: #00ff9d;
+            --accent-blue: #2979ff;
+            --accent-red: #ff3d00;
+            --neon-blue: #3b82f6;
+            --neon-green: #10b981;
+            --text-main: #e5e7eb;
+            --border-color: #333333;
+            --glass-border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            letter-spacing: -0.02em;
+            max-width: 450px;
+            margin: 40px auto;
+            border: 1px solid #333;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        header {
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #050505;
+            position: relative;
+            overflow: hidden;
+            margin: -20px -20px 20px -20px;
+            border-radius: 20px 20px 0 0;
+        }
+        header::before {
+            content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: perspective(500px) rotateX(60deg);
+            animation: gridFlow 10s linear infinite;
+            z-index: 0; pointer-events: none;
+            opacity: 0.3;
+        }
+        header::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.1) 50%, transparent 100%);
+            background-size: 200% 100%;
+            animation: windVibration 3s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+            z-index: 0; pointer-events: none;
+            mix-blend-mode: screen;
+        }
+        @keyframes gridFlow { 0% { background-position: 0 0; } 100% { background-position: 0 40px; } }
+        @keyframes windVibration { 0% { background-position: 150% 0; opacity: 0; } 50% { opacity: 0.5; } 100% { background-position: -50% 0; opacity: 0; } }
+
+        /* Wallet Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center;
+            display: none;
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-overlay.active { display: grid; }
+        .modal-content {
+            grid-column: 2 / 6; grid-row: 2 / 4;
+            background: #111; border: 1px solid #333; border-radius: 16px;
+            padding: 16px; max-width: 700px; width: 95%;
+            padding: 16px; width: 100%; height: 100%; box-sizing: border-box;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #222;
+        }
+        .modal-title {
+            font-size: 1.1em; font-weight: 600; color: #fff;
+        }
+        .modal-close {
+            background: none; border: none; color: #666; cursor: pointer;
+            font-size: 1.5em; line-height: 1; padding: 0;
+        }
+        .modal-close:hover { color: #fff; }
+        .wallet-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+        .wallet-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; overflow-y: auto; flex: 1; }
+        .wallet-option {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px; background: #0a0a0a; border: 1px solid #222;
+            border-radius: 8px; cursor: pointer; transition: all 0.2s;
+        }
+        .wallet-option:hover {
+            background: #151515; border-color: var(--brand-color, #444);
+            box-shadow: 0 0 15px var(--brand-color, rgba(0,0,0,0)); transform: translateY(-2px);
+        }
+        .wallet-icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2em;
+        }
+        .wallet-info { flex: 1; }
+        .wallet-name { font-weight: 500; color: #fff; font-size: 0.95em; }
+        .wallet-desc { font-size: 0.75em; color: #666; margin-top: 2px; }
+        .wallet-check {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #222; display: flex; align-items: center; justify-content: center;
+        }
+        .wallet-option.connected .wallet-check {
+            background: var(--neon-green);
+        }
+        .detection-status {
+            font-size: 0.75em; color: #666; text-align: center; margin-top: 16px;
+            padding-top: 16px; border-top: 1px solid #222;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .card {
+            background-color: var(--panel-bg);
+            border: var(--glass-border);
+            border-radius: 12px;
+            padding: 12px;
+            transition: transform 0.2s ease;
+        }
+        .card:hover { border-color: #555; }
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        .metric-value {
+            font-size: 1.2em;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.04em;
+        }
+        .metric-value.green { color: var(--accent-green); }
+        .metric-value.blue { color: var(--accent-blue); }
+        
+        .control-panel {
+            background-color: var(--panel-bg);
+            border: var(--glass-border);
+            border-radius: 12px;
+            padding: 15px;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        input[type="text"], input[type="number"] {
+            background: #000;
+            border: 1px solid #333;
+            color: var(--text-primary);
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-family: 'JetBrains Mono', monospace;
+            transition: border-color 0.2s;
+        }
+        input:focus { outline: none; border-color: var(--accent-blue); }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85em;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-primary { background-color: #1a1a1a; color: white; border: 1px solid #333; }
+        .btn-primary:hover { border-color: var(--text-primary); }
+        .btn-success { background-color: var(--accent-green); color: #000; box-shadow: 0 4px 12px rgba(0,255,157,0.2); }
+        .btn-success:hover { box-shadow: 0 4px 20px rgba(0,255,157,0.4); }
+        
+        .mode-switch {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 15px;
+            background: #000;
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .mode-btn.active {
+            background: #1a1a1a;
+            color: var(--text-primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 4px 0;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: 0.9em;
+        }
+        th { color: var(--text-secondary); font-weight: 500; font-size: 0.75em; text-transform: uppercase; }
+        td { font-family: 'JetBrains Mono', monospace; }
+        
+        .currency-toggle {
+            font-size: 0.7em;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 2px;
+            display: flex;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .curr-opt { padding: 4px 8px; border-radius: 2px; color: #888; font-weight: bold; }
+        .curr-opt.active { background: var(--neon-blue); color: #000; }
+
+        .circuit-flow { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+        .circuit-node { display: flex; align-items: center; gap: 6px; font-size: 0.75em; font-weight: 600; color: #666; }
+        .circuit-line { width: 25px; height: 2px; background: #333; border-radius: 1px; }
+        .circuit-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; transition: all 0.3s; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        
+        .circuit-active .circuit-dot { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
+        .circuit-active .circuit-line { background: var(--neon-green); box-shadow: 0 0 4px var(--neon-green); }
+        .circuit-broken .circuit-dot { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--neon-blue);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="z-index: 1; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-weight: 700; letter-spacing: -0.5px; font-size: 1.6em; text-shadow: 0 0 10px rgba(59, 130, 246, 0.3);">ALPHA-08</div>
+            <div style="font-size: 0.9em; color: var(--text-main); margin-top: 8px; letter-spacing: 2px; font-weight: 600; color: var(--neon-green);">ENTERPRISE ARBITRAGE</div>
+        </div>
+        
+        <div style="z-index: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 12px;">
+            <div id="apiStatusBadge" style="font-size: 0.75em; font-weight: bold; color: #666; letter-spacing: 1px; border: 1px solid #333; padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.4);">SYSTEM: <span style="color: #888">CONNECTING...</span></div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="currency-toggle" onclick="toggleCurrency()">
+                    <div class="curr-opt active" id="dashOptUSD">USD</div>
+                    <div class="curr-opt" id="dashOptETH">ETH</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="grid-container">
+        <div class="card" style="padding: 15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="metric-label" style="margin:0">SYSTEM INTEGRITY</div>
+                <div style="font-size:0.7em; color:var(--neon-green); font-weight:bold;" id="circuitStatusText">SCANNING...</div>
+            </div>
+            <div class="circuit-flow" id="wealthCircuit">
+                <div class="circuit-node" id="nodeNet">NET<div class="circuit-dot"></div></div>
+                <div class="circuit-line"></div>
+                <div class="circuit-node" id="nodeCore">CORE<div class="circuit-dot"></div></div>
+                <div class="circuit-line"></div>
+                <div class="circuit-node" id="nodeBank">VAULT<div class="circuit-dot"></div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <div class="metric-label" style="margin:0">Available Balance</div>
+                <div style="font-size:0.7em; color:#666;">LIVE MAINNET</div>
+            </div>
+            <div class="metric-value blue" id="withdrawableBalance">$0.00</div>
+        </div>
+    </div>
+
+    <div class="grid-container" style="grid-template-columns: 1fr;">
+        <div class="control-panel">
+            <h3 style="margin-top:0; font-size:0.85em; margin-bottom:15px;">Wallet Configuration</h3>
+            
+            <!-- Wallet Entry Mode Switch -->
+            <div class="mode-switch" style="margin-bottom:15px;">
+                <div class="mode-btn active" onclick="setWalletEntryMode('DETECT')" id="btnDetectWallet">🔍 Detect Wallet</div>
+                <div class="mode-btn" onclick="setWalletEntryMode('MANUAL')" id="btnManualWallet">⌨️ Manual</div>
+            </div>
+            
+            <!-- Detect Wallet Panel -->
+            <div id="detectWalletPanel">
+                <div class="input-group" style="margin-bottom:12px;">
+                    <button class="btn btn-primary" onclick="showWalletModal()" style="width:100%; padding:14px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
+                            <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
+                        </svg>
+                        <span id="connectWalletText">Connect Wallet</span>
+                    </button>
+                </div>
+                
+                <div id="walletConnected" style="display:none; margin-bottom:12px;">
+                    <div style="background:#0a0a0a; border:1px solid #333; border-radius:8px; padding:12px; display:flex; align-items:center; justify-content:space-between;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div id="walletIcon" style="width:36px; height:36px; border-radius:50%; background:#00ff9d20; display:flex; align-items:center; justify-content:center;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#00ff9d">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div id="walletDisplay" style="font-family:'JetBrains Mono',monospace; font-size:0.9em; font-weight:600; color:#fff;">0x0000...0000</div>
+                                <div id="walletName" style="font-size:0.7em; color:#00ff9d;">Connected</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="disconnectWallet()" style="padding:8px 14px; font-size:0.75em;">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Manual Wallet Panel - Multi-Wallet Management -->
+            <div id="manualWalletPanel" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-size:0.8em; color:#666;">
+                        <span id="walletCount">0</span> wallet(s) configured
+                    </div>
+                    <button class="btn btn-primary" onclick="addWalletRow()" style="padding:6px 12px; font-size:0.75em; display:flex; align-items:center; gap:4px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add Wallet
+                    </button>
+                </div>
+                
+                <div id="walletListContainer" style="max-height:250px; overflow-y:auto;">
+                    <!-- Wallet rows will be added here dynamically -->
+                </div>
+                
+                <div style="margin-top:12px; padding-top:12px; border-top:1px solid #333;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <input type="checkbox" id="enableRotation" onchange="toggleRotation()" style="width:16px; height:16px;">
+                        <label for="enableRotation" style="font-size:0.85em; color:#fff; cursor:pointer;">Enable Rotation</label>
+                    </div>
+                    <div id="rotationInfo" style="display:none; background:#0a0a0a; border-radius:6px; padding:10px; font-size:0.75em; color:#666;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                            <span>Current Wallet:</span>
+                            <span id="currentWalletDisplay" style="color:#00ff9d; font-family:'JetBrains Mono',monospace;">-</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>Deposits to next wallet after:</span>
+                            <span id="nextRotationDisplay" style="color:#fff;">Every deposit</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mode-switch" style="margin-bottom:15px;">
+                <div class="mode-btn active" onclick="setMode('MANUAL')" id="btnManual">🔒 MANUAL</div>
+                <div class="mode-btn" onclick="setMode('AUTO')" id="btnAuto">⚡ AUTO</div>
+            </div>
+
+            <div id="manualControls">
+                <div class="input-group">
+                    <input type="number" id="withdrawAmount" placeholder="Amount (USD)" onfocus="updateWithdrawPlaceholder()">
+                </div>
+                <button class="btn btn-success" style="width:100%" onclick="requestWithdrawal()">WITHDRAW</button>
+            </div>
+
+            <div id="autoControls" style="display:none;">
+                <div class="input-group">
+                    <input type="number" id="thresholdAmount" value="1000" onfocus="updateThresholdPlaceholder()">
+                    <div style="font-size:0.75em; color:#666; margin-top:5px;">Auto-sweep threshold</div>
+                </div>
+            </div>
+
+            <!-- Save Mode Section -->
+            <div style="margin-top:15px; padding-top:15px; border-top:1px solid #333;">
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-primary" onclick="saveAllSettings()" style="flex:1; padding:12px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:6px;">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        Save Mode
+                    </button>
+                </div>
+                <div id="saveStatus" style="font-size:0.7em; color:#666; text-align:center; margin-top:8px;"></div>
+            </div>
+
+            <div class="input-group" style="margin-top:15px; padding-top:15px; border-top:1px solid #333;">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <span style="color:var(--text-secondary); font-size:0.8em;">Reinvest:</span>
+                    <input type="range" min="0" max="100" value="50" id="reinvestSlider" oninput="updateReinvestDisplay(this.value)" style="flex:1;">
+                    <span id="reinvestVal" style="color:var(--accent-blue); font-weight:bold; min-width:40px;">50%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0; font-size:1em; margin-bottom:10px;">Ledger</h3>
+            <table id="transferTable">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.ALPHA_CONFIG ? window.ALPHA_CONFIG.API_BASE : 'http://localhost:8000';
+        const HISTORY_KEY = 'alpha08_ledger';
+        let currentMode = 'MANUAL';
+        let currency = 'USD';
+        let balanceUSD = 0.0;
+        const ETH_PRICE = 2850.00;
+        let lastSyncTime = new Date();
+        let refreshIntervalId = null;
+
+        window.onload = function() {
+            loadWallet();
+            loadHistory();
+            loadReinvest();
+            checkApiStatus();
+            setInterval(checkApiStatus, 5000);
+            updateStats();
+            setInterval(updateStats, 1500);
+        };
+
+        function toggleCurrency() {
+            currency = currency === 'USD' ? 'ETH' : 'USD';
+            document.getElementById('dashOptUSD').className = currency === 'USD' ? 'curr-opt active' : 'curr-opt';
+            document.getElementById('dashOptETH').className = currency === 'ETH' ? 'curr-opt active' : 'curr-opt';
+            renderBalance();
+            updateWithdrawPlaceholder();
+            updateThresholdPlaceholder();
+        }
+
+        function updateWithdrawPlaceholder() {
+            const el = document.getElementById('withdrawAmount');
+            el.placeholder = currency === 'USD' ? 'Amount (USD)' : 'Amount (ETH)';
+        }
+
+        function updateThresholdPlaceholder() {
+            const el = document.getElementById('thresholdAmount');
+            el.placeholder = currency === 'USD' ? 'Threshold (USD)' : 'Threshold (ETH)';
+        }
+
+        function renderBalance() {
+            const el = document.getElementById('withdrawableBalance');
+            if(currency === 'USD') {
+                el.innerText = `$${balanceUSD.toFixed(2)}`;
+            } else {
+                el.innerText = `Ξ${(balanceUSD / ETH_PRICE).toFixed(4)}`;
+            }
+        }
+
+        function loadWallet() {
+            const saved = localStorage.getItem('alpha08_wallet');
+            if(saved) document.getElementById('walletAddress').value = saved;
+        }
+
+        function saveWallet() {
+            const addr = document.getElementById('walletAddress').value;
+            if(!addr.startsWith('0x') || addr.length !== 42) {
+                alert('Invalid Polygon Address');
+                return;
+            }
+            localStorage.setItem('alpha08_wallet', addr);
+            fetch(`${API_BASE}/api/withdrawal/set-wallet`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ wallet_address: addr, source: 'executive_deck' })
+            }).then(res => res.json())
+              .then(data => {
+                  console.log('Wallet saved:', data);
+                  alert('Wallet SAVED!');
+              });
+        }
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+            const tbody = document.querySelector('#transferTable tbody');
+            tbody.innerHTML = '';
+            history.forEach(tx => {
+                addTransferRowHTML(tx.time, tx.amount, tx.status);
+            });
+        }
+
+        function saveTransfer(tx) {
+            const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+            history.unshift(tx);
+            if(history.length > 50) history.pop();
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            loadHistory();
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btnManual').className = mode === 'MANUAL' ? 'mode-btn active' : 'mode-btn';
+            document.getElementById('btnAuto').className = mode === 'AUTO' ? 'mode-btn active' : 'mode-btn';
+            document.getElementById('manualControls').style.display = mode === 'MANUAL' ? 'block' : 'none';
+            document.getElementById('autoControls').style.display = mode === 'AUTO' ? 'block' : 'none';
+            fetch(`${API_BASE}/api/withdrawal/set-mode`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ mode: mode })
+            });
+        }
+
+        function requestWithdrawal() {
+            const amount = document.getElementById('withdrawAmount').value;
+            const wallet = document.getElementById('walletAddress').value;
+            if(!amount || !wallet) return alert('Please set amount and wallet');
+            fetch(`${API_BASE}/api/withdrawal/request`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ amount_usd: parseFloat(amount), wallet_address: wallet })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('Withdrawal Requested: ' + data.status);
+                saveTransfer({
+                    time: new Date().toLocaleTimeString(),
+                    amount: `$${amount}`,
+                    status: 'PENDING'
+                });
+            });
+        }
+
+        function loadReinvest() {
+            const saved = localStorage.getItem('alpha08_reinvest') || 50;
+            document.getElementById('reinvestSlider').value = saved;
+            document.getElementById('reinvestVal').innerText = saved + '%';
+        }
+
+        function updateReinvestDisplay(val) {
+            document.getElementById('reinvestVal').innerText = val + '%';
+            localStorage.setItem('alpha08_reinvest', val);
+        }
+
+        function saveAllSettings() {
+            // Save all settings
+            saveWallets();
+            localStorage.setItem('alpha08_mode', currentMode);
+            localStorage.setItem('alpha08_reinvest', document.getElementById('reinvestSlider').value);
+            localStorage.setItem('alpha08_threshold', document.getElementById('thresholdAmount').value);
+            
+            // Show save status
+            const statusEl = document.getElementById('saveStatus');
+            statusEl.innerText = 'Settings saved!';
+            statusEl.style.color = '#00ff9d';
+            
+            setTimeout(() => {
+                statusEl.innerText = '';
+            }, 2000);
+            
+            console.log('All settings saved');
+        }
+
+        function updateStats() {
+            lastSyncTime = new Date();
+            updateCircuit();
+            fetch(`${API_BASE}/api/profit/current`)
+                .then(res => res.json())
+                .then(data => {
+                    balanceUSD = data.withdrawable_balance;
+                    renderBalance();
+                })
+                .catch(() => {});
+        }
+
+        function updateCircuit() {
+            fetch(`${API_BASE}/api/circuit/status`)
+                .then(res => res.json())
+                .then(data => {
+                    const setNode = (id, active) => {
+                        const el = document.getElementById(id);
+                        if(active) { el.classList.add('circuit-active'); el.classList.remove('circuit-broken'); }
+                        else { el.classList.remove('circuit-active'); el.classList.add('circuit-broken'); }
+                    };
+                    setNode('nodeNet', data.grid_connection);
+                    setNode('nodeCore', data.transformer_health);
+                    setNode('nodeBank', data.storage_integrity);
+                    document.getElementById('circuitStatusText').innerText = data.status === 'CLOSED' ? 'OPTIMAL' : 'DEGRADED';
+                })
+                .catch(() => {});
+        }
+
+        function addTransferRowHTML(time, amount, status) {
+            const tbody = document.querySelector('#transferTable tbody');
+            const color = status === 'PENDING' ? '#ffab00' : (status === 'COMPLETED' ? '#00ff9d' : '#ff3d00');
+            const row = `<tr><td>${time}</td><td>${amount}</td><td style="color:${color}; font-weight:bold;">${status}</td></tr>`;
+            tbody.innerHTML = row + tbody.innerHTML;
+        }
+
+        function checkApiStatus() {
+            fetch(`${API_BASE}/api/engine/status`)
+                .then(res => {
+                    if(res.ok) {
+                        document.getElementById('apiStatusBadge').innerHTML = 'SYSTEM: <span style="color: var(--neon-green)">ONLINE</span>';
+                        document.getElementById('apiStatusBadge').style.borderColor = 'var(--neon-green)';
+                    } else {
+                        throw new Error('API Error');
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('apiStatusBadge').innerHTML = 'SYSTEM: <span style="color: var(--accent-red)">OFFLINE</span>';
+                    document.getElementById('apiStatusBadge').style.borderColor = 'var(--accent-red)';
+                });
+        }
+        
+        // ============ WALLET CONNECTION (EIP-6963 + EIP-1102) ============
+        const SUPPORTED_WALLETS = [
+            { id: 'metamask', name: 'MetaMask', desc: 'Connect using browser extension', icon: '🦊', rdns: 'io.metamask' },
+            { id: 'coinbase', name: 'Coinbase Wallet', desc: 'Connect using Coinbase', icon: '🔵', rdns: 'com.coinbase.wallet' },
+            { id: 'trust', name: 'Trust Wallet', desc: 'Connect using Trust Wallet', icon: '🟦', rdns: 'com.trustwallet.app' },
+            { id: 'rainbow', name: 'Rainbow Wallet', desc: 'Connect using Rainbow', icon: '🌈', rdns: 'me.rainbowapp' },
+            { id: 'rabby', name: 'Rabby Wallet', desc: 'Connect using Rabby', icon: '🐰', rdns: 'io.rabby' }
+        ];
+        
+        let detectedWallets = {};
+        let eip6963Providers = {};
+        let connectedWallet = null;
+        
+        // EIP-6963: Announce support for wallet discovery
+        window.addEventListener('eip6963:announceProvider', (event) => {
+            const { info, provider } = event.detail;
+            eip6963Providers[info.rdns] = { info, provider };
+            updateWalletDetectionStatus();
+        });
+        
+        // Listen for wallet providers
+        function detectWallets() {
+            detectedWallets = {};
+            
+            // Check for EIP-6963 providers
+            if (window.ethereum && window.ethereum.providers) {
+                // MetaMask compatibility
+                window.ethereum.providers.forEach(provider => {
+                    if (provider.isMetaMask) {
+                        detectedWallets['metamask'] = { provider, info: { name: 'MetaMask', rdns: 'io.metamask' } };
+                    }
+                });
+            }
+            
+            // Check for legacy window.ethereum (MetaMask)
+            if (window.ethereum?.isMetaMask && !detectedWallets['metamask']) {
+                detectedWallets['metamask'] = { provider: window.ethereum, info: { name: 'MetaMask', rdns: 'io.metamask' } };
+            }
+            
+            // Check for Coinbase Wallet
+            if (window.ethereum?.isCoinbaseWallet || window.ethereum?.isCoinbaseBrowser) {
+                detectedWallets['coinbase'] = { provider: window.ethereum, info: { name: 'Coinbase Wallet', rdns: 'com.coinbase.wallet' } };
+            }
+            
+            // Request EIP-6963 announcements
+            window.dispatchEvent(new CustomEvent('eip6963:requestProvider'));
+            
+            updateWalletDetectionStatus();
+        }
+        
+        function updateWalletDetectionStatus() {
+            const statusEl = document.getElementById('walletDetectionStatus');
+            if (statusEl) {
+                const count = Object.keys(detectedWallets).length + Object.keys(eip6963Providers).length;
+                // More helpful message for file:// protocol
+                const protocol = window.location.protocol;
+                const isLocal = protocol === 'file:' || protocol === 'http:';
+                if (isLocal && count === 0) {
+                    statusEl.innerHTML = 'MetaMask detected via extension.<br><span style="color:#00ff9d">Click MetaMask to connect</span>';
+                } else {
+                    statusEl.innerText = count > 0 
+                        ? `${count} wallet${count > 1 ? 's' : ''} detected`
+                        : 'Click any wallet to attempt connection';
+                }
+            }
+            renderWalletList();
+        }
+        
+        function renderWalletList() {
+            const listEl = document.getElementById('walletList');
+            if (!listEl) return;
+            
+            listEl.innerHTML = SUPPORTED_WALLETS.map(wallet => {
+                const isDetected = detectedWallets[wallet.id] || eip6963Providers[wallet.rdns];
+                const isConnected = connectedWallet?.id === wallet.id;
+                const className = `wallet-option ${isConnected ? 'connected' : ''}`;
+                const onClick = () => connectWallet(wallet.id);
+                const checkmark = isConnected ? '✓' : (isDetected ? '✓ Detected' : '○ Click to install');
+                const iconColor = wallet.id === 'metamask' ? '#F6851B' : 
+                                  wallet.id === 'coinbase' ? '#0052FF' : 
+                                  wallet.id === 'trust' ? '#3375BB' : 
+                                  wallet.id === 'rainbow' ? '#001E59' : '#FF007A';
+                return `
+                    <div class="${className}" onclick="${onClick.toString()}" style="cursor: ${isDetected ? 'pointer' : 'default'}; --brand-color: ${iconColor}">
+                        <div class="wallet-icon" style="background:${iconColor}20; color:${iconColor};">
+                            ${wallet.icon}
+                        </div>
+                        <div class="wallet-info">
+                            <div class="wallet-name">${wallet.name}</div>
+                            <div class="wallet-desc">${isDetected ? 'Click to connect' : 'Extension required'}</div>
+                        </div>
+                        <div class="wallet-check" style="font-size:0.7em;">${isConnected ? '✓' : (isDetected ? '✓' : '○')}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        async function connectWallet(walletId) {
+            let provider = null;
+            const wallet = SUPPORTED_WALLETS.find(w => w.id === walletId);
+            
+            // Try multiple methods to get provider
+            // 1. EIP-6963 provider
+            if (wallet && eip6963Providers[wallet.rdns]) {
+                provider = eip6963Providers[wallet.rdns].provider;
+            }
+            // 2. Detected wallet
+            if (!provider && detectedWallets[walletId]) {
+                provider = detectedWallets[walletId].provider;
+            }
+            // 3. Legacy window.ethereum (MetaMask)
+            if (!provider && window.ethereum) {
+                // Check if providers array exists (MetaMask multi-provider)
+                if (window.ethereum.providers) {
+                    // Find MetaMask in providers
+                    const metamaskProvider = window.ethereum.providers.find(p => p.isMetaMask);
+                    if (metamaskProvider) {
+                        provider = metamaskProvider;
+                    }
+                }
+                // Check legacy isMetaMask flag
+                if (!provider && window.ethereum.isMetaMask) {
+                    provider = window.ethereum;
+                }
+            }
+            // 4. Try injected providers by rdns pattern
+            if (!provider) {
+                // Check for any injected provider that might match
+                if (window.ethereum) {
+                    // Try direct connection
+                    provider = window.ethereum;
+                }
+            }
+            
+            if (!provider) {
+                // Show helpful message
+                const statusEl = document.getElementById('walletDetectionStatus');
+                if (statusEl) {
+                    statusEl.innerHTML = `<span style="color:#ff3d00">${wallet?.name || 'Wallet'} not found.</span><br><small>Make sure the extension is installed and unlocked.</small>`;
+                }
+                return;
+            }
+            
+            try {
+                // Request accounts (EIP-1102)
+                const accounts = await provider.request({ method: 'eth_requestAccounts' });
+                  
+                if (accounts.length > 0) {
+                    const address = accounts[0];
+                    connectedWallet = { id: walletId, address, name: wallet.name };
+                    
+                    // Save to localStorage
+                    localStorage.setItem('alpha08_wallet', address);
+                    localStorage.setItem('alpha08_wallet_source', 'wallet_connect');
+                    
+                    // Update UI
+                    document.getElementById('walletAddress').value = address;
+                    document.getElementById('walletDisplay').innerText = maskAddress(address);
+                    document.getElementById('walletName').innerText = wallet.name + ' Connected';
+                    document.getElementById('walletConnected').style.display = 'block';
+                    document.getElementById('connectWalletText').innerText = 'Connected';
+                    
+                    // Update modal
+                    closeWalletModal();
+                    
+                    // Notify backend
+                    fetch(`${API_BASE}/api/withdrawal/set-wallet`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wallet_address: address, source: 'wallet_connect', wallet_name: wallet.name })
+                    }).catch(() => {});
+                    
+                    console.log('Wallet connected:', { wallet: wallet.name, address: maskAddress(address) });
+                }
+            } catch (error) {
+                console.error('Failed to connect wallet:', error);
+                alert('Failed to connect wallet: ' + error.message);
+            }
+        }
+        
+        function disconnectWallet() {
+            connectedWallet = null;
+            localStorage.removeItem('alpha08_wallet');
+            localStorage.removeItem('alpha08_wallet_source');
+            document.getElementById('walletConnected').style.display = 'none';
+            document.getElementById('connectWalletText').innerText = 'Connect Wallet';
+            document.getElementById('walletAddress').value = '';
+        }
+        
+        function setWalletEntryMode(mode) {
+            document.getElementById('btnDetectWallet').className = mode === 'DETECT' ? 'mode-btn active' : 'mode-btn';
+            document.getElementById('btnManualWallet').className = mode === 'MANUAL' ? 'mode-btn active' : 'mode-btn';
+            document.getElementById('detectWalletPanel').style.display = mode === 'DETECT' ? 'block' : 'none';
+            document.getElementById('manualWalletPanel').style.display = mode === 'MANUAL' ? 'block' : 'none';
+            
+            // Save mode preference
+            localStorage.setItem('alpha08_wallet_entry_mode', mode);
+        }
+        
+        function maskAddress(address) {
+            if (!address) return '0x0000...0000';
+            return address.substring(0, 6) + '...' + address.substring(address.length - 4);
+        }
+        
+        function showWalletModal() {
+            detectWallets();
+            document.getElementById('walletModal').classList.add('active');
+        }
+        
+        function closeWalletModal() {
+            document.getElementById('walletModal').classList.remove('active');
+        }
+        
+        // Close modal on overlay click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeWalletModal();
+            }
+        });
+        
+        // Load saved wallet on startup
+        function loadSavedWallet() {
+            const savedWallet = localStorage.getItem('alpha08_wallet');
+            const walletSource = localStorage.getItem('alpha08_wallet_source');
+            const savedMode = localStorage.getItem('alpha08_wallet_entry_mode') || 'DETECT';
+            
+            // Set wallet entry mode
+            setWalletEntryMode(savedMode);
+            
+            if (savedWallet) {
+                if (walletSource === 'wallet_connect') {
+                    // Wallet was connected via wallet connect - show in detect panel
+                    document.getElementById('walletDisplay').innerText = maskAddress(savedWallet);
+                    document.getElementById('walletConnected').style.display = 'block';
+                    document.getElementById('connectWalletText').innerText = 'Connected';
+                    document.getElementById('walletName').innerText = 'Saved Wallet';
+                    // Switch to detect mode to show connected wallet
+                    setWalletEntryMode('DETECT');
+                }
+            }
+            
+            // Load multi-wallets
+            loadMultiWallets();
+        }
+        
+        // ============ MULTI-WALLET MANAGEMENT ============
+        let walletRows = [];
+        let walletRotationIndex = 0;
+        
+        function loadMultiWallets() {
+            const savedWallets = JSON.parse(localStorage.getItem('alpha08_wallets') || '[]');
+            const enableRotation = localStorage.getItem('alpha08_rotation_enabled') === 'true';
+            
+            document.getElementById('enableRotation').checked = enableRotation;
+            toggleRotation();
+            
+            const container = document.getElementById('walletListContainer');
+            container.innerHTML = '';
+            walletRows = [];
+            
+            if (savedWallets.length === 0) {
+                // Add first empty row
+                addWalletRow();
+            } else {
+                savedWallets.forEach((wallet, index) => {
+                    addWalletRow(wallet, index);
+                });
+            }
+            
+            updateWalletCount();
+        }
+        
+        function addWalletRow(address = '', index = null) {
+            const container = document.getElementById('walletListContainer');
+            const rowId = index !== null ? index : walletRows.length;
+            const isSaved = address && isValidAddress(address);
+            const displayAddress = isSaved ? maskAddressLong(address) : '';
+            const inputType = isSaved ? 'password' : 'text';
+            const inputStyle = isSaved 
+                ? 'flex:1; font-size:0.85em; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:6px; color:#00ff9d; font-family:\'JetBrains Mono\',monospace; text-security:disc; -webkit-text-security:disc;'
+                : 'flex:1; font-size:0.85em; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:6px; color:#fff; font-family:\'JetBrains Mono\',monospace;';
+            
+            const row = document.createElement('div');
+            row.className = 'wallet-row';
+            row.id = `walletRow_${rowId}`;
+            row.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; align-items:center;';
+            
+            row.innerHTML = `
+                <div id="walletDisplay_${rowId}" style="${inputStyle}; flex:1; display:flex; align-items:center;">${displayAddress}</div>
+                <input type="${inputType}" 
+                    id="wallet_${rowId}" 
+                    value="${isSaved ? address : ''}" 
+                    placeholder="0x..." 
+                    style="display:none;"
+                >
+                <button class="btn btn-primary" id="editBtn_${rowId}" onclick="editWallet(${rowId})" style="padding:10px 12px; flex-shrink:0;" title="Edit wallet">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-primary" id="saveBtn_${rowId}" onclick="saveWalletRow(${rowId})" style="display:none; padding:10px 12px; flex-shrink:0; background:#00ff9d20; border-color:#00ff9d; color:#00ff9d;" title="Save">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
+                <button class="btn btn-primary" onclick="addWalletRow()" style="padding:10px 12px; flex-shrink:0;" title="Add new wallet">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+                <button class="btn" onclick="removeWalletRow(${rowId})" style="padding:10px 12px; background:#ff3d0020; color:#ff3d00; border:1px solid #ff3d00; flex-shrink:0;" title="Remove">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            `;
+            
+            container.appendChild(row);
+            walletRows.push({ id: rowId, address: address });
+            updateWalletCount();
+            
+            // If this is a new row (not loaded from storage), open it for editing
+            if (index === null) {
+                setTimeout(() => {
+                    editWallet(rowId);
+                }, 100);
+            }
+        }
+        
+        function maskAddressLong(address) {
+            if (!address || address.length < 12) return address || '';
+            return address.substring(0, 5) + '...' + address.substring(address.length - 5);
+        }
+        
+        function editWallet(rowId) {
+            const displayEl = document.getElementById(`walletDisplay_${rowId}`);
+            const inputEl = document.getElementById(`wallet_${rowId}`);
+            const editBtn = document.getElementById(`editBtn_${rowId}`);
+            const saveBtn = document.getElementById(`saveBtn_${rowId}`);
+            
+            displayEl.style.display = 'none';
+            inputEl.style.display = 'block';
+            editBtn.style.display = 'none';
+            saveBtn.style.display = 'block';
+            
+            inputEl.style.cssText = 'flex:1; font-size:0.85em; padding:10px; background:#0a0a0a; border:1px solid #00ff9d; border-radius:6px; color:#fff; font-family:\'JetBrains Mono\',monospace;';
+            inputEl.focus();
+        }
+        
+        function saveWalletRow(rowId) {
+            const inputEl = document.getElementById(`wallet_${rowId}`);
+            const displayEl = document.getElementById(`walletDisplay_${rowId}`);
+            const editBtn = document.getElementById(`editBtn_${rowId}`);
+            const saveBtn = document.getElementById(`saveBtn_${rowId}`);
+            
+            const address = inputEl.value.trim();
+            
+            if (!address) {
+                // Empty row - remove it
+                removeWalletRow(rowId);
+                return;
+            }
+            
+            if (!isValidAddress(address)) {
+                alert('Invalid wallet address. Must be 42 characters starting with 0x');
+                inputEl.style.borderColor = '#ff3d00';
+                return;
+            }
+            
+            // Update display with masked address
+            displayEl.innerText = maskAddressLong(address);
+            
+            // Hide input, show display
+            inputEl.style.display = 'none';
+            displayEl.style.display = 'flex';
+            editBtn.style.display = 'block';
+            saveBtn.style.display = 'none';
+            
+            // Reset border and change to green for saved
+            inputEl.style.borderColor = '#333';
+            displayEl.style.borderColor = '#333';
+            displayEl.style.color = '#00ff9d';
+            
+            // Save all wallets
+            saveWallets();
+        }
+        
+        function removeWalletRow(rowId) {
+            const row = document.getElementById(`wallet_${rowId}`);
+            if (row && row.value) {
+                if (!confirm('Remove this wallet?')) return;
+            }
+            
+            const rowElement = document.getElementById(`walletRow_${rowId}`);
+            if (rowElement) {
+                rowElement.remove();
+            }
+            
+            walletRows = walletRows.filter(w => w.id !== rowId);
+            saveWallets();
+            updateWalletCount();
+        }
+        
+        function saveWallets() {
+            const wallets = [];
+            walletRows.forEach(row => {
+                const input = document.getElementById(`wallet_${row.id}`);
+                if (input && input.value.trim()) {
+                    const address = input.value.trim();
+                    if (isValidAddress(address)) {
+                        wallets.push(address);
+                    }
+                }
+            });
+            
+            localStorage.setItem('alpha08_wallets', JSON.stringify(wallets));
+            updateWalletCount();
+            
+            // Notify backend
+            fetch(`${API_BASE}/api/withdrawal/set-wallets`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallets: wallets, rotation_enabled: document.getElementById('enableRotation').checked })
+            }).catch(() => {});
+        }
+        
+        function isValidAddress(address) {
+            return /^0x[a-fA-F0-9]{40}$/.test(address);
+        }
+        
+        function updateWalletCount() {
+            const count = walletRows.filter(row => {
+                const displayEl = document.getElementById(`walletDisplay_${row.id}`);
+                return displayEl && displayEl.innerText && displayEl.innerText !== '';
+            }).length;
+            document.getElementById('walletCount').innerText = count;
+        }
+        
+        function toggleRotation() {
+            const enabled = document.getElementById('enableRotation').checked;
+            document.getElementById('rotationInfo').style.display = enabled ? 'block' : 'none';
+            localStorage.setItem('alpha08_rotation_enabled', enabled);
+            
+            if (enabled) {
+                updateRotationDisplay();
+            }
+            
+            // Notify backend
+            saveWallets();
+        }
+        
+        function updateRotationDisplay() {
+            const wallets = JSON.parse(localStorage.getItem('alpha08_wallets') || '[]');
+            if (wallets.length > 0) {
+                const currentWallet = wallets[walletRotationIndex % wallets.length];
+                document.getElementById('currentWalletDisplay').innerText = maskAddress(currentWallet);
+            } else {
+                document.getElementById('currentWalletDisplay').innerText = '-';
+            }
+        }
+        
+        function getNextWallet() {
+            const wallets = JSON.parse(localStorage.getItem('alpha08_wallets') || '[]');
+            if (wallets.length === 0) return null;
+            
+            const enabled = localStorage.getItem('alpha08_rotation_enabled') === 'true';
+            if (enabled) {
+                walletRotationIndex = (walletRotationIndex + 1) % wallets.length;
+                const wallet = wallets[walletRotationIndex];
+                updateRotationDisplay();
+                return wallet;
+            }
+            
+            // Return random wallet if rotation disabled
+            const randomIndex = Math.floor(Math.random() * wallets.length);
+            return wallets[randomIndex];
+        }
+        
+        // Update onload to include multi-wallet loading
+        const originalOnload = window.onload;
+        window.onload = function() {
+            if (originalOnload) originalOnload();
+            loadSavedWallet();
+        };
+    </script>
+    
+    <!-- Wallet Connection Modal -->
+    <div id="walletModal" class="modal-overlay" onclick="if(event.target === this) closeWalletModal();">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Connect Wallet</div>
+                <button class="modal-close" onclick="closeWalletModal()">×</button>
+            </div>
+            <div class="wallet-list" id="walletList">
+                <!-- Wallets rendered dynamically -->
+            </div>
+            <div class="detection-status" id="walletDetectionStatus">Detecting wallets...</div>
+        </div>
+    </div>
+</body>
+</html>

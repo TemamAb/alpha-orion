@@ -1,5 +1,0 @@
-fastapi
-uvicorn
-web3
-numpy
-pandas

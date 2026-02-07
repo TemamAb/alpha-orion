@@ -1,5 +1,11 @@
 fastapi
 uvicorn
+pydantic
 web3
 numpy
 pandas
+pylint
+google-cloud-secret-manager
+google-cloud-build
+kubernetes
+google-cloud-service-usage
