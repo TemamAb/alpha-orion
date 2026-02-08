@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: alpha-orion-sa
-  namespace: default
+  namespace: alpha-08
   annotations:
     iam.gke.io/gcp-service-account: alpha-orion-sa@${PROJECT_ID}.iam.gserviceaccount.com
 ---
@@ -11,6 +11,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: alpha-orion-engine
+  namespace: alpha-08
   labels:
     app: alpha-orion
 spec:
@@ -25,10 +26,10 @@ spec:
     spec:
       serviceAccountName: alpha-orion-sa
       nodeSelector:
-        workload: arbitrage-engine # Pin to C2 nodes
+        workload: alpha-08-hft
       containers:
       - name: engine
-        image: gcr.io/${PROJECT_ID}/alpha-orion:v08
+        image: gcr.io/alpha-orion-485207/alpha-orion:v08
         resources:
           requests:
             cpu: "1000m"
@@ -41,13 +42,12 @@ spec:
           value: "${PROJECT_ID}"
         - name: GCP_SECRET_RPC
           value: "rpc-url-mainnet"
-        # Priority Class for HFT (Ensures this pod isn't evicted easily)
-        priorityClassName: system-cluster-critical
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: alpha-orion-service
+  namespace: alpha-08
 spec:
   selector:
     app: alpha-orion

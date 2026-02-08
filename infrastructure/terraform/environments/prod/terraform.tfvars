@@ -1,2 +1,2 @@
-project_id = "alpha-orion-485207"
+project_id = "alpha-orion"
 region     = "us-central1"
