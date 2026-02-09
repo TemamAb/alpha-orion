@@ -5,6 +5,7 @@ import Badge from '../components/ui/Badge';
 import { useApiData } from '../hooks/useApiData';
 import { Service, Opportunity } from '../hooks/useApiData';
 import { DollarSign, Zap, Server, Activity, Settings, RefreshCw, Play, AlertTriangle, CheckCircle } from 'lucide-react';
+import IntelligenceDashboard from '../components/IntelligenceDashboard';
 
 const MetricCard = ({ title, value, icon: Icon, change }: { title: string; value: string; icon: React.ElementType; change?: string }) => (
   <Card className="flex flex-col">
@@ -157,42 +158,44 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center mb-8">
-         <h1 className="text-3xl font-bold text-white">Alpha-Orion Profit Engine</h1>
-         <div className="flex items-center space-x-4">
-           {isProductionMode && (
-             <div className="flex items-center space-x-2 px-3 py-1 bg-red-900/30 border border-red-600 rounded-md">
-               <AlertTriangle className="w-4 h-4 text-red-400" />
-               <span className="text-xs font-bold text-red-400">LIVE MODE</span>
-             </div>
-           )}
-           {!isProductionMode && (
-             <div className="flex items-center space-x-2 px-3 py-1 bg-blue-900/30 border border-blue-600 rounded-md">
-               <CheckCircle className="w-4 h-4 text-blue-400" />
-               <span className="text-xs font-bold text-blue-400">SIMULATION MODE</span>
-             </div>
-           )}
-           <button
-             onClick={handleModeSwitch}
-             className="px-3 py-1 bg-blue-700 text-white rounded-md hover:bg-blue-600"
-           >
-             Switch to {deployMode === 'sim' ? 'Live' : 'Sim'}
-           </button>
-           <button
-             onClick={() => setCurrency(currency === 'USD' ? 'ETH' : 'USD')}
-             className="px-3 py-1 bg-gray-700 text-white rounded-md hover:bg-gray-600"
-           >
-             {currency}
-           </button>
-           <button
-             onClick={() => setIsSettingsOpen(true)}
-             className="p-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
-           >
-             <Settings className="w-5 h-5" />
-           </button>
-         </div>
-       </div>
+        <h1 className="text-3xl font-bold text-white">Alpha-Orion Profit Engine</h1>
+        <div className="flex items-center space-x-4">
+          {isProductionMode && (
+            <div className="flex items-center space-x-2 px-3 py-1 bg-red-900/30 border border-red-600 rounded-md">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              <span className="text-xs font-bold text-red-400">LIVE MODE</span>
+            </div>
+          )}
+          {!isProductionMode && (
+            <div className="flex items-center space-x-2 px-3 py-1 bg-blue-900/30 border border-blue-600 rounded-md">
+              <CheckCircle className="w-4 h-4 text-blue-400" />
+              <span className="text-xs font-bold text-blue-400">SIMULATION MODE</span>
+            </div>
+          )}
+          <button
+            onClick={handleModeSwitch}
+            className="px-3 py-1 bg-blue-700 text-white rounded-md hover:bg-blue-600"
+          >
+            Switch to {deployMode === 'sim' ? 'Live' : 'Sim'}
+          </button>
+          <button
+            onClick={() => setCurrency(currency === 'USD' ? 'ETH' : 'USD')}
+            className="px-3 py-1 bg-gray-700 text-white rounded-md hover:bg-gray-600"
+          >
+            {currency}
+          </button>
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <IntelligenceDashboard />
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mt-8">
         <MetricCard title="Total PnL" value={`$${totalPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={DollarSign} change="+2.5% today" />
         <MetricCard title="Total Trades" value={totalTrades.toLocaleString()} icon={Activity} />
         <MetricCard title="Live Opportunities" value={opportunities.length.toString()} icon={Zap} />
@@ -205,8 +208,8 @@ const Dashboard: React.FC = () => {
             <AreaChart data={pnlData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
               <defs>
                 <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#263148" />
@@ -372,93 +375,93 @@ const Dashboard: React.FC = () => {
               </Card>
 
               <Card title="Profit Withdrawal">
-        <div className="space-y-4">
-          <div className="flex space-x-4">
-            <label className="flex items-center">
-              <input
-                type="radio"
-                value="manual"
-                checked={withdrawalMode === 'manual'}
-                onChange={(e) => setWithdrawalMode(e.target.value as 'manual' | 'auto')}
-                className="mr-2"
-              />
-              Manual Withdrawal
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                value="auto"
-                checked={withdrawalMode === 'auto'}
-                onChange={(e) => setWithdrawalMode(e.target.value as 'manual' | 'auto')}
-                className="mr-2"
-              />
-              Auto Withdrawal
-            </label>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {withdrawalMode === 'manual' ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Amount (USD)</label>
-                <input
-                  type="number"
-                  value={withdrawalAmount}
-                  onChange={(e) => setWithdrawalAmount(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter amount"
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Auto Threshold (USD)</label>
-                <input
-                  type="number"
-                  value={autoThreshold}
-                  onChange={(e) => setAutoThreshold(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter threshold"
-                />
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">Wallet Address</label>
-              <input
-                type="text"
-                value={withdrawalAddress}
-                onChange={(e) => setWithdrawalAddress(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter wallet address"
-              />
-            </div>
-          </div>
-          <button
-            onClick={handleWithdrawal}
-            disabled={isWithdrawing || (withdrawalMode === 'manual' ? (!withdrawalAmount || !withdrawalAddress) : (!autoThreshold || !withdrawalAddress))}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isWithdrawing ? 'Processing...' : withdrawalMode === 'manual' ? 'Withdraw Profits' : 'Enable Auto Withdrawal'}
-          </button>
-          {withdrawalResult && (
-            <p className={`text-sm ${withdrawalResult.includes('successful') ? 'text-green-400' : 'text-red-400'}`}>
-              {withdrawalResult}
-            </p>
-          )}
-        </div>
-      </Card>
+                <div className="space-y-4">
+                  <div className="flex space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="manual"
+                        checked={withdrawalMode === 'manual'}
+                        onChange={(e) => setWithdrawalMode(e.target.value as 'manual' | 'auto')}
+                        className="mr-2"
+                      />
+                      Manual Withdrawal
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="auto"
+                        checked={withdrawalMode === 'auto'}
+                        onChange={(e) => setWithdrawalMode(e.target.value as 'manual' | 'auto')}
+                        className="mr-2"
+                      />
+                      Auto Withdrawal
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {withdrawalMode === 'manual' ? (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Amount (USD)</label>
+                        <input
+                          type="number"
+                          value={withdrawalAmount}
+                          onChange={(e) => setWithdrawalAmount(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter amount"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Auto Threshold (USD)</label>
+                        <input
+                          type="number"
+                          value={autoThreshold}
+                          onChange={(e) => setAutoThreshold(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter threshold"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-2">Wallet Address</label>
+                      <input
+                        type="text"
+                        value={withdrawalAddress}
+                        onChange={(e) => setWithdrawalAddress(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter wallet address"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleWithdrawal}
+                    disabled={isWithdrawing || (withdrawalMode === 'manual' ? (!withdrawalAmount || !withdrawalAddress) : (!autoThreshold || !withdrawalAddress))}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isWithdrawing ? 'Processing...' : withdrawalMode === 'manual' ? 'Withdraw Profits' : 'Enable Auto Withdrawal'}
+                  </button>
+                  {withdrawalResult && (
+                    <p className={`text-sm ${withdrawalResult.includes('successful') ? 'text-green-400' : 'text-red-400'}`}>
+                      {withdrawalResult}
+                    </p>
+                  )}
+                </div>
+              </Card>
 
-      <div className="flex justify-center mt-8">
-        <button
-          onClick={handleSaveSettings}
-          className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-        >
-          Save All Settings
-        </button>
-      </div>
+              <div className="flex justify-center mt-8">
+                <button
+                  onClick={handleSaveSettings}
+                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  Save All Settings
+                </button>
+              </div>
 
-      {settingsResult && (
-        <p className={`text-center mt-4 text-sm ${settingsResult.includes('successfully') ? 'text-green-400' : 'text-red-400'}`}>
-          {settingsResult}
-        </p>
-      )}
+              {settingsResult && (
+                <p className={`text-center mt-4 text-sm ${settingsResult.includes('successfully') ? 'text-green-400' : 'text-red-400'}`}>
+                  {settingsResult}
+                </p>
+              )}
             </div>
           </div>
         </div>
