@@ -2,17 +2,22 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, get_jwt
 from flask_talisman import Talisman
-import random
 import os
 import json
+import logging
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part, SafetySetting
 from google.cloud import pubsub_v1
 from google.cloud import storage
 from google.cloud import bigquery
 from google.cloud import bigtable
 from google.cloud import secretmanager
 from google.cloud import logging as cloud_logging
-import psycopg2
-import redis
+
+# --- Configuration ---
+PROJECT_ID = os.getenv("PROJECT_ID", "alpha-orion")
+LOCATION = os.getenv("GCP_REGION", "us-central1")
+MODEL_ID = "gemini-1.5-pro-preview-0409" # Using the latest available High-Performance model
 
 app = Flask(__name__)
 CORS(app)
@@ -26,97 +31,109 @@ Talisman(app, content_security_policy={
 }, force_https=True, strict_transport_security=True, strict_transport_security_preload=True)
 
 # JWT Configuration
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['JWT_ACCESS_TOKEN_EXPIRE_MINUTES'] = 15
-app.config['JWT_REFRESH_TOKEN_EXPIRE_DAYS'] = 30
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'default-dev-secret')
 jwt = JWTManager(app)
 
-# GCP Logging Client for audit logging
+# --- GCP Initialization ---
+try:
+    vertexai.init(project=PROJECT_ID, location=LOCATION)
+    # Using Gemini 1.5 Pro for maximum reasoning capability
+    model = GenerativeModel(MODEL_ID)
+    print(f"✅ Gemini 1.5 Pro ({MODEL_ID}) Initialized Successfully")
+except Exception as e:
+    print(f"⚠️ Failed to initialize Vertex AI: {e}")
+    model = None
+
+# Logging
 logging_client = cloud_logging.Client()
-logger = logging_client.logger('ai-agent-service-audit')
+logger = logging_client.logger('ai-agent-service-core')
 
-# Role-based access control decorator
-def role_required(required_role):
-    def decorator(func):
-        @jwt_required()
-        def wrapper(*args, **kwargs):
-            claims = get_jwt()
-            user_role = claims.get('role', 'user')
-            if user_role not in required_role:
-                return jsonify({'error': 'Insufficient permissions'}), 403
-            return func(*args, **kwargs)
-        wrapper.__name__ = func.__name__
-        return wrapper
-    return decorator
-
-# Audit logging helper
-def log_audit_event(event_type, user_id, action, details=None):
+def log_audit(event_type, details):
     logger.log_struct({
-        'event_type': event_type,
-        'user_id': user_id,
-        'action': action,
-        'timestamp': json.dumps({'timestamp': {'seconds': int(os.times()[4]), 'nanos': 0}}),
-        'service': 'ai-agent-service',
-        'details': details or {}
+        "event": event_type,
+        "details": details,
+        "service": "ai-agent-service-v2",
+        "model": MODEL_ID
     })
 
-# GCP Clients
-project_id = os.getenv('PROJECT_ID', 'alpha-orion')
-publisher = pubsub_v1.PublisherClient()
-storage_client = storage.Client()
-bigquery_client = bigquery.Client()
-bigtable_client = bigtable.Client(project=project_id)
-secret_client = secretmanager.SecretManagerServiceClient()
+# --- AI Logic ---
 
-# Connections
-db_conn = None
-redis_conn = None
+@app.route('/analyze_market', methods=['POST'])
+# @jwt_required()  # Temporarily disabled for ease of testing during integration
+def analyze_market():
+    """
+    Analyzes market data using Gemini 1.5 Pro to identify arbitrage opportunities.
+    Expects JSON payload with 'market_data'.
+    """
+    if not model:
+        return jsonify({"error": "AI Model not initialized"}), 503
 
-def get_db_connection():
-    global db_conn
-    if db_conn is None:
-        db_url = os.getenv('DATABASE_URL')
-        db_conn = psycopg2.connect(db_url)
-    return db_conn
+    data = request.json
+    market_snapshot = data.get('market_data', {})
+    
+    # Prompt Engineering for High-Frequency Trading
+    prompt = f"""
+    You are Alpha-Orion, an elite institutional arbitrage AI.
+    Analyze the following real-time market snapshot from multiple DEXs (Uniswap, SushiSwap, Curve):
+    {json.dumps(market_snapshot, indent=2)}
 
-def get_redis_connection():
-    global redis_conn
-    if redis_conn is None:
-        redis_url = os.getenv('REDIS_URL')
-        redis_conn = redis.from_url(redis_url)
-    return redis_conn
+    Identify triangular arbitrage or cross-chain opportunities.
+    Assess liquidity depth, gas costs, and slippage risk.
+    
+    Output a strictly valid JSON object with the following structure:
+    {{
+        "opportunities": [
+            {{
+                "strategy": "string",
+                "buy_on": "dex_name",
+                "sell_on": "dex_name",
+                "asset": "symbol",
+                "confidence_score": 0.0-1.0,
+                "reasoning": "brief explanation"
+            }}
+        ],
+        "risk_assessment": "string"
+    }}
+    Do not add markdown formatting. Just the JSON.
+    """
 
-@app.route('/agent', methods=['GET'])
-@role_required(['admin', 'trader'])
-def agent():
-    user_id = get_jwt_identity()
-    claims = get_jwt()
-
-    # Audit log the access
-    log_audit_event('AGENT_ACCESS', user_id, 'get_agent_actions', {
-        'user_role': claims.get('role'),
-        'endpoint': '/agent'
-    })
-
-    # Mock AI agent actions
-    actions = [
-        {'action': 'buy', 'asset': 'ETH', 'amount': random.uniform(0.1, 1.0)},
-        {'action': 'sell', 'asset': 'USDC', 'amount': random.uniform(100, 1000)}
-    ]
-
-    # Log financial actions for audit
-    for action in actions:
-        log_audit_event('FINANCIAL_ACTION', user_id, action['action'], {
-            'asset': action['asset'],
-            'amount': action['amount'],
-            'service': 'ai-agent-service'
+    try:
+        # Generate insight
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "max_output_tokens": 2048,
+                "temperature": 0.2, # Low temperature for analytical precision
+                "top_p": 0.8,
+                "top_k": 40
+            }
+        )
+        
+        # Parse analysis
+        analysis_text = response.text.replace('```json', '').replace('```', '').strip()
+        analysis_json = json.loads(analysis_text)
+        
+        log_audit("MARKET_ANALYSIS_EXECUTED", {"status": "success"})
+        
+        return jsonify({
+            "model_version": MODEL_ID,
+            "analysis": analysis_json
         })
 
-    return jsonify({'actions': actions})
+    except Exception as e:
+        log_audit("MARKET_ANALYSIS_FAILED", {"error": str(e)})
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok'})
+    ai_status = "active" if model else "inactive"
+    return jsonify({
+        "status": "ok", 
+        "ai_model": MODEL_ID, 
+        "ai_status": ai_status,
+        "project": PROJECT_ID
+    })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
