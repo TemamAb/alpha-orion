@@ -67,6 +67,7 @@ const { Monitoring } = require('@google-cloud/monitoring');
 const { Pool } = require('pg');
 const { createClient } = require('redis');
 const MultiChainArbitrageEngine = require('./multi-chain-arbitrage-engine');
+const MEVRouter = require('./mev-router');
 const PimlicoGaslessEngine = require('./pimlico-gasless');
 const InstitutionalRiskEngine = require('./institutional-risk-engine');
 const InstitutionalComplianceEngine = require('./institutional-compliance-engine');
@@ -220,6 +221,7 @@ log('INFO', '🚀 ALPHA-ORION PRODUCTION DEPLOYMENT STARTING');
 let PIMLICO_API_KEY = null;
 let arbitrageEngine = null;
 let pimlicoEngine = null;
+let mevRouter = null;
 
 // Redis is already initialized above
 async function initializeRedis() {
@@ -230,7 +232,7 @@ async function initializeRedis() {
     redisClient.on('error', (err) => log('ERROR', 'Redis Client Error', { error: err.message }));
     await redisClient.connect();
     log('INFO', '✅ Connected to Redis for State Persistence');
-    
+
     // Load state on startup
     await loadState();
   } catch (err) {
@@ -325,12 +327,14 @@ async function initializeSecrets() {
 
   // Initialize Institutional-Grade Engines
   try {
-    arbitrageEngine = new MultiChainArbitrageEngine();
+    mevRouter = new MEVRouter();
+    arbitrageEngine = new MultiChainArbitrageEngine(mevRouter); // Pass router to engine
     pimlicoEngine = new PimlicoGaslessEngine();
     riskEngine = new InstitutionalRiskEngine();
     complianceEngine = new InstitutionalComplianceEngine();
     monitoringEngine = new InstitutionalMonitoringEngine();
-    profitEngine = new EnterpriseProfitEngine(arbitrageEngine);
+    profitEngine = new EnterpriseProfitEngine(arbitrageEngine, mevRouter); // Pass mevRouter
+    profitEngine.setRiskEngine(riskEngine); // Inject risk engine into profit engine
 
     log('INFO', '✅ INSTITUTIONAL-GRADE ENGINES INITIALIZED', {
       arbitrage: 'Multi-Chain Arbitrage Engine',
@@ -339,6 +343,7 @@ async function initializeSecrets() {
       compliance: 'Regulatory Compliance Engine',
       monitoring: 'Enterprise Monitoring & Alerting',
       strategies: ['Triangular', 'Cross-DEX', 'Cross-Chain', 'MEV', 'Statistical', 'Order Flow'],
+      mevProtection: ['MEV-Blocker', 'Flashbots'],
       networks: ['Ethereum', 'Polygon', 'BSC', 'Arbitrum', 'Optimism', 'Avalanche', 'Fantom', 'Polygon zkEVM'],
       mode: 'PRODUCTION',
       gasless: true,
@@ -372,46 +377,46 @@ const scanInterval = setInterval(async () => {
 
   try {
     log('INFO', 'Starting opportunity scan');
-    
+
     // Find REAL opportunities using the Arbitrage Engine
     // This uses 1inch API and Uniswap Subgraphs as defined in arbitrage-engine.js
-    const opportunities = await apiCircuitBreaker.fire(() => arbitrageEngine.findFlashLoanArbitrage());
+    const opportunities = await apiCircuitBreaker.fire(() => profitEngine.generateProfitOpportunities()); // Use EnterpriseProfitEngine
     activeOpportunities = opportunities;
-    
+
     if (opportunities.length > 0) {
       log('INFO', `Found ${opportunities.length} opportunities`, { opportunities });
     } else {
       log('DEBUG', 'No profitable opportunities found');
     }
-    
+
     // Execute trades
     for (const opp of opportunities) {
       // Double check profit threshold before execution
       if (opp.potentialProfit > (process.env.MIN_PROFIT_THRESHOLD_USD || 100)) {
         const tradeNumber = totalTrades + 1;
-        log('NOTICE', `Executing Trade #${tradeNumber}`, { 
-          pair: opp.assets, 
-          expectedProfit: opp.potentialProfit 
+        log('NOTICE', `Executing Trade #${tradeNumber}`, {
+          pair: opp.assets,
+          expectedProfit: opp.potentialProfit
         });
-        
-        // Execute via Arbitrage Engine (Real Blockchain Transaction)
+
+        // CORRECTED: Execute via the EnterpriseProfitEngine for full risk/optimization lifecycle
         let result;
         try {
-          result = await arbitrageEngine.executeArbitrage(opp);
+          result = await profitEngine.executeOptimizedTrade(opp);
         } catch (execError) {
-          log('ERROR', 'Execution failed', { error: execError.message, opportunityId: opp.id });
+          log('ERROR', 'Optimized execution failed', { error: execError.message, opportunityId: opp.id });
           continue;
         }
-        
+
         if (result && result.status !== 'failed') {
           const netProfit = opp.potentialProfit; // Simplified for tracking
-          
+
           log('NOTICE', 'Trade Submitted', {
             txHash: result.transactionHash || result.userOpHash,
             netProfit,
             status: 'SUBMITTED'
           });
-          
+
           executedTrades.push({
             number: tradeNumber,
             pair: opp.assets.join('/'),
@@ -420,7 +425,7 @@ const scanInterval = setInterval(async () => {
             confirmed: false,
             timestamp: Date.now()
           });
-          
+
           unrealizedProfit += netProfit;
           totalTrades++;
           saveState(); // Persist state
@@ -429,7 +434,7 @@ const scanInterval = setInterval(async () => {
         }
       }
     }
-    
+
     lastScanTime = Date.now();
   } catch (error) {
     log('ERROR', 'Scanner loop error', { error: error.message });
@@ -439,40 +444,40 @@ const scanInterval = setInterval(async () => {
 // Trade confirmation loop
 const confirmInterval = setInterval(async () => {
   const pending = executedTrades.filter(t => !t.confirmed);
-  
+
   if (pending.length > 0) {
     log('INFO', 'Checking trade confirmations', { pendingCount: pending.length });
-    
+
     for (const trade of pending) {
       if (!pimlicoEngine || !trade.txHash) continue;
 
       try {
         const receipt = await pimlicoEngine.getUserOperationReceipt(trade.txHash);
-        
+
         if (receipt && receipt.success) {
           trade.confirmed = true;
           unrealizedProfit -= trade.profit;
           realizedProfit += trade.profit;
-          
-          log('INFO', 'Profit Confirmed', { 
-            tradeId: trade.number, 
-            profit: trade.profit, 
+
+          log('INFO', 'Profit Confirmed', {
+            tradeId: trade.number,
+            profit: trade.profit,
             txHash: trade.txHash
           });
           saveState(); // Persist state
         } else if (receipt && !receipt.success) {
-            log('ERROR', 'Trade failed on-chain', {
-                tradeId: trade.number,
-                txHash: trade.txHash,
-                reason: receipt.reason
-            });
-            trade.confirmed = true; // Mark as handled
-            trade.status = 'FAILED';
-            unrealizedProfit -= trade.profit; // Revert unrealized profit
-            saveState();
+          log('ERROR', 'Trade failed on-chain', {
+            tradeId: trade.number,
+            txHash: trade.txHash,
+            reason: receipt.reason
+          });
+          trade.confirmed = true; // Mark as handled
+          trade.status = 'FAILED';
+          unrealizedProfit -= trade.profit; // Revert unrealized profit
+          saveState();
         }
       } catch (error) {
-          log('WARNING', 'Error checking trade confirmation', { tradeId: trade.number, error: error.message });
+        log('WARNING', 'Error checking trade confirmation', { tradeId: trade.number, error: error.message });
       }
     }
   }
@@ -523,7 +528,7 @@ const reportInterval = setInterval(() => {
   const avgProfitPerTrade = totalTrades > 0 ? Math.round(totalPnl / totalTrades) : 0;
   const confirmed = executedTrades.filter(t => t.confirmed).length;
   const pending = totalTrades - confirmed;
-  
+
   log('INFO', 'Live Profit Report', {
     totalPnl,
     realizedProfit,
@@ -1200,12 +1205,12 @@ app.post('/withdraw/manual', checkJwt, requireRole(['admin', 'user']), async (re
 
 app.post('/simulate/market-event', (req, res) => {
   const profitAmount = parseFloat(req.body.amount) || 1500;
-  
+
   // Inject a synthetic high-profit trade
   log('NOTICE', '🧪 SIMULATION: Triggering High-Profit Market Event', { profit: profitAmount });
-  
+
   const tradeNumber = totalTrades + 1;
-  
+
   executedTrades.push({
     number: tradeNumber,
     pair: 'WETH/USDC (SIMULATED)',
@@ -1214,11 +1219,11 @@ app.post('/simulate/market-event', (req, res) => {
     confirmed: true, // Auto-confirm to test withdrawal immediately
     timestamp: Date.now()
   });
-  
+
   realizedProfit += profitAmount;
   totalTrades++;
   saveState(); // Persist state
-  
+
   res.json({
     status: 'success',
     message: 'Simulated high-profit event injected. Auto-withdrawal should trigger shortly.',

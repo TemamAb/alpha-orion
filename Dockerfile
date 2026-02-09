@@ -1,24 +1,17 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
-ENV API_BASE_URL=https://user-api-service-uc.a.run.app
-
-# Set the working directory
+# Stage 1: Build the React frontend
+FROM node:18-alpine AS build
 WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-# Copy the current directory contents into the container
-COPY . /app
-
-# Create a non-root user for security
-RUN useradd -m appuser && chown -R appuser /app
-USER appuser
-
-# Expose the port
+# Stage 2: Create the production image
+FROM node:18-alpine
+WORKDIR /app
+COPY backend/package.json backend/package-lock.json* ./
+RUN npm install --production
+COPY backend/. .
+COPY --from=build /app/dist ./dist
 EXPOSE 8080
-
-# Run the application
-CMD ["python", "serve-live-dashboard.py"]
+CMD [ "node", "server.js" ]

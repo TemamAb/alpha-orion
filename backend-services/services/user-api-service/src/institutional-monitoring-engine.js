@@ -191,6 +191,26 @@ class InstitutionalMonitoringEngine {
   }
 
   /**
+   * Trigger an immediate, on-demand check for a specific metric.
+   * This allows other services to report critical events for instant alerting.
+   * @param {string} metricName - The name of the metric (e.g., 'trading/slippage').
+   * @param {number} value - The current value of the metric.
+   * @param {object} labels - Optional labels for the metric.
+   */
+  async triggerImmediateCheck(metricName, value, labels = {}) {
+    console.log(`[MonitoringEngine] Immediate check triggered for ${metricName} with value ${value}`);
+    await this.recordMetric(metricName, value, labels);
+
+    // Find the relevant check function and execute it immediately
+    if (metricName.startsWith('system/')) await this.checkSystemHealth();
+    else if (metricName.startsWith('trading/')) await this.checkTradingPerformance();
+    else if (metricName.startsWith('risk/')) await this.checkRiskMetrics();
+    else if (metricName.startsWith('compliance/')) await this.checkComplianceMetrics();
+
+    // Note: SLO checks remain on their scheduled interval.
+  }
+
+  /**
    * Check thresholds and create alerts
    */
   async checkThresholds() {
@@ -490,30 +510,67 @@ class InstitutionalMonitoringEngine {
    * Send alert notifications
    */
   async sendAlertNotifications(alert) {
+    const { severity, title, description, id } = alert;
+    const message = `*${severity} Alert*: ${title}\n*Description*: ${description}\n*Alert ID*: ${id}`;
+
+    // Route notifications based on severity
+    if (severity === 'CRITICAL') {
+      // Send to PagerDuty to wake someone up
+      await this.sendToPagerDuty(alert);
+      // Also send to the critical alerts Slack channel
+      await this.sendToSlack(process.env.SLACK_CRITICAL_CHANNEL_WEBHOOK, message);
+    } else if (severity === 'WARNING') {
+      // Send to the general alerts Slack channel
+      await this.sendToSlack(process.env.SLACK_WARNING_CHANNEL_WEBHOOK, message);
+    } else {
+      // For INFO, just log it (already done in createAlert)
+      console.log(`[MonitoringEngine] INFO alert logged: ${title}`);
+    }
+  }
+
+  /**
+   * Simulate sending a notification to a Slack webhook.
+   * @param {string} webhookUrl - The Slack webhook URL.
+   * @param {string} message - The message to send.
+   */
+  async sendToSlack(webhookUrl, message) {
+    if (!webhookUrl) {
+      console.log(`[MonitoringEngine] Slack notification (simulation):\n${message}`);
+      return;
+    }
     try {
-      // In production, integrate with notification services
-      // Email, SMS, Slack, PagerDuty, etc.
-
-      const notification = {
-        alertId: alert.id,
-        title: alert.title,
-        description: alert.description,
-        severity: alert.severity,
-        timestamp: alert.created,
-        labels: alert.labels
-      };
-
-      // Log notification
-      console.log(`[MonitoringEngine] Alert notification sent:`, notification);
-
-      // Here you would integrate with:
-      // - Email service (SendGrid, AWS SES)
-      // - SMS service (Twilio)
-      // - Slack/PagerDuty for on-call notifications
-      // - Dashboard updates
-
+      await axios.post(webhookUrl, { text: message });
+      console.log(`[MonitoringEngine] Successfully sent alert to Slack.`);
     } catch (error) {
-      console.error('[MonitoringEngine] Alert notification error:', error);
+      console.error(`[MonitoringEngine] Failed to send Slack notification: ${error.message}`);
+    }
+  }
+
+  /**
+   * Simulate sending an event to PagerDuty.
+   * @param {object} alert - The alert object.
+   */
+  async sendToPagerDuty(alert) {
+    const routingKey = process.env.PAGERDUTY_ROUTING_KEY;
+    if (!routingKey) {
+      console.log(`[MonitoringEngine] PagerDuty event (simulation) for alert: ${alert.title}`);
+      return;
+    }
+    try {
+      // This is a simplified PagerDuty v2 event payload
+      await axios.post('https://events.pagerduty.com/v2/enqueue', {
+        routing_key: routingKey,
+        event_action: 'trigger',
+        payload: {
+          summary: alert.title,
+          source: 'alpha-orion-monitoring',
+          severity: 'critical',
+          custom_details: alert,
+        },
+      });
+      console.log(`[MonitoringEngine] Successfully triggered PagerDuty incident.`);
+    } catch (error) {
+      console.error(`[MonitoringEngine] Failed to trigger PagerDuty incident: ${error.message}`);
     }
   }
 

@@ -1,29 +1,19 @@
-# Use Node.js for building the app
-FROM node:18-alpine AS build
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
 
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Create and activate a virtual environment
+ENV VIRTUAL_ENV=/app/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Install dependencies
-RUN npm ci
+# Copy the requirements file and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# Copy the rest of the application code
 COPY . .
 
-# Build the app
-RUN npm run build
-
-# Use nginx to serve the built app
-FROM nginx:alpine
-
-# Copy built app to nginx
-COPY --from=build /app/build /usr/share/nginx/html
-
-# Copy nginx config if needed
-# COPY nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["python", "main.py"]
