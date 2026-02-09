@@ -976,18 +976,37 @@ class MultiChainArbitrageEngine {
     this.performanceMetrics.totalTrades++;
   }
 
-  // REAL-TIME PERFORMANCE METRICS
+  // REAL-TIME PERFORMANCE METRICS (HIGH-VELOCITY KPI ENGINE)
   getPerformanceMetrics() {
     const totalTrades = this.performanceMetrics.totalTrades;
     const successfulTrades = this.performanceMetrics.successfulTrades;
+    const executionTimes = this.performanceMetrics.executionTimes;
+    const profits = this.performanceMetrics.profits;
+
+    // Calculate Velocity (Trades per Hour) - Rolling Window
+    const timeWindow = executionTimes.length > 0 ? (Date.now() - (executionTimes[0] || Date.now())) / 3600000 : 0.01;
+    const velocity = totalTrades / (timeWindow || 1);
+
+    // Calculate Profit per Hour
+    const recentProfit = profits.reduce((a, b) => a + b, 0);
+    const profitPerHour = recentProfit / (timeWindow || 1);
+
+    // Projected Daily Profit
+    const projectedDailyProfit = profitPerHour * 24;
+
+    // Average Latency
+    const avgLatency = executionTimes.length > 0 ?
+      executionTimes.reduce((a, b) => a + b, 0) / executionTimes.length : 0;
 
     return {
       totalTrades,
       successfulTrades,
       winRate: totalTrades > 0 ? successfulTrades / totalTrades : 0,
       totalProfit: parseFloat(ethers.utils.formatUnits(this.performanceMetrics.totalProfit, 18)),
-      averageExecutionTime: this.performanceMetrics.executionTimes.length > 0 ?
-        this.performanceMetrics.executionTimes.reduce((a, b) => a + b, 0) / this.performanceMetrics.executionTimes.length : 0,
+      profitPerHour: profitPerHour.toFixed(2),
+      projectedDailyProfit: projectedDailyProfit.toFixed(2),
+      avgLatencyMs: avgLatency.toFixed(0),
+      velocity: velocity.toFixed(1), // Trades/Hour
       averageGasCost: this.performanceMetrics.gasCosts.length > 0 ?
         this.performanceMetrics.gasCosts.reduce((a, b) => a + b, 0) / this.performanceMetrics.gasCosts.length : 0,
       profitDistribution: this.calculateProfitDistribution()

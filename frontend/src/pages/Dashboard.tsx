@@ -196,9 +196,9 @@ const Dashboard: React.FC = () => {
       <IntelligenceDashboard />
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mt-8">
-        <MetricCard title="Total PnL" value={`$${totalPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={DollarSign} change="+2.5% today" />
-        <MetricCard title="Total Trades" value={totalTrades.toLocaleString()} icon={Activity} />
-        <MetricCard title="Live Opportunities" value={opportunities.length.toString()} icon={Zap} />
+        <MetricCard title="Total PnL" value={`$${totalPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={DollarSign} change={`+$${analytics.projectedDailyProfit || '0.00'} / day`} />
+        <MetricCard title="Velocity (Trades/Hr)" value={analytics.velocity || '0.0'} icon={Activity} />
+        <MetricCard title="Avg Latency" value={`${analytics.avgLatencyMs || '0'} ms`} icon={Zap} />
         <MetricCard title="Services Online" value={`${onlineServices} / ${services.length}`} icon={Server} />
       </div>
 
