@@ -154,8 +154,8 @@ class MultiChainArbitrageEngine {
       totalTrades: 0,
       successfulTrades: 0,
       totalProfit: ethers.BigNumber.from(0),
-      executionTimes: [],
-      executionTimes: [],
+      executionTimes: [], // Duration in ms
+      timestamps: [],     // Execution timestamp
       gasCosts: [],
       profits: [] // Track individual trade profits for distribution analysis
     };
@@ -938,12 +938,14 @@ class MultiChainArbitrageEngine {
     }
 
     this.performanceMetrics.executionTimes.push(analysis.executionTime);
+    this.performanceMetrics.timestamps.push(analysis.timestamp); // Track time for velocity calc
     this.performanceMetrics.gasCosts.push(analysis.gasCostUSD);
     this.performanceMetrics.profits.push(analysis.netProfit);
 
     // Keep only last 1000 records for analysis
     if (this.performanceMetrics.executionTimes.length > 1000) {
       this.performanceMetrics.executionTimes.shift();
+      this.performanceMetrics.timestamps.shift();
       this.performanceMetrics.gasCosts.shift();
       this.performanceMetrics.profits.shift();
     }
@@ -984,12 +986,23 @@ class MultiChainArbitrageEngine {
     const profits = this.performanceMetrics.profits;
 
     // Calculate Velocity (Trades per Hour) - Rolling Window
-    const timeWindow = executionTimes.length > 0 ? (Date.now() - (executionTimes[0] || Date.now())) / 3600000 : 0.01;
-    const velocity = totalTrades / (timeWindow || 1);
+    const timestamps = this.performanceMetrics.timestamps;
+    let timeWindowHours = 0.001; // Default small window to avoid div/0
 
-    // Calculate Profit per Hour
+    if (timestamps.length > 1) {
+      const oldestTime = timestamps[0];
+      const newestTime = timestamps[timestamps.length - 1];
+      timeWindowHours = (newestTime - oldestTime) / 3600000;
+    }
+
+    // Protection against zero/tiny window inflating numbers
+    timeWindowHours = Math.max(timeWindowHours, 0.001);
+
+    const velocity = totalTrades / timeWindowHours;
+
+    // Calculate Profit per Hour based on the window
     const recentProfit = profits.reduce((a, b) => a + b, 0);
-    const profitPerHour = recentProfit / (timeWindow || 1);
+    const profitPerHour = recentProfit / timeWindowHours;
 
     // Projected Daily Profit
     const projectedDailyProfit = profitPerHour * 24;
