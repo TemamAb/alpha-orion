@@ -80,11 +80,37 @@ contract FlashArbExecutor_V08_Elite is ReentrancyGuard, Ownable, Pausable, Acces
         function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
     }
 
+    // Uniswap V3 Interface
+    interface ISwapRouter {
+        struct ExactInputSingleParams {
+            address tokenIn;
+            address tokenOut;
+            uint24 fee;
+            address recipient;
+            uint256 deadline;
+            uint256 amountIn;
+            uint256 amountOutMinimum;
+            uint160 sqrtPriceLimitX96;
+        }
+        function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+    }
+
     // --- Core Logic ---
 
     struct ArbParams {
         address[] tokenPath;
         address[] routerPath; // Corresponding router for each hop
+        uint24[] feePath;     // For V3: 0 for V2, 500/3000/10000 for V3 pools
+        uint256 minProfit;
+        uint256 deadline;
+    }
+
+    struct BatchArbParams {
+        address asset;
+        uint256 amount;
+        address[] tokenPath;
+        address[] routerPath;
+        uint24[] feePath;
         uint256 minProfit;
         uint256 deadline;
     }
@@ -113,6 +139,7 @@ contract FlashArbExecutor_V08_Elite is ReentrancyGuard, Ownable, Pausable, Acces
         bytes memory params = abi.encode(ArbParams({
             tokenPath: tokenPath,
             routerPath: routerPath,
+            feePath: new uint24[](routerPath.length), // Default to V2 (0 fees)
             minProfit: minProfit,
             deadline: deadline
         }));
@@ -124,6 +151,31 @@ contract FlashArbExecutor_V08_Elite is ReentrancyGuard, Ownable, Pausable, Acces
             amount,
             params
         );
+    }
+
+    /**
+     * @notice Executes a batch of flash loans for High-Velocity Capital deployment.
+     * @param batchNodes array of arbitrage opportunities.
+     */
+    function executeBatchFlashArbitrage(BatchArbParams[] calldata batchNodes) external onlyRole(EXECUTOR_ROLE) nonReentrant whenNotPaused {
+        for (uint i = 0; i < batchNodes.length; i++) {
+            BatchArbParams memory node = batchNodes[i];
+            
+            bytes memory params = abi.encode(ArbParams({
+                tokenPath: node.tokenPath,
+                routerPath: node.routerPath,
+                feePath: node.feePath,
+                minProfit: node.minProfit,
+                deadline: node.deadline
+            }));
+
+            IFlashLoanProvider(flashLoanProvider).flashLoan(
+                address(this),
+                node.asset,
+                node.amount,
+                params
+            );
+        }
     }
 
     /**
@@ -160,8 +212,15 @@ contract FlashArbExecutor_V08_Elite is ReentrancyGuard, Ownable, Pausable, Acces
             address tokenIn = arbParams.tokenPath[i];
             address tokenOut = arbParams.tokenPath[i+1];
             
-            // Perform Swap
-            uint256 output = _swapV2(router, tokenIn, tokenOut, inputAmount);
+            uint24 feeTier = arbParams.feePath.length > i ? arbParams.feePath[i] : 0;
+            
+            // Perform Swap (V3 if fee > 0, else V2)
+            uint256 output;
+            if (feeTier > 0) {
+                 output = _swapV3(router, tokenIn, tokenOut, feeTier, inputAmount);
+            } else {
+                 output = _swapV2(router, tokenIn, tokenOut, inputAmount);
+            }
             
             // Prepare for next hop
             inputAmount = output;
@@ -197,6 +256,21 @@ contract FlashArbExecutor_V08_Elite is ReentrancyGuard, Ownable, Pausable, Acces
             block.timestamp
         );
         return amounts[amounts.length - 1];
+    }
+
+    function _swapV3(address router, address tokenIn, address tokenOut, uint24 fee, uint256 amountIn) internal returns (uint256) {
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            fee: fee,
+            recipient: address(this),
+            deadline: block.timestamp,
+            amountIn: amountIn,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+        });
+
+        return ISwapRouter(router).exactInputSingle(params);
     }
 
     function _approveToken(address token, address spender, uint256 amount) internal {
