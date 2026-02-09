@@ -196,10 +196,10 @@ const Dashboard: React.FC = () => {
       <IntelligenceDashboard />
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mt-8">
-        <MetricCard title="Total PnL" value={`$${totalPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={DollarSign} change={`+$${analytics.projectedDailyProfit || '0.00'} / day`} />
-        <MetricCard title="Velocity (Trades/Hr)" value={analytics.velocity || '0.0'} icon={Activity} />
-        <MetricCard title="Avg Latency" value={`${analytics.avgLatencyMs || '0'} ms`} icon={Zap} />
-        <MetricCard title="Services Online" value={`${onlineServices} / ${services.length}`} icon={Server} />
+        <MetricCard title="Total Yield (PnL)" value={`$${totalPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={DollarSign} change={`+$${analytics.projected24hYield || '0.00'} / 24h`} />
+        <MetricCard title="Alpha Velocity" value={`${analytics.alphaVelocity || '0.0'} Tx/Hr`} icon={Activity} />
+        <MetricCard title="Capture Rate" value={`${(analytics.alphaCaptureRate * 100).toFixed(1) || '0.0'}%`} icon={Zap} />
+        <MetricCard title="Execution Latency (RTT)" value={`${analytics.executionLatencyMs || '0'} ms`} icon={Server} />
       </div>
 
       <Card title="Real-Time PnL">
