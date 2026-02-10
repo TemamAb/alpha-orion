@@ -1,0 +1,256 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: BlueprintMetadata
+metadata:
+  name: terraform-google-memorystore-display
+  annotations:
+    config.kubernetes.io/local-config: "true"
+spec:
+  info:
+    title: Google Cloud Memorystore Terraform Module
+    source:
+      repo: https://github.com/terraform-google-modules/terraform-google-memorystore.git
+      sourceType: git
+  ui:
+    input:
+      variables:
+        alternative_location_id:
+          name: alternative_location_id
+          title: Alternative Location Id
+          regexValidation: ^[a-z]+(?:-[a-z0-9]+)*[0-9]-[a-z]$
+          validation: Must be a lowercase Google Cloud zone (e.g., us-central1-b), different from locationId
+        auth_enabled:
+          name: auth_enabled
+          title: Auth Enabled
+          level: 1
+          altDefaults:
+            - type: ALTERNATE_TYPE_DC
+              value: true
+        authorized_network:
+          name: authorized_network
+          title: Authorized Network
+          regexValidation: "^(projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/global/networks/[a-zA-Z0-9-_]+|[a-zA-Z0-9-_]+)$"
+          validation: Network must be a valid network name or a full resource path.
+        connect_mode:
+          name: connect_mode
+          title: Connect Mode
+          enumValueLabels:
+            - label: DIRECT_PEERING
+              value: DIRECT_PEERING
+            - label: PRIVATE_SERVICE_ACCESS
+              value: PRIVATE_SERVICE_ACCESS
+          level: 1
+          altDefaults:
+            - type: ALTERNATE_TYPE_DC
+              value: DIRECT_PEERING
+        customer_managed_key:
+          name: customer_managed_key
+          title: Customer Managed Key
+          regexValidation: "^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/locations/[a-z0-9-]+/keyRings/[a-z0-9-_]+/cryptoKeys/[a-z0-9-_]+$"
+          validation: Must follow the Cloud KMS CryptoKey format like projects/my-project/locations/us-central1/keyRings/my-keyring/cryptoKeys/my-key
+        display_name:
+          name: display_name
+          title: Display Name
+          level: 1
+        enable_apis:
+          name: enable_apis
+          title: Enable Apis
+        labels:
+          name: labels
+          title: Labels
+        location_id:
+          name: location_id
+          title: Location Id
+          regexValidation: ^[a-z]+(?:-[a-z0-9]+)*[0-9]-[a-z]$
+          validation: Must be a lowercase GCP zone like us-central1-b
+        maintenance_policy:
+          name: maintenance_policy
+          title: Maintenance Policy
+          level: 1
+          properties:
+            description:
+              name: description
+              title: Description
+            day:
+              name: day
+              title: Day
+              enumValueLabels:
+                - label: MONDAY
+                  value: MONDAY
+                - label: TUESDAY
+                  value: TUESDAY
+                - label: WEDNESDAY
+                  value: WEDNESDAY
+                - label: THURSDAY
+                  value: THURSDAY
+                - label: FRIDAY
+                  value: FRIDAY
+                - label: SATURDAY
+                  value: SATURDAY
+                - label: SUNDAY
+                  value: SUNDAY
+            start_time:
+              name: start_time
+              title: Start Time
+              properties:
+                hours:
+                  name: hours
+                  title: Hours
+                  min: 0
+                  max: 23
+                  validation: Hours of day in 24 hour format. Must be from 0 to 23.
+                minutes:
+                  name: minutes
+                  title: Minutes
+                  min: 0
+                  max: 59
+                  validation: Minutes of hour of day. Must be from 0 to 59.
+                seconds:
+                  name: seconds
+                  title: Seconds
+                  min: 0
+                  max: 59
+                  validation: Seconds of minutes of the time. Must be from 0 to 59.
+                nanos:
+                  name: nanos
+                  title: Nanos
+                  min: 0
+                  max: 999999999
+                  validation: Fractions of seconds in nanoseconds. Must be from 0 to 999,999,999.
+        memory_size_gb:
+          name: memory_size_gb
+          title: Memory Size GiB
+          level: 1
+          altDefaults:
+            - type: ALTERNATE_TYPE_DC
+              value: 16
+        name:
+          name: name
+          title: Name
+          regexValidation: ^[a-z][a-z0-9-]{0,38}[a-z0-9]$
+          validation: Use lowercase letters, numbers, and hyphens. Start with a letter and end with letter/number. Must be 40 characters or fewer.
+        persistence_config:
+          name: persistence_config
+          title: Persistence Config
+          level: 1
+          altDefaults:
+            - type: ALTERNATE_TYPE_DC
+              value:
+                persistence_mode: RDB
+                rdb_snapshot_period: ONE_HOUR
+          properties:
+            persistence_mode:
+              name: persistence_mode
+              title: Persistence Mode
+              enumValueLabels:
+                - label: RDB
+                  value: RDB
+                - label: DISABLED
+                  value: DISABLED
+            rdb_snapshot_period:
+              name: rdb_snapshot_period
+              title: RDB Snapshot Period
+              enumValueLabels:
+                - label: ONE_HOUR
+                  value: ONE_HOUR
+                - label: SIX_HOURS
+                  value: SIX_HOURS
+                - label: TWELVE_HOURS
+                  value: TWELVE_HOURS
+                - label: TWENTY_FOUR_HOURS
+                  value: TWENTY_FOUR_HOURS
+        project_id:
+          name: project_id
+          title: Project Id
+        read_replicas_mode:
+          name: read_replicas_mode
+          title: Read Replicas Mode
+          enumValueLabels:
+            - label: READ_REPLICAS_DISABLED
+              value: READ_REPLICAS_DISABLED
+            - label: READ_REPLICAS_ENABLED
+              value: READ_REPLICAS_ENABLED
+          altDefaults:
+            - type: ALTERNATE_TYPE_DC
+              value: READ_REPLICAS_ENABLED
+        redis_configs:
+          name: redis_configs
+          title: Redis Configs
+        redis_version:
+          name: redis_version
+          title: Redis Version
+          enumValueLabels:
+            - label: REDIS_7_2
+              value: REDIS_7_2
+            - label: REDIS_7_0
+              value: REDIS_7_0
+            - label: REDIS_6_X
+              value: REDIS_6_X
+            - label: REDIS_5_0
+              value: REDIS_5_0
+          level: 1
+          altDefaults:
+            - type: ALTERNATE_TYPE_DC
+              value: REDIS_7_2
+        region:
+          name: region
+          title: Region
+        replica_count:
+          name: replica_count
+          title: Replica Count
+          level: 1
+          min: 0
+          max: 5
+          altDefaults:
+            - type: ALTERNATE_TYPE_DC
+              value: 1
+        reserved_ip_range:
+          name: reserved_ip_range
+          title: Reserved Ip Range
+          regexValidation: "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])/([0-9]|[1-2][0-9]|3[0-2])$"
+          validation: Must be a valid CIDR range (e.g., 10.0.0.0/29)
+        secondary_ip_range:
+          name: secondary_ip_range
+          title: Secondary Ip Range
+          regexValidation: "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])/([0-9]|[1-2][0-9]|3[0-2])$"
+          validation: Must be a valid CIDR range (e.g., 10.0.0.0/29)
+        tier:
+          name: tier
+          title: Tier
+          enumValueLabels:
+            - label: STANDARD_HA
+              value: STANDARD_HA
+            - label: BASIC
+              value: BASIC
+          level: 1
+        transit_encryption_mode:
+          name: transit_encryption_mode
+          title: Transit Encryption Mode
+          enumValueLabels:
+            - label: SERVER_AUTHENTICATION
+              value: SERVER_AUTHENTICATION
+            - label: DISABLED
+              value: DISABLED
+          level: 1
+          altDefaults:
+            - type: ALTERNATE_TYPE_DC
+              value: DISABLED
+    runtime:
+      outputs:
+        host:
+          visibility: VISIBILITY_ROOT
+        port:
+          visibility: VISIBILITY_ROOT

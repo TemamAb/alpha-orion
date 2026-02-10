@@ -1,118 +1,246 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Alpha-Orion: Cloud Production Deployment"
-echo "==========================================="
+echo "🚀 Alpha-Orion: Complete Production Deployment"
+echo "=============================================="
+echo ""
 
-# Save root directory for reliable navigation
 ROOT_DIR="$(pwd)"
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
-# 1. Commit Changes
-echo "📦 Committing latest configuration and fixes..."
-git add .
-git add cloudbuild.yaml 2>/dev/null || true
-git add Dockerfile .dockerignore 2>/dev/null || true
-git commit -m "deploy: production release $(date +%Y%m%d-%H%M)" || echo "⚠️  Nothing to commit, proceeding..."
+# Colors
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-# 2. Push to GitHub (Triggers Cloud Build if configured)
-echo "⬆️  Skipping push to GitHub for direct deploy..."
-# git push origin main
+print_status() {
+    echo -e "${GREEN}[✓]${NC} $1"
+}
 
-# 3. Direct Cloud Run Deployment (Ensures immediate update)
-echo "☁️  Deploying directly to Google Cloud Run..."
+print_warning() {
+    echo -e "${YELLOW}[!]${NC} $1"
+}
 
-# Check for gcloud CLI
+# Step 1: Pre-flight Checks
+echo "🔍 Step 1: Pre-flight Checks"
+echo "----------------------------"
+
+# Check gcloud
 if ! command -v gcloud &> /dev/null; then
-    # Try to auto-fix PATH for MINGW64/Windows standard installs
-    if [ -d "/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
-        echo "🔄 Detected Google Cloud SDK in Program Files (x86). Adding to PATH..."
-        export PATH=$PATH:"/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin"
-    elif [ -d "/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
-        echo "🔄 Detected Google Cloud SDK in Program Files. Adding to PATH..."
-        export PATH=$PATH:"/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin"
-    elif [ -d "/c/Users/${USERNAME:-$USER}/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
-        echo "🔄 Detected Google Cloud SDK in AppData. Adding to PATH..."
-        export PATH=$PATH:"/c/Users/${USERNAME:-$USER}/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
-    fi
+    print_warning "gcloud CLI not found. Attempting to locate..."
+    for path in "/c/Program Files/Google/Cloud SDK/bin/gcloud" \
+               "/c/Program Files (x86)/Google/Cloud SDK/bin/gcloud" \
+               "$HOME/AppData/Local/Google/Cloud SDK/bin/gcloud"; do
+        if [ -f "$path" ]; then
+            export PATH="$(dirname $path):$PATH"
+            print_status "Found gcloud at $path"
+            break
+        fi
+    done
 fi
 
 if ! command -v gcloud &> /dev/null; then
-    echo "⚠️  'gcloud' CLI not found or not in PATH."
-    echo "✅ Code pushed to GitHub. If Cloud Build is configured, deployment will start automatically."
-    echo "ℹ️  To enable direct deployment from this script, install the Google Cloud SDK."
-    echo "    👉 Install: https://cloud.google.com/sdk/docs/install"
-    exit 0
-fi
-
-echo "✅ Google Cloud SDK detected: $(gcloud --version | head -n 1)"
-
-# 4. Deploy User API Service
-echo "☁️  Deploying User API Service..."
-cd "$ROOT_DIR/backend-services/services/user-api-service"
-
-gcloud run deploy user-api-service \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project),MIN_PROFIT_THRESHOLD_USD=500,AUTO_WITHDRAWAL_THRESHOLD_USD=1000"
-
-# 5. Deploy AI Optimizer Service (Updated for Gemini Monitoring)
-echo "☁️  Deploying AI Optimizer Service..."
-# Check common locations relative to root or current location
-if [ -d "$ROOT_DIR/backend-services/services/ai-optimizer" ]; then
-  cd "$ROOT_DIR/backend-services/services/ai-optimizer"
-  gcloud run deploy brain-ai-optimizer-us \
-    --source . \
-    --region us-central1 \
-    --allow-unauthenticated \
-    --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project)"
-elif [ -d "$ROOT_DIR/ai-optimizer" ]; then
-  cd "$ROOT_DIR/ai-optimizer"
-  gcloud run deploy brain-ai-optimizer-us \
-    --source . \
-    --region us-central1 \
-    --allow-unauthenticated \
-    --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project)"
-elif [ -d "$ROOT_DIR/ai-agent-service" ]; then
-  cd "$ROOT_DIR/ai-agent-service"
-  gcloud run deploy brain-ai-optimizer-us \
-    --source . \
-    --region us-central1 \
-    --allow-unauthenticated \
-    --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project)"
+    print_warning "gcloud CLI not found. Please install Google Cloud SDK."
+    print_warning "Will proceed with local Docker build only."
+    GCLoud_AVAILABLE=false
 else
-  echo "⚠️  AI Service directory not found. Skipping AI deployment."
+    GCLoud_AVAILABLE=true
+    PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
+    if [ -z "$PROJECT_ID" ]; then
+        print_warning "No GCP project configured. Setting default."
+        PROJECT_ID="alpha-orion"
+    fi
+    print_status "GCP Project: $PROJECT_ID"
 fi
 
-# 6. Deploy Frontend Dashboard
-echo "☁️  Deploying Frontend Dashboard..."
+# Check Docker
+if ! command -v docker &> /dev/null; then
+    print_warning "Docker not found. Skipping image builds."
+    DOCKER_AVAILABLE=false
+else
+    DOCKER_AVAILABLE=true
+    print_status "Docker available"
+fi
+
+echo ""
+
+# Step 2: Deploy Smart Contracts
+echo "📦 Step 2: Deploy Smart Contracts"
+echo "----------------------------------"
+
+cd "$ROOT_DIR/alpha-orion/alpha-orion/smart-contracts"
+
+if [ -f ".env" ]; then
+    print_status "Found .env file"
+else
+    print_warning "No .env file found. Copying .env.example..."
+    cp .env.example .env
+    print_warning "Please edit .env with your private key before deploying!"
+fi
+
+if [ "$GCLoud_AVAILABLE" = true ]; then
+    print_status "Compiling contracts..."
+    npm install --silent 2>/dev/null
+    npx hardhat compile
+    
+    print_status "Deploying to Ethereum mainnet..."
+    npx hardhat run scripts/deploy.js --network mainnet
+    
+    # Get deployed address
+    CONTRACT_ADDRESS=$(cat deployments/mainnet.json 2>/dev/null | grep -o '"contractAddress": "[^"]*"' | cut -d'"' -f4)
+    if [ -n "$CONTRACT_ADDRESS" ]; then
+        print_status "Contract deployed at: $CONTRACT_ADDRESS"
+    fi
+else
+    print_warning "Skipping smart contract deployment (gcloud not available)"
+    print_status "Run manually: npx hardhat run scripts/deploy.js --network mainnet"
+fi
+
+echo ""
+
+# Step 3: Build Docker Images
+echo "🐳 Step 3: Build Docker Images"
+echo "-------------------------------"
+
 cd "$ROOT_DIR"
-echo "   Source Directory: $ROOT_DIR"
 
-gcloud run deploy frontend-dashboard \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated
+SERVICES=(
+    "backend-services/services/brain-orchestrator:brain-orchestrator"
+)
+
+for service_info in "${SERVICES[@]}"; do
+    IFS=':' read -r service_dir image_name <<< "$service_info"
+    
+    if [ -d "$service_dir" ]; then
+        if [ "$DOCKER_AVAILABLE" = true ]; then
+            print_status "Building $image_name..."
+            docker build -t "$image_name:latest" "$service_dir/" --quiet 2>/dev/null || \
+                docker build -t "$image_name:latest" "$service_dir/"
+        else
+            print_warning "Skipping $image_name (Docker not available)"
+        fi
+    else
+        print_warning "Directory $service_dir not found"
+    fi
+done
 
 echo ""
+
+# Step 4: Push to Artifact Registry
+echo "📤 Step 4: Push to Artifact Registry"
+echo "------------------------------------"
+
+if [ "$GCLoud_AVAILABLE" = true ] && [ "$DOCKER_AVAILABLE" = true ]; then
+    REGION="us-central1"
+    REPO="alpha-orion-repo"
+    
+    # Configure Docker
+    gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+    
+    for service_info in "${SERVICES[@]}"; do
+        IFS=':' read -r service_dir image_name <<< "$service_info"
+        
+        if [ -d "$service_dir" ]; then
+            full_image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${image_name}:latest"
+            
+            print_status "Tagging $image_name:latest -> $full_image"
+            docker tag "$image_name:latest" "$full_image"
+            
+            print_status "Pushing $full_image..."
+            docker push "$full_image" --quiet
+        fi
+    done
+else
+    print_warning "Skipping push to Artifact Registry"
+fi
+
+echo ""
+
+# Step 5: Deploy to Cloud Run
+echo "☁️  Step 5: Deploy to Cloud Run"
+echo "--------------------------------"
+
+if [ "$GCLoud_AVAILABLE" = true ]; then
+    # Deploy Brain Orchestrator
+    if [ -d "backend-services/services/brain-orchestrator" ]; then
+        print_status "Deploying brain-orchestrator..."
+        
+        ORCHESTRATOR_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/brain-orchestrator:latest"
+        
+        gcloud run deploy brain-orchestrator \
+            --image "$ORCHESTRATOR_IMAGE" \
+            --region "$REGION" \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars="NODE_ENV=production,ARBITRAGE_CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-},ETHEREUM_RPC_URL=${ETHEREUM_RPC_URL:-},PIMLICO_API_KEY=${PIMLICO_API_KEY:-},GCP_PROJECT_ID=${PROJECT_ID}" \
+            --memory 1Gi \
+            --cpu 2 \
+            --min-instances 1 \
+            --max-instances 10 \
+            --timeout 3600s \
+            --concurrency 80 \
+            --service-account "alpha-orion@${PROJECT_ID}.iam.gserviceaccount.com" \
+            --quiet
+        
+        ORCHESTRATOR_URL=$(gcloud run services describe brain-orchestrator --region "$REGION" --format 'value(status.url)')
+        print_status "Brain Orchestrator: $ORCHESTRATOR_URL"
+    fi
+    
+    # Deploy Frontend Dashboard
+    print_status "Deploying frontend dashboard..."
+    gcloud run deploy alpha-orion-dashboard \
+        --source . \
+        --region "$REGION" \
+        --platform managed \
+        --allow-unauthenticated \
+        --memory 512Mi \
+        --quiet
+    
+    DASHBOARD_URL=$(gcloud run services describe alpha-orion-dashboard --region "$REGION" --format 'value(status.url)')
+    print_status "Dashboard: $DASHBOARD_URL"
+else
+    print_warning "Skipping Cloud Run deployment (gcloud not available)"
+fi
+
+echo ""
+
+# Step 6: Summary
+echo "=============================================="
 echo "✅ Deployment Complete!"
+echo "=============================================="
+echo ""
 
-USER_API_URL=$(gcloud run services describe user-api-service --region us-central1 --format 'value(status.url)')
-OPTIMIZER_URL=$(gcloud run services describe brain-ai-optimizer-us --region us-central1 --format 'value(status.url)')
-DASHBOARD_URL=$(gcloud run services describe frontend-dashboard --region us-central1 --format 'value(status.url)')
-
-echo "   User API URL: $USER_API_URL"
-echo "   AI Optimizer URL: $OPTIMIZER_URL"
-echo "   Dashboard URL: $DASHBOARD_URL"
-echo "   User API Monitor: https://console.cloud.google.com/run/detail/us-central1/user-api-service/metrics"
-echo "   AI Optimizer Monitor: https://console.cloud.google.com/run/detail/us-central1/brain-ai-optimizer-us/metrics"
-echo "   Dashboard Monitor: https://console.cloud.google.com/run/detail/us-central1/frontend-dashboard/metrics"
+if [ "$GCLoud_AVAILABLE" = true ]; then
+    echo "🌐 Endpoints:"
+    echo "   Dashboard: $DASHBOARD_URL"
+    echo "   Orchestrator: $ORCHESTRATOR_URL"
+    echo ""
+    echo "📊 Monitoring:"
+    echo "   https://console.cloud.google.com/run/detail/${REGION}/brain-orchestrator"
+    echo ""
+    echo "🔗 API Endpoints:"
+    echo "   $ORCHESTRATOR_URL/health"
+    echo "   $ORCHESTRATOR_URL/profit/real-time"
+    echo "   $ORCHESTRATOR_URL/blockchain/status"
+fi
 
 echo ""
-echo "🔍 Verifying Service Health..."
-echo "   User API: $(curl -s "$USER_API_URL/health")"
-echo "   AI Optimizer: $(curl -s "$OPTIMIZER_URL/health")"
-echo "   Dashboard: $(curl -s -o /dev/null -w "%{http_code}" "$DASHBOARD_URL")"
+echo "📋 Next Steps:"
+echo "   1. Update DNS if needed"
+echo "   2. Configure custom domain"
+echo "   3. Set up monitoring alerts"
+echo "   4. Verify smart contract on Etherscan"
+echo ""
+
+# Step 7: Health Check
+echo "🏥 Step 6: Health Check"
+echo "-----------------------"
+
+if [ -n "$ORCHESTRATOR_URL" ]; then
+    sleep 3
+    HEALTH=$(curl -s "${ORCHESTRATOR_URL}/health" 2>/dev/null || echo '{"status":"unknown"}')
+    print_status "Orchestrator Health: $HEALTH"
+fi
 
 echo ""
-echo "ℹ️  To check Cloud Build trigger status: ./check_build_status.sh"
+echo "🎉 Alpha-Orion is now running in production!"
