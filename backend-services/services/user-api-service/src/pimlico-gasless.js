@@ -8,11 +8,11 @@ class PimlicoGaslessEngine {
     this.bundlerUrl = 'https://api.pimlico.io/v2/polygon-zkevm/rpc';
     this.paymasterUrl = 'https://api.pimlico.io/v2/polygon-zkevm/rpc';
     this.chainId = 1101; // Polygon zkEVM
-    
+
     if (!this.apiKey) {
       throw new Error("Pimlico API Key is required for gasless transactions.");
     }
-    
+
     this.provider = new ethers.providers.JsonRpcProvider(this.rpcUrl);
     console.log(`[Pimlico] Engine initialized for Polygon zkEVM with API Key: ${this.apiKey.substring(0, 6)}...`);
   }
@@ -107,8 +107,8 @@ class PimlicoGaslessEngine {
       );
       const packedUserOpHash = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
-            ['bytes32', 'address', 'uint256'],
-            [userOpHash, entryPointAddress, this.chainId]
+          ['bytes32', 'address', 'uint256'],
+          [userOpHash, entryPointAddress, this.chainId]
         )
       );
       const signature = await wallet.signMessage(ethers.utils.arrayify(packedUserOpHash));
@@ -134,6 +134,78 @@ class PimlicoGaslessEngine {
       console.error(`[Pimlico] Gasless withdrawal failed:`, error.message);
       throw new Error(`Gasless withdrawal failed: ${error.message}`);
     }
+  }
+
+  async executeArbitrageUserOp(targetAddress, callData) {
+    console.log(`[Pimlico] Constructing Gasless Arbitrage UserOp for target: ${targetAddress}`);
+
+    try {
+      const sender = process.env.SMART_ACCOUNT_ADDRESS;
+      if (!sender) throw new Error("Smart Account Address missing");
+
+      const userOp = {
+        sender,
+        nonce: await this.getNonce(sender),
+        initCode: '0x',
+        callData, // Already encoded function call
+        callGasLimit: ethers.utils.hexlify(2000000), // High limit for complex arbitrage
+        verificationGasLimit: ethers.utils.hexlify(300000),
+        preVerificationGas: ethers.utils.hexlify(100000),
+        maxFeePerGas: ethers.utils.hexlify(ethers.utils.parseUnits('2', 'gwei')),
+        maxPriorityFeePerGas: ethers.utils.hexlify(ethers.utils.parseUnits('1.5', 'gwei')),
+        paymasterAndData: '0x',
+        signature: '0x'
+      };
+
+      // Request Sponsorship
+      const pmResponse = await axios.post(this.paymasterUrl, {
+        jsonrpc: '2.0', id: 1, method: 'pm_sponsorUserOperation',
+        params: [userOp, { apiKey: this.apiKey, entryPoint: '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' }]
+      });
+
+      if (pmResponse.data.error) throw new Error(pmResponse.data.error.message);
+
+      const pmResult = pmResponse.data.result;
+      userOp.paymasterAndData = pmResult.paymasterAndData;
+      userOp.callGasLimit = pmResult.callGasLimit;
+      userOp.preVerificationGas = pmResult.preVerificationGas;
+      userOp.verificationGasLimit = pmResult.verificationGasLimit;
+
+      // Sign
+      const wallet = new ethers.Wallet(process.env.SMART_ACCOUNT_PRIVATE_KEY, this.provider);
+      const chainId = 137; // Default to Polygon Mainnet for now, or make dynamic
+      const entryPoint = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789';
+
+      // Calculate hash (Simplified for brevity, ensuring standard EIP-4337 hashing)
+      const userOpHash = await this.getUserOpHash(userOp, entryPoint, chainId);
+      userOp.signature = await wallet.signMessage(ethers.utils.arrayify(userOpHash));
+
+      // Submit
+      const bundleRes = await axios.post(this.bundlerUrl, {
+        jsonrpc: '2.0', id: 1, method: 'eth_sendUserOperation',
+        params: [userOp, entryPoint]
+      });
+
+      if (bundleRes.data.error) throw new Error(bundleRes.data.error.message);
+
+      return bundleRes.data.result; // The UserOp Hash
+    } catch (e) {
+      console.error(`[Pimlico] Arbitrage Execution Failed: ${e.message}`);
+      throw e;
+    }
+  }
+
+  // Helper to calculate UserOp Hash off-chain
+  async getUserOpHash(userOp, entryPoint, chainId) {
+    const packed = ethers.utils.defaultAbiCoder.encode(
+      ['address', 'uint256', 'bytes32', 'bytes32', 'uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'bytes32'],
+      [userOp.sender, userOp.nonce, ethers.utils.keccak256(userOp.initCode), ethers.utils.keccak256(userOp.callData), userOp.callGasLimit, userOp.verificationGasLimit, userOp.preVerificationGas, userOp.maxFeePerGas, userOp.maxPriorityFeePerGas, ethers.utils.keccak256(userOp.paymasterAndData)]
+    );
+    const enc = ethers.utils.defaultAbiCoder.encode(
+      ['bytes32', 'address', 'uint256'],
+      [ethers.utils.keccak256(packed), entryPoint, chainId]
+    );
+    return ethers.utils.keccak256(enc);
   }
 
   async getNonce(sender) {

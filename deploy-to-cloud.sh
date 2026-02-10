@@ -4,6 +4,9 @@ set -e
 echo "🚀 Alpha-Orion: Cloud Production Deployment"
 echo "==========================================="
 
+# Save root directory for reliable navigation
+ROOT_DIR="$(pwd)"
+
 # 1. Commit Changes
 echo "📦 Committing latest configuration and fixes..."
 git add .
@@ -27,9 +30,9 @@ if ! command -v gcloud &> /dev/null; then
     elif [ -d "/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
         echo "🔄 Detected Google Cloud SDK in Program Files. Adding to PATH..."
         export PATH=$PATH:"/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin"
-    elif [ -d "/c/Users/$USER/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
+    elif [ -d "/c/Users/${USERNAME:-$USER}/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin" ]; then
         echo "🔄 Detected Google Cloud SDK in AppData. Adding to PATH..."
-        export PATH=$PATH:"/c/Users/$USER/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
+        export PATH=$PATH:"/c/Users/${USERNAME:-$USER}/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
     fi
 fi
 
@@ -45,7 +48,7 @@ echo "✅ Google Cloud SDK detected: $(gcloud --version | head -n 1)"
 
 # 4. Deploy User API Service
 echo "☁️  Deploying User API Service..."
-cd backend-services/services/user-api-service
+cd "$ROOT_DIR/backend-services/services/user-api-service"
 
 gcloud run deploy user-api-service \
   --source . \
@@ -55,18 +58,36 @@ gcloud run deploy user-api-service \
 
 # 5. Deploy AI Optimizer Service (Updated for Gemini Monitoring)
 echo "☁️  Deploying AI Optimizer Service..."
-cd ../ai-optimizer
-
-gcloud run deploy brain-ai-optimizer-us \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project)"
+# Check common locations relative to root or current location
+if [ -d "$ROOT_DIR/backend-services/services/ai-optimizer" ]; then
+  cd "$ROOT_DIR/backend-services/services/ai-optimizer"
+  gcloud run deploy brain-ai-optimizer-us \
+    --source . \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project)"
+elif [ -d "$ROOT_DIR/ai-optimizer" ]; then
+  cd "$ROOT_DIR/ai-optimizer"
+  gcloud run deploy brain-ai-optimizer-us \
+    --source . \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project)"
+elif [ -d "$ROOT_DIR/ai-agent-service" ]; then
+  cd "$ROOT_DIR/ai-agent-service"
+  gcloud run deploy brain-ai-optimizer-us \
+    --source . \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --set-env-vars="NODE_ENV=production,GCP_PROJECT_ID=$(gcloud config get-value project)"
+else
+  echo "⚠️  AI Service directory not found. Skipping AI deployment."
+fi
 
 # 6. Deploy Frontend Dashboard
 echo "☁️  Deploying Frontend Dashboard..."
-cd ../../..
-echo "   Source Directory: $(pwd)"
+cd "$ROOT_DIR"
+echo "   Source Directory: $ROOT_DIR"
 
 gcloud run deploy frontend-dashboard \
   --source . \

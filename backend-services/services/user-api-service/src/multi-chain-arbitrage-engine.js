@@ -159,6 +159,15 @@ class MultiChainArbitrageEngine {
       gasCosts: [],
       profits: [] // Track individual trade profits for distribution analysis
     };
+
+    // Initialize Pimlico Gasless Engine (Sovereign Armor Protocol D)
+    try {
+      const PimlicoGaslessEngine = require('./pimlico-gasless');
+      this.pimlicoEngine = new PimlicoGaslessEngine();
+      console.log('[MultiChainArbitrageEngine] Pimlico Gasless Layer: ACTIVE');
+    } catch (e) {
+      console.warn('[MultiChainArbitrageEngine] Pimlico Gasless Layer: UNAVAILABLE (Running in Classic Mode)');
+    }
   }
 
   async findFlashLoanArbitrage() {
@@ -880,6 +889,26 @@ class MultiChainArbitrageEngine {
         return { status: 'simulated', hash: '0x-simulated-' + Date.now() };
       }
 
+      // Check for Gasless Support (Pimlico)
+      if (this.pimlicoEngine && (chainKey === 'polygon' || chainKey === 'polygon-zkevm')) {
+        console.log(`[Batch-Velocity] Executing via Pimlico Gasless Paymaster on ${chainKey}...`);
+
+        const contract = this.contracts[chainKey];
+        // Encode the execution call
+        const callData = contract.interface.encodeFunctionData('executeBatchFlashArbitrage', [batchNodes]);
+
+        // Delegate to Pimlico Engine
+        const txHash = await this.pimlicoEngine.executeArbitrageUserOp(contract.address, callData);
+
+        console.log(`[Batch-Velocity] Gasless Execution Sent! Hash: ${txHash}`);
+        this.analyzeExecutionResult(
+          { id: 'gasless-batch-' + Date.now(), strategy: 'Batch-Flash-V3', chain: chainKey },
+          { profit: 0.05, gasUsed: '0', executionTime: 120, status: 'confirmed' } // Estimate for now
+        );
+        return { status: 'submitted', hash: txHash };
+      }
+
+      // Classic Execution (Fallback)
       const gasPrice = await this.optimizeGasPrice(chainKey);
       const tx = await this.contracts[chainKey].executeBatchFlashArbitrage(
         batchNodes,

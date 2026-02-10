@@ -27,14 +27,14 @@ echo "🔍 Searching for Google Cloud SDK..."
 PATHS_TO_CHECK=(
     "/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin"
     "/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin"
-    "/c/Users/$USERNAME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
+    "/c/Users/${USERNAME:-$USER}/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
     "/c/google-cloud-sdk/bin"
 )
 
 GCLOUD_BIN_PATH=""
 
 for PATH_CHECK in "${PATHS_TO_CHECK[@]}"; do
-    if [ -d "$PATH_CHECK" ]; then
+    if [ -d "$PATH_CHECK" ] && { [ -f "$PATH_CHECK/gcloud" ] || [ -f "$PATH_CHECK/gcloud.cmd" ] || [ -f "$PATH_CHECK/gcloud.exe" ]; }; then
         GCLOUD_BIN_PATH="$PATH_CHECK"
         break
     fi

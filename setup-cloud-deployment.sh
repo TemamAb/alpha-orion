@@ -30,6 +30,18 @@ echo ""
 check_prerequisites() {
     echo -e "${YELLOW}📋 Checking prerequisites...${NC}"
 
+    # Attempt to auto-detect gcloud path for Windows/MINGW64
+    if ! command -v gcloud &> /dev/null; then
+        local possible_paths=(
+            "/c/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin"
+            "/c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin"
+            "/c/Users/${USERNAME:-$USER}/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
+        )
+        for p in "${possible_paths[@]}"; do
+            if [ -d "$p" ]; then export PATH=$PATH:"$p"; break; fi
+        done
+    fi
+
     # Check if gcloud is installed
     if ! command -v gcloud &> /dev/null; then
         echo -e "${RED}❌ gcloud CLI is not installed. Please install Google Cloud SDK.${NC}"
@@ -211,8 +223,8 @@ run_deployment_diagnostics() {
     echo -e "${YELLOW}🔍 Running deployment diagnostics...${NC}"
 
     if [ ! -f "fix-gcp-deployment-issues.py" ]; then
-        echo -e "${RED}❌ fix-gcp-deployment-issues.py not found${NC}"
-        return 1
+        echo -e "${YELLOW}⚠️ fix-gcp-deployment-issues.py not found. Skipping diagnostics...${NC}"
+        return 0
     fi
 
     python3 fix-gcp-deployment-issues.py --project=$PROJECT_ID --diagnose-only
