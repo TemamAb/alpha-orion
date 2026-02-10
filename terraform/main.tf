@@ -48,7 +48,16 @@ module "user-api-service" {
     max_instance_count = 10
     min_instance_count = 1
   }
-  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+  env_secret_vars = merge({
+    "pimlico-api-key" = module.pimlico-api-secret.env_vars.SECRET
+    "one-inch-api-key" = module.one-inch-api-secret.env_vars.SECRET
+    "infura-api-key" = module.infura-api-secret.env_vars.SECRET
+    "polygon-rpc-url" = module.polygon-rpc-secret.env_vars.SECRET
+    "ethereum-rpc-url" = module.ethereum-rpc-secret.env_vars.SECRET
+    "etherscan-api-key" = module.etherscan-api-secret.env_vars.SECRET
+    "profit-destination-wallet" = module.profit-destination-wallet-secret.env_vars.SECRET
+  }, {"db_secret" = module.db-secret.env_vars.SECRET})
+  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project, module.pimlico-api-secret, module.one-inch-api-secret, module.infura-api-secret, module.polygon-rpc-secret, module.ethereum-rpc-secret, module.etherscan-api-secret, module.profit-destination-wallet-secret]
 }
 module "db-secret" {
   source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
@@ -240,6 +249,66 @@ module "withdrawal-wallet-secret" {
   project_id  = "alpha-orion"
   name        = "withdrawal-wallet-keys"
   secret_data = "YOUR_WITHDRAWAL_WALLET_KEYS_HERE"
+  automatic_replication = {
+    kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
+  }
+  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+}
+module "one-inch-api-secret" {
+  source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
+  project_id  = "alpha-orion"
+  name        = "one-inch-api-key"
+  secret_data = "YOUR_1INCH_API_KEY_HERE"
+  automatic_replication = {
+    kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
+  }
+  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+}
+module "infura-api-secret" {
+  source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
+  project_id  = "alpha-orion"
+  name        = "infura-api-key"
+  secret_data = "YOUR_INFURA_API_KEY_HERE"
+  automatic_replication = {
+    kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
+  }
+  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+}
+module "polygon-rpc-secret" {
+  source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
+  project_id  = "alpha-orion"
+  name        = "polygon-rpc-url"
+  secret_data = "https://polygon-mainnet.infura.io/v3/YOUR_INFURA_KEY"
+  automatic_replication = {
+    kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
+  }
+  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+}
+module "ethereum-rpc-secret" {
+  source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
+  project_id  = "alpha-orion"
+  name        = "ethereum-rpc-url"
+  secret_data = "https://mainnet.infura.io/v3/YOUR_INFURA_KEY"
+  automatic_replication = {
+    kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
+  }
+  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+}
+module "etherscan-api-secret" {
+  source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
+  project_id  = "alpha-orion"
+  name        = "etherscan-api-key"
+  secret_data = "YOUR_ETHERSCAN_API_KEY_HERE"
+  automatic_replication = {
+    kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
+  }
+  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
+}
+module "profit-destination-wallet-secret" {
+  source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
+  project_id  = "alpha-orion"
+  name        = "profit-destination-wallet"
+  secret_data = "0xYOUR_PROFIT_WALLET_ADDRESS_HERE"
   automatic_replication = {
     kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
   }

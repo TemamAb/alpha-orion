@@ -207,7 +207,7 @@ create_build_trigger() {
         gcloud builds triggers create github \
             --name=alpha-orion-enterprise-deploy \
             --repo-name=alpha-orion \
-            --repo-owner=TemamAB \
+            --repo-owner=TemamAb \
             --branch-pattern="^main$" \
             --build-config=cloudbuild-enterprise.yaml \
             --included-files="**/*" \

@@ -15,8 +15,8 @@ git add Dockerfile .dockerignore 2>/dev/null || true
 git commit -m "deploy: production release $(date +%Y%m%d-%H%M)" || echo "⚠️  Nothing to commit, proceeding..."
 
 # 2. Push to GitHub (Triggers Cloud Build if configured)
-echo "⬆️  Pushing to GitHub main branch..."
-git push origin main
+echo "⬆️  Skipping push to GitHub for direct deploy..."
+# git push origin main
 
 # 3. Direct Cloud Run Deployment (Ensures immediate update)
 echo "☁️  Deploying directly to Google Cloud Run..."

@@ -66,6 +66,21 @@ Alpha-Orion is a sophisticated flash loan arbitrage system designed to identify 
 - **CI/CD**: Cloud Build, GitHub Actions
 - **Security**: Binary Authorization, KMS, Secret Manager
 
+## ✨ Key Features Summary
+
+Alpha-Orion is a cutting-edge flash loan arbitrage platform featuring:
+
+- **Gasless Trading**: Pimlico ERC-4337 integration for zero gas fees on Polygon zkEVM
+- **Real-time Arbitrage Detection**: Continuous DEX monitoring across multiple chains
+- **Automated Execution**: Smart contract-based flash loan arbitrage with atomic transactions
+- **Live Profit Dashboard**: Real-time P&L tracking, metrics, and analytics
+- **AI Optimization**: Gemini AI integration for strategy enhancement
+- **Enterprise Security**: GCP-based deployment with binary authorization and encryption
+- **Multi-Region Infrastructure**: Global deployment for low-latency operations
+- **Backtesting Environment**: Dedicated clusters for strategy validation
+- **Risk Management**: Slippage protection, gas optimization, and audit logging
+- **Auto-Withdrawal**: Gasless USDC transfers at configurable thresholds
+
 ## ✨ Features
 
 ### Core Features
