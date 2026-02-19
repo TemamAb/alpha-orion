@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "build": "echo 'No build needed - Node.js backend'",
     "test": "jest",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
