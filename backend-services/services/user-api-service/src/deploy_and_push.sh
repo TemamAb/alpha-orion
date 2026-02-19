@@ -27,7 +27,7 @@ else
 fi
 
 # 2. Configure Remote
-REMOTE_URL="https://github.com/TemamAb/alpha-orion.git"
+REMOTE_URL="https://github.com/TemamAb/alpha.git"
 if git remote | grep -q "origin"; then
     git remote set-url origin $REMOTE_URL
 else
@@ -36,11 +36,28 @@ fi
 
 # 3. Commit and Push
 echo "💾 Committing changes..."
+
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+VERSION_TAG="v$TIMESTAMP"
+
+if [ -f "package.json" ]; then
+    echo "📝 Updating package.json version to $TIMESTAMP..."
+    sed -i "s/\"version\": \".*\"/\"version\": \"$TIMESTAMP\"/" package.json
+fi
+
 git add .
-git commit -m "feat: deployment readiness transformation - secrets integration and CI/CD" || echo "Nothing to commit"
+if git commit -m "feat: deployment readiness transformation - secrets integration and CI/CD"; then
+    COMMIT_HASH=$(git rev-parse HEAD)
+    echo "📝 Captured commit hash: $COMMIT_HASH"
+
+    echo "🏷️ Tagging commit with $VERSION_TAG..."
+    git tag -a "$VERSION_TAG" -m "Deployment version $VERSION_TAG"
+else
+    echo "Nothing to commit"
+fi
 
 echo "⬆️ Pushing to GitHub ($REMOTE_URL)..."
-git push -u origin main
+git push -u origin main --tags
 
 # 4. Pre-flight Checks
 echo "🔍 Checking configuration..."

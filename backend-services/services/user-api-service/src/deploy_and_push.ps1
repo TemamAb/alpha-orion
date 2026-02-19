@@ -27,7 +27,7 @@ if (!(Test-Path ".git")) {
 }
 
 # 2. Configure Remote
-$RemoteUrl = "https://github.com/TemamAb/alpha-orion.git"
+$RemoteUrl = "https://github.com/TemamAb/alpha.git"
 $Remotes = git remote
 if ($Remotes -contains "origin") {
     git remote set-url origin $RemoteUrl
@@ -37,16 +37,30 @@ if ($Remotes -contains "origin") {
 
 # 3. Commit and Push
 Write-Host "Committing changes..." -ForegroundColor Cyan
+
+$Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$VersionTag = "v$Timestamp"
+
+if (Test-Path "package.json") {
+    Write-Host "📝 Updating package.json version to $Timestamp..." -ForegroundColor Cyan
+    (Get-Content "package.json") -replace '"version": ".*"', """version"": ""$Timestamp""" | Set-Content "package.json"
+}
+
 git add .
-try {
-    git commit -m "feat: deployment readiness transformation - secrets integration and CI/CD"
-} catch {
+git commit -m "feat: deployment readiness transformation - secrets integration and CI/CD"
+if ($LASTEXITCODE -eq 0) {
+    $CommitHash = (git rev-parse HEAD).Trim()
+    Write-Host "📝 Captured commit hash: $CommitHash" -ForegroundColor Cyan
+
+    Write-Host "🏷️ Tagging commit with $VersionTag..." -ForegroundColor Cyan
+    git tag -a "$VersionTag" -m "Deployment version $VersionTag"
+} else {
     Write-Host "Nothing to commit" -ForegroundColor Yellow
 }
 
 try {
     Write-Host "Pushing to GitHub ($RemoteUrl)..." -ForegroundColor Cyan
-    git push -u origin main 2>&1 | Out-Null
+    git push -u origin main --tags 2>&1 | Out-Null
 } catch {
     Write-Warning "Git push failed (Network/Auth issue). Skipping push and proceeding to deployment..."
     $global:Error.Clear()
