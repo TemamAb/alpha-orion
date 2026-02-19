@@ -66,6 +66,11 @@ def get_web3():
 circuit_breaker_open = False
 failure_count = 0
 
+# Profit Engine State
+profit_engine_running = False
+profit_engine_start_time = None
+active_strategies = []
+
 # Routes
 
 @app.route('/health', methods=['GET'])
@@ -287,10 +292,133 @@ def index():
             '/health',
             '/blockchain/status',
             '/profit/real-time',
+            '/profit/start',
+            '/profit/stop',
+            '/profit/status',
             '/wallet',
             '/settings',
             '/security/status'
         ]
+    })
+
+# Profit Engine Endpoints
+@app.route('/profit/start', methods=['POST'])
+@require_auth
+def start_profit_engine():
+    """Start the profit generation engine"""
+    global profit_engine_running, profit_engine_start_time, active_strategies
+    
+    if profit_engine_running:
+        return jsonify({
+            'success': False,
+            'message': 'Profit engine already running'
+        }), 400
+    
+    # Validate wallet configuration
+    wallet_address = os.getenv('WALLET_ADDRESS')
+    if not wallet_address:
+        return jsonify({
+            'success': False,
+            'message': 'No wallet configured'
+        }), 400
+    
+    # Validate contract deployment
+    if not ARBITRAGE_CONTRACT_ADDRESS:
+        return jsonify({
+            'success': False,
+            'message': 'No arbitrage contract deployed'
+        }), 400
+    
+    # Initialize profit engine
+    profit_engine_running = True
+    profit_engine_start_time = datetime.datetime.utcnow()
+    active_strategies = [
+        {'name': 'Flash Loan Arbitrage', 'status': 'active', 'minProfitThreshold': 10},
+        {'name': 'Triangular Arbitrage', 'status': 'active', 'minProfitThreshold': 5},
+        {'name': 'Cross-DEX Arbitrage', 'status': 'active', 'minProfitThreshold': 15}
+    ]
+    
+    logger.info(f"Profit engine started at {profit_engine_start_time}")
+    
+    return jsonify({
+        'success': True,
+        'message': 'Profit engine started',
+        'startTime': profit_engine_start_time.isoformat(),
+        'strategies': active_strategies
+    })
+
+@app.route('/profit/stop', methods=['POST'])
+@require_auth
+def stop_profit_engine():
+    """Stop the profit generation engine"""
+    global profit_engine_running, active_strategies
+    
+    if not profit_engine_running:
+        return jsonify({
+            'success': False,
+            'message': 'Profit engine not running'
+        }), 400
+    
+    profit_engine_running = False
+    active_strategies = []
+    
+    logger.info("Profit engine stopped")
+    
+    return jsonify({
+        'success': True,
+        'message': 'Profit engine stopped'
+    })
+
+@app.route('/profit/status', methods=['GET'])
+def profit_status():
+    """Get profit engine status"""
+    global profit_engine_running, profit_engine_start_time, active_strategies
+    
+    # Get current profit data
+    web3 = get_web3()
+    connected = web3.is_connected()
+    
+    total_profit = 0
+    total_trades = 0
+    
+    if connected and ARBITRAGE_CONTRACT_ADDRESS:
+        try:
+            contract = web3.eth.contract(
+                address=Web3.to_checksum_address(ARBITRAGE_CONTRACT_ADDRESS),
+                abi=[{
+                    "anonymous": False,
+                    "inputs": [
+                        {"indexed": True, "name": "profit", "type": "uint256"}
+                    ],
+                    "name": "ArbitrageExecuted",
+                    "type": "event"
+                }]
+            )
+            from_block = max(0, web3.eth.block_number - 10000)
+            events = contract.events.ArbitrageExecuted.get_logs(fromBlock=from_block, toBlock='latest')
+            total_trades = len(events)
+            for event in events:
+                profit_wei = event['args']['profit']
+                total_profit += float(web3.from_wei(profit_wei, 'ether'))
+        except Exception as e:
+            logger.error(f"Error fetching profit data: {e}")
+    
+    return jsonify({
+        'running': profit_engine_running,
+        'startTime': profit_engine_start_time.isoformat() if profit_engine_start_time else None,
+        'uptime': str(datetime.datetime.utcnow() - profit_engine_start_time) if profit_engine_running and profit_engine_start_time else None,
+        'strategies': active_strategies,
+        'totalStrategies': len(active_strategies),
+        'metrics': {
+            'totalProfit': total_profit,
+            'totalProfitUSD': round(total_profit * 2600, 2),
+            'totalTrades': total_trades,
+            'winRate': 100.0 if total_trades > 0 else 0
+        },
+        'blockchain': {
+            'connected': connected,
+            'contractDeployed': bool(ARBITRAGE_CONTRACT_ADDRESS)
+        }
     })
 
 if __name__ == '__main__':

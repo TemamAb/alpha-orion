@@ -5,19 +5,43 @@ from flask_talisman import Talisman
 import os
 import json
 import logging
-import vertexai
-from vertexai.generative_models import GenerativeModel, Part, SafetySetting
-from google.cloud import pubsub_v1
-from google.cloud import storage
-from google.cloud import bigquery
-from google.cloud import bigtable
-from google.cloud import secretmanager
-from google.cloud import logging as cloud_logging
+
+# Optional GCP/Vertex AI imports (for GCP deployment)
+try:
+    import vertexai
+    from vertexai.generative_models import GenerativeModel, Part, SafetySetting
+    from google.cloud import pubsub_v1
+    from google.cloud import storage
+    from google.cloud import bigquery
+    from google.cloud import bigtable
+    from google.cloud import secretmanager
+    from google.cloud import logging as cloud_logging
+    VERTEXAI_AVAILABLE = True
+except ImportError:
+    vertexai = None
+    GenerativeModel = None
+    Part = None
+    SafetySetting = None
+    pubsub_v1 = None
+    storage = None
+    bigquery = None
+    bigtable = None
+    secretmanager = None
+    cloud_logging = None
+    VERTEXAI_AVAILABLE = False
+
+# Optional OpenAI imports
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    openai = None
+    OPENAI_AVAILABLE = False
 
 # --- Configuration ---
 PROJECT_ID = os.getenv("PROJECT_ID", "alpha-orion")
 LOCATION = os.getenv("GCP_REGION", "us-central1")
-MODEL_ID = "gemini-1.5-pro-preview-0409" # Using the latest available High-Performance model
+MODEL_ID = "gemini-1.5-pro-preview-0409"
 
 app = Flask(__name__)
 CORS(app)
@@ -34,27 +58,50 @@ Talisman(app, content_security_policy={
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'default-dev-secret')
 jwt = JWTManager(app)
 
-# --- GCP Initialization ---
-try:
-    vertexai.init(project=PROJECT_ID, location=LOCATION)
-    # Using Gemini 1.5 Pro for maximum reasoning capability
-    model = GenerativeModel(MODEL_ID)
-    print(f"✅ Gemini 1.5 Pro ({MODEL_ID}) Initialized Successfully")
-except Exception as e:
-    print(f"⚠️ Failed to initialize Vertex AI: {e}")
-    model = None
+# --- AI Initialization (OpenAI preferred, fallback to Vertex AI) ---
+model = None
+ai_client_type = None
 
-# Logging
-logging_client = cloud_logging.Client()
-logger = logging_client.logger('ai-agent-service-core')
+# Try OpenAI first
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if openai_api_key and OPENAI_AVAILABLE:
+    openai.api_key = openai_api_key
+    ai_client_type = 'openai'
+    print(f"✅ OpenAI initialized successfully")
+# Fallback to Vertex AI / Gemini
+elif VERTEXAI_AVAILABLE and vertexai:
+    try:
+        vertexai.init(project=PROJECT_ID, location=LOCATION)
+        model = GenerativeModel(MODEL_ID)
+        ai_client_type = 'vertexai'
+        print(f"✅ Gemini 1.5 Pro ({MODEL_ID}) Initialized Successfully")
+    except Exception as e:
+        print(f"⚠️ Failed to initialize Vertex AI: {e}")
+else:
+    print("⚠️ No AI client available - using fallback mode")
+
+# Logging (with fallback)
+try:
+    if cloud_logging:
+        logging_client = cloud_logging.Client()
+        logger = logging_client.logger('ai-agent-service-core')
+    else:
+        raise Exception("Cloud logging not available")
+except:
+    # Fallback to standard logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger('ai-agent-service-core')
 
 def log_audit(event_type, details):
-    logger.log_struct({
-        "event": event_type,
-        "details": details,
-        "service": "ai-agent-service-v2",
-        "model": MODEL_ID
-    })
+    try:
+        logger.log_struct({
+            "event": event_type,
+            "details": details,
+            "service": "ai-agent-service-v2",
+            "model": MODEL_ID
+        })
+    except:
+        logger.info(f"{event_type}: {details}")
 
 # --- AI Logic ---
 

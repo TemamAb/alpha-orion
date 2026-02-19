@@ -8,9 +8,11 @@ import ErrorBoundary from './components/ErrorBoundary';
 import WalletManager from './components/WalletManager';
 import AITerminal from './components/AITerminal';
 import TreasuryPage from './pages/TreasuryPage'; // Import the new page
+import RiskHeatmap from '../RiskHeatmap';
+import SettingsComponent from '../Settings';
 import {
   Sparkles, LayoutDashboard, Gauge, Cpu, Activity, Clock, Fuel,
-  PieChart, Target, Database, Zap, Terminal, Wallet, Rocket, Menu, X, ShieldCheck
+  PieChart, Target, Database, Zap, Terminal, Wallet, Rocket, Menu, X, ShieldCheck, AlertTriangle, Loader, CheckCircle2, Settings, Sliders
 } from 'lucide-react';
 
 type MetricView =
@@ -29,7 +31,35 @@ type MetricView =
   | 'ai-terminal' // Existing AI Terminal view
   | 'treasury-balance' // New: Treasury Balance view
   | 'connect-wallet'
-  | 'deploy-engine';
+  | 'deploy-engine'
+  | 'settings'
+  | 'strategy-control';
+
+const playSuccessSound = (volume: number) => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    
+    const ctx = new AudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+    oscillator.frequency.linearRampToValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+    
+    gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.5);
+  } catch (e) {
+    console.error('Audio playback failed', e);
+  }
+};
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<MetricView>('core-metrics');
@@ -74,6 +104,11 @@ const App: React.FC = () => {
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState<string>('');
   const [isEngineRunning, setIsEngineRunning] = useState(false);
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [soundVolume, setSoundVolume] = useState(0.2);
 
   // New state for profit update animation
   const [isProfitUpdated, setIsProfitUpdated] = useState(false);
@@ -95,35 +130,47 @@ const App: React.FC = () => {
   }, []);
 
   const handleEngineStart = () => {
-    setIsEngineRunning(true);
+    setIsLaunching(true);
 
-    // Create a new deployment record for the registry
-    if (connectedWallet) {
-      const newDeployment = {
-        id: `deploy-${Date.now()}`,
-        deploymentCode: `ORION-HFT-${Math.floor(Math.random() * 900) + 100}`,
-        date: new Date().toLocaleString(),
-        timestamp: Date.now(),
-        smartWalletAddress: `0x748A${connectedWallet.substring(2, 6).toUpperCase()}...${connectedWallet.substring(connectedWallet.length - 4).toUpperCase()}`,
-        contractNumber: `42.v${Math.floor(Math.random() * 9) + 1}`,
-        status: 'active' as const,
-        network: 'Arbitrum Sepolia',
-        gasUsed: `${(Math.random() * 0.05 + 0.02).toFixed(4)} ETH`,
-        transactionHash: `0x${Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`
-      };
+    setTimeout(() => {
+      setIsEngineRunning(true);
+      setShowDeployModal(false);
+      setIsLaunching(false);
+      
+      // Show success toast
+      setToastMessage('Arbitrage Engine Deployed Successfully');
+      playSuccessSound(soundVolume);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 5000);
 
-      try {
-        const stored = localStorage.getItem('alpha_deployments');
-        const deployments = stored ? JSON.parse(stored) : [];
-        const updated = [newDeployment, ...deployments].slice(0, 50);
-        localStorage.setItem('alpha_deployments', JSON.stringify(updated));
+      // Create a new deployment record for the registry
+      if (connectedWallet) {
+        const newDeployment = {
+          id: `deploy-${Date.now()}`,
+          deploymentCode: `ORION-HFT-${Math.floor(Math.random() * 900) + 100}`,
+          date: new Date().toLocaleString(),
+          timestamp: Date.now(),
+          smartWalletAddress: `0x748A${connectedWallet.substring(2, 6).toUpperCase()}...${connectedWallet.substring(connectedWallet.length - 4).toUpperCase()}`,
+          contractNumber: `42.v${Math.floor(Math.random() * 9) + 1}`,
+          status: 'active' as const,
+          network: 'Arbitrum Sepolia',
+          gasUsed: `${(Math.random() * 0.05 + 0.02).toFixed(4)} ETH`,
+          transactionHash: `0x${Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`
+        };
 
-        // Trigger storage event for same-page listeners
-        window.dispatchEvent(new Event('storage'));
-      } catch (e) {
-        console.error('Failed to save deployment:', e);
+        try {
+          const stored = localStorage.getItem('alpha_deployments');
+          const deployments = stored ? JSON.parse(stored) : [];
+          const updated = [newDeployment, ...deployments].slice(0, 50);
+          localStorage.setItem('alpha_deployments', JSON.stringify(updated));
+
+          // Trigger storage event for same-page listeners
+          window.dispatchEvent(new Event('storage'));
+        } catch (e) {
+          console.error('Failed to save deployment:', e);
+        }
       }
-    }
+    }, 2000);
   };
 
   const handleWalletChange = (address: string) => {
@@ -265,7 +312,11 @@ const App: React.FC = () => {
 
   useEffect(() => { prevProfitRef.current = realTimeData.profits; }, [realTimeData.profits]);
 
-  const metricButtons = [
+  const settingsButtons = [ 
+    { id: 'settings', label: 'Settings', icon: <Settings size={14} /> },
+  ] as const;
+
+  const monitorButtons = [
     { id: 'core-metrics', label: 'Core Metrics', icon: <LayoutDashboard size={14} /> },
     { id: 'security-metrics', label: 'Security Metrics', icon: <ShieldCheck size={14} /> },
     { id: 'ai-optimization', label: 'AI Optimization Engine', icon: <Sparkles size={14} /> },
@@ -278,9 +329,23 @@ const App: React.FC = () => {
     { id: 'profit-withdrawal', label: 'Profit Withdrawal', icon: <Wallet size={14} /> },
     { id: 'flash-loan-providers', label: 'Flash Loan Providers', icon: <Zap size={14} /> },
     { id: 'blockchain-streaming', label: 'Blockchain Event Streaming', icon: <Activity size={14} /> },
-    { id: 'ai-terminal', label: 'Alpha-Orion AI Terminal', icon: <Terminal size={14} /> },
-    { id: 'treasury-balance', label: 'Treasury Balance', icon: <Wallet size={14} /> }, // New: Treasury Balance button
+    { id: 'treasury-balance', label: 'Treasury Balance', icon: <Wallet size={14} /> },
   ] as const;
+
+  const optimizeButtons = [
+    { id: 'ai-optimization', label: 'AI Optimization Engine', icon: <Sparkles size={14} /> },
+    { id: 'bot-fleets', label: 'Bot Fleets', icon: <Cpu size={14} /> },
+    { id: 'champion-discovery', label: 'Champion Discovery', icon: <Target size={14} /> },
+    { id: 'ai-terminal', label: 'Alpha-Orion AI Terminal', icon: <Terminal size={14} /> },
+  ] as const;
+
+  const commandButtons = [
+    { id: 'connect-wallet', label: 'Connect Wallet', icon: <Wallet size={14} /> },
+    { id: 'deploy-engine', label: 'Deploy Engine', icon: <Rocket size={14} /> },
+    { id: 'strategy-control', label: 'Strategy Control', icon: <Sliders size={14} /> },
+  ] as const;
+
+  const allNavButtons = [...settingsButtons, ...monitorButtons, ...optimizeButtons, ...commandButtons];
 
   return (
     <ErrorBoundary>
@@ -297,10 +362,12 @@ const App: React.FC = () => {
 
                 {/* Metrics Navigation */}
                 <div className="space-y-6">
+                  
+                  {/* 1. Settings */}
                   <div>
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">Metrics Dashboard</p>
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">1. Settings</p>
                     <nav className="space-y-1">
-                      {metricButtons.map((btn) => (
+                      {settingsButtons.map((btn) => (
                         <MetricButton
                           key={btn.id}
                           icon={btn.icon}
@@ -313,22 +380,52 @@ const App: React.FC = () => {
                   </div>
 
                   {/* Wallet & Engine Controls */}
+                  {/* 2. Monitor */}
                   <div className="pt-6 border-t border-slate-900">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">Engine Control</p>
-                    <div className="space-y-2">
-                      <MetricButton
-                        icon={<Wallet size={14} />}
-                        label="Connect Wallet"
-                        isActive={activeView === 'connect-wallet'}
-                        onClick={() => setActiveView('connect-wallet')}
-                      />
-                      <MetricButton
-                        icon={<Rocket size={14} />}
-                        label="Deploy Engine"
-                        isActive={activeView === 'deploy-engine'}
-                        onClick={() => setActiveView('deploy-engine')}
-                      />
-                    </div>
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">2. Monitor</p>
+                    <nav className="space-y-1">
+                      {monitorButtons.map((btn) => (
+                        <MetricButton
+                          key={btn.id}
+                          icon={btn.icon}
+                          label={btn.label}
+                          isActive={activeView === btn.id}
+                          onClick={() => setActiveView(btn.id as MetricView)}
+                        />
+                      ))}
+                    </nav>
+                  </div>
+
+                  {/* 3. Optimize */}
+                  <div className="pt-6 border-t border-slate-900">
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">3. Optimize</p>
+                    <nav className="space-y-1">
+                      {optimizeButtons.map((btn) => (
+                        <MetricButton
+                          key={btn.id}
+                          icon={btn.icon}
+                          label={btn.label}
+                          isActive={activeView === btn.id}
+                          onClick={() => setActiveView(btn.id as MetricView)}
+                        />
+                      ))}
+                    </nav>
+                  </div>
+
+                  {/* 4. Command Post */}
+                  <div className="pt-6 border-t border-slate-900">
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-4 mb-3">4. Command Post</p>
+                    <nav className="space-y-1">
+                      {commandButtons.map((btn) => (
+                        <MetricButton
+                          key={btn.id}
+                          icon={btn.icon}
+                          label={btn.label}
+                          isActive={activeView === btn.id}
+                          onClick={() => setActiveView(btn.id as MetricView)}
+                        />
+                      ))}
+                    </nav>
                   </div>
 
                   {/* Live Stats */}
@@ -391,6 +488,7 @@ const App: React.FC = () => {
                 </button>
                 <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
                   {metricButtons.find(b => b.id === activeView)?.label || 'System Command Hub'}
+                  {allNavButtons.find(b => b.id === activeView)?.label || 'System Command Hub'}
                 </h2>
               </div>
               <div className="flex items-center gap-6">
@@ -443,13 +541,54 @@ const App: React.FC = () => {
                                 for gasless arbitrage.
                               </p>
                               <button
-                                onClick={handleEngineStart}
+                                onClick={() => setShowDeployModal(true)}
                                 className="w-full px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-emerald-500/20"
                               >
                                 Initialize & Forge Smart Account
                               </button>
                             </div>
                           )}
+
+                          {/* Confirmation Modal */}
+                          {showDeployModal && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                              <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+                                <div className="flex items-center gap-3 mb-4 text-amber-400">
+                                  <AlertTriangle size={24} />
+                                  <h3 className="text-lg font-bold text-white">Confirm Deployment</h3>
+                                </div>
+                                
+                                <p className="text-slate-300 text-sm leading-relaxed mb-6">
+                                  You are about to initialize the <span className="font-bold text-white">Alpha-Orion Arbitrage Engine</span>. 
+                                  This action will forge a Smart Account on the network and begin real-time execution monitoring.
+                                </p>
+
+                                <div className="flex gap-3">
+                                  <button
+                                    onClick={() => setShowDeployModal(false)}
+                                    className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={handleEngineStart}
+                                    disabled={isLaunching}
+                                    className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-600/50 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-colors shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                                  >
+                                    {isLaunching ? (
+                                      <>
+                                        <Loader className="animate-spin" size={18} />
+                                        <span>Launching...</span>
+                                      </>
+                                    ) : (
+                                      <span>Confirm Launch</span>
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {isEngineRunning && (
                             <div className="space-y-4">
                               <div className="flex items-center justify-center gap-2 text-emerald-400">
@@ -468,8 +607,68 @@ const App: React.FC = () => {
                     );
                   case 'ai-terminal':
                     return <div className="h-full"><AITerminal realTimeData={realTimeData} /></div>;
+                  case 'strategy-control':
+                    return (
+                      <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+                        <div>
+                          <h2 className="text-2xl font-bold text-white mb-2">Active Strategy Control</h2>
+                          <p className="text-slate-400">Real-time modulation of active trading strategies.</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {['Spot Arbitrage', 'Gamma Scalping', 'Perp Hedging', 'Batch Auctions'].map((strategy) => (
+                            <div key={strategy} className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl flex items-center justify-between">
+                              <span className="font-bold text-slate-200">{strategy}</span>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" className="sr-only peer" defaultChecked={strategy !== 'Batch Auctions'} />
+                                <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="pt-8 border-t border-slate-800">
+                          <button 
+                            onClick={() => alert('EMERGENCY STOP TRIGGERED: All bots halting...')}
+                            className="w-full py-4 bg-red-500/10 border border-red-500/50 hover:bg-red-500 hover:text-white text-red-500 rounded-xl font-black uppercase tracking-widest transition-all"
+                          >
+                            🛑 Emergency Kill Switch
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  case 'security-metrics':
+                    return (
+                      <div className="max-w-5xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+                        <div>
+                          <h2 className="text-2xl font-bold text-white mb-2">Security & Risk Analytics</h2>
+                          <p className="text-slate-400">Real-time portfolio correlation matrix and risk exposure analysis.</p>
+                        </div>
+                        
+                        {/* Transferred Risk Metrics from Legacy Dashboard */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {[
+                            { label: 'VaR (95%)', val: '$450.20', color: 'text-slate-200' },
+                            { label: 'Sortino Ratio', val: '3.2', color: 'text-emerald-400' },
+                            { label: 'Portfolio Delta', val: '0.02', color: 'text-blue-400' },
+                            { label: 'Gamma Exposure', val: '0.15', color: 'text-purple-400' },
+                          ].map((m) => (
+                            <div key={m.label} className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl">
+                              <div className="text-xs text-slate-500 uppercase font-bold mb-1">{m.label}</div>
+                              <div className={`text-xl font-mono font-bold ${m.color}`}>{m.val}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <RiskHeatmap />
+                        </div>
+                      </div>
+                    );
                   case 'treasury-balance':
                     return <div className="max-w-2xl mx-auto"><TreasuryPage /></div>;
+                  case 'settings':
+                    return <div className="max-w-4xl mx-auto"><SettingsComponent volume={soundVolume} onVolumeChange={setSoundVolume} /></div>;
                   default:
                     return <Dashboard
                       wallet={wallet}
@@ -483,6 +682,24 @@ const App: React.FC = () => {
                 }
               })()}
             </div>
+
+            {/* Success Toast Notification */}
+            {showToast && (
+              <div className="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+                <div className="bg-slate-900/90 border border-emerald-500/30 backdrop-blur-md text-white px-6 py-4 rounded-2xl shadow-2xl shadow-emerald-500/10 flex items-center gap-4">
+                  <div className="bg-emerald-500/20 p-2 rounded-full text-emerald-400">
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-emerald-400">System Online</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">{toastMessage}</p>
+                  </div>
+                  <button onClick={() => setShowToast(false)} className="ml-2 text-slate-500 hover:text-white transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </main>
         </div>
       </HashRouter>

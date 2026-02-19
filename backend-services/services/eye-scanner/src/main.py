@@ -361,10 +361,38 @@ def get_openocean_price(token_in, token_out, amount_in=10**18, chain_name='ether
 
     return None
 
-def calculate_arbitrage_opportunity(token_in, token_out, amount_in=10**18, chain_name='ethereum'):
+# Token Decimals for accurate volume scaling
+TOKEN_DECIMALS = {
+    'ethereum': {
+        '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2': 18, # WETH
+        '0xA0b86a33E6441e88C5F2712C3E9b74F5c4d6E3E': 6,  # USDC
+        '0xdAC17F958D2ee523a2206206994597C13D831ec7': 6,  # USDT
+        '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599': 8,  # WBTC
+        '0x6B175474E89094C44Da98b954EedeAC495271d0F': 18, # DAI
+    },
+    'polygon': {
+        '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270': 18, # WMATIC
+        '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174': 6,  # USDC
+        '0xc2132D05D31c914a87C6611C10748AEb04B58e8F': 6,  # USDT
+        '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6': 8,  # WBTC
+        '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063': 18, # DAI
+    },
+    'arbitrum': {
+        '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1': 18, # WETH
+        '0xFF970A61A04b1cA14834A43f5de4533eBDDB5CC8': 6,  # USDC
+        '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9': 6,  # USDT
+        '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f': 8,  # WBTC
+        '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1': 18, # DAI
+    }
+}
+
+def get_token_decimals(token_address, chain_name='ethereum'):
+    return TOKEN_DECIMALS.get(chain_name, {}).get(token_address, 18)
+
+def calculate_arbitrage_opportunity(token_in, token_out, amount_in, chain_name='ethereum'):
     """Calculate arbitrage opportunity across DEXes and aggregators for specified chain"""
     dex_prices = {}
-
+    
     # Get prices from individual DEXes on this chain
     chain_dexes = DEX_ROUTERS.get(chain_name, {})
     for dex_name in chain_dexes.keys():
@@ -372,7 +400,7 @@ def calculate_arbitrage_opportunity(token_in, token_out, amount_in=10**18, chain
         if price:
             dex_prices[dex_name] = price
 
-    # Get best price from OpenOcean aggregator (if supported)
+    # Get best price from OpenOcean aggregator
     if chain_name in ['ethereum', 'polygon', 'bsc', 'arbitrum', 'optimism']:
         openocean_price = get_openocean_price(token_in, token_out, amount_in, chain_name)
         if openocean_price:
@@ -393,116 +421,144 @@ def calculate_arbitrage_opportunity(token_in, token_out, amount_in=10**18, chain
 
     # Get chain-specific gas costs
     gas_price = rpc_manager.get_chain_gas_price(chain_name)
-    gas_estimate = 250000  # gas units for arbitrage tx
+    gas_estimate = 250000 
     gas_cost_wei = gas_estimate * gas_price
 
-    # Convert gas cost to chain's native token
-    if chain_name == 'ethereum':
-        gas_cost_native = gas_cost_wei / 10**18
-        native_token_price = 2000  # ETH price in USD
-    elif chain_name == 'polygon':
-        gas_cost_native = gas_cost_wei / 10**18
-        native_token_price = 0.8  # MATIC price in USD
-    elif chain_name == 'bsc':
-        gas_cost_native = gas_cost_wei / 10**18
-        native_token_price = 300  # BNB price in USD
-    elif chain_name in ['arbitrum', 'optimism', 'base']:
-        gas_cost_native = gas_cost_wei / 10**18
-        native_token_price = 2000  # Use ETH price as approximation
-    else:
-        gas_cost_native = gas_cost_wei / 10**18
-        native_token_price = 1  # Default
+    # Decimals for input and output
+    decimals_in = get_token_decimals(token_in, chain_name)
+    decimals_out = get_token_decimals(token_out, chain_name)
 
+    # Convert gas cost to native token
+    gas_cost_native = gas_cost_wei / 10**18
+    
+    # Native token price mapping (v08-elite live targets)
+    native_prices = {
+        'ethereum': 2600.0,
+        'polygon': 0.75,
+        'arbitrum': 2600.0,
+        'bsc': 350.0,
+        'optimism': 2600.0
+    }
+    native_token_price = native_prices.get(chain_name, 1.0)
     gas_cost_usd = gas_cost_native * native_token_price
 
-    # Estimate DEX fees (0.3% for most DEXes)
+    # Estimate DEX fees (0.3% base)
     dex_fee_pct = 0.3
+    
+    # Calculate gross profit in token_out units
+    gross_profit_out = max_price - min_price
+    
+    # Normalize profit to native token units (approximation)
+    # This is complex without real-time price feeds for all tokens, 
+    # but we can use the relative price of token_out to token_in.
+    profit_ratio = gross_profit_out / (amount_in if amount_in > 0 else 1)
+    
+    # Simplified net profit calculation
+    net_profit_out = gross_profit_out - ((min_price * dex_fee_pct) / 100)
+    
+    # For now, we use a heuristic for net_profit_usd based on WETH price
+    # If token_out is a stablecoin, it's easier
+    is_stable = any(s in token_out.lower() or s in token_in.lower() for s in ['usdc', 'usdt', 'dai'])
+    
+    if is_stable:
+        net_profit_usd = net_profit_out / (10**decimals_out)
+    else:
+        # Scale by native token price (assuming token_out is volatile like ETH/MATIC)
+        net_profit_usd = (net_profit_out / (10**decimals_out)) * native_token_price
 
-    # Calculate net profit
-    gross_profit = max_price - min_price
-    dex_fee = (min_price * dex_fee_pct) / 100
-    net_profit = gross_profit - dex_fee - gas_cost_native
+    # Adjustment for gas
+    net_profit_usd -= gas_cost_usd
 
-    # Convert to USD
-    net_profit_usd = net_profit * native_token_price
+    return {
+        'chain': chain_name,
+        'token_in': token_in,
+        'token_out': token_out,
+        'amount_in': amount_in,
+        'buy_dex': min_price_dex,
+        'sell_dex': max_price_dex,
+        'price_diff_pct': price_diff_pct,
+        'net_profit_usd': net_profit_usd,
+        'timestamp': int(time.time() * 1000)
+    }
 
-    if net_profit_usd > 10:  # Lower threshold for alt chains due to lower gas costs
-        return {
-            'chain': chain_name,
-            'token_in': token_in,
-            'token_out': token_out,
-            'amount_in': amount_in,
-            'buy_dex': min_price_dex,
-            'sell_dex': max_price_dex,
-            'buy_price': min_price,
-            'sell_price': max_price,
-            'price_diff_pct': price_diff_pct,
-            'gas_cost_native': gas_cost_native,
-            'gas_cost_usd': gas_cost_usd,
-            'dex_fee': dex_fee,
-            'net_profit_native': net_profit,
-            'net_profit_usd': net_profit_usd,
-            'timestamp': int(time.time() * 1000)
-        }
+def find_optimal_capital_depth(token_in, token_out, chain_name='ethereum'):
+    """Probe multiple capital tiers to find the optimal high-volume trade size"""
+    decimals_in = get_token_decimals(token_in, chain_name)
+    
+    # Tiers in USD equivalent (approximate based on token type)
+    # We aim to test Low, Medium, and High volumes
+    base_unit = 10**decimals_in
+    
+    # Determine $1k, $10k, $100k equivalent in base units
+    # (High Volume Utilization Target: $500k+)
+    test_amounts = []
+    
+    # Heuristic for base unit USD value
+    is_eth_like = any(s in token_in.lower() for s in ['c02aa', '0d500', '82af4'])
+    is_stable = any(s in token_in.lower() for s in ['a0b86', 'dac17', '6b175', '2791b', 'ff970'])
+    
+    if is_stable:
+        test_amounts = [1000 * base_unit, 10000 * base_unit, 100000 * base_unit, 500000 * base_unit]
+    elif is_eth_like:
+        test_amounts = [1 * base_unit, 5 * base_unit, 50 * base_unit, 200 * base_unit]
+    else:
+        test_amounts = [base_unit * 100, base_unit * 1000, base_unit * 10000]
 
-    return None
+    best_opportunity = None
+    max_profit = 0
+
+    for amount in test_amounts:
+        try:
+            opp = calculate_arbitrage_opportunity(token_in, token_out, amount, chain_name)
+            if opp and opp['net_profit_usd'] > max_profit:
+                max_profit = opp['net_profit_usd']
+                best_opportunity = opp
+        except Exception as e:
+            logger.warning(f"Depth probing failed for {amount} on {chain_name}: {e}")
+            continue
+
+    return best_opportunity
 
 def scan_for_opportunities():
-    """Main arbitrage scanning function across all supported chains"""
+    """Main arbitrage scanning function with High-Volume Capital Optimization"""
     global opportunities_found, scanner_active
 
     if not scanner_active:
         return
 
-    logger.info("Starting multi-chain arbitrage opportunity scan")
+    logger.info("Starting High-Volume Optimized multi-chain arbitrage scan")
     opportunities_found = []
-
-    # Supported chains for arbitrage scanning
     supported_chains = ['ethereum', 'polygon', 'arbitrum', 'bsc']
 
     for chain_name in supported_chains:
-        logger.info(f"Scanning arbitrage opportunities on {chain_name}")
-
+        logger.info(f"Scanning High-Velocity opportunities on {chain_name}")
         try:
-            chain_tokens = TOKENS.get(chain_name, TOKENS['ethereum'])  # Fallback to ETH tokens
-
-            # Define token pairs to monitor for this chain
+            chain_tokens = TOKENS.get(chain_name, TOKENS['ethereum'])
             token_pairs = [
-                (chain_tokens.get('WETH', chain_tokens.get('WMATIC', chain_tokens.get('WBNB'))),
-                 chain_tokens.get('USDC')),
-                (chain_tokens.get('WETH', chain_tokens.get('WMATIC', chain_tokens.get('WBNB'))),
-                 chain_tokens.get('USDT')),
-                (chain_tokens.get('WBTC', chain_tokens.get('BTCB')), chain_tokens.get('WETH', chain_tokens.get('WMATIC', chain_tokens.get('WBNB')))),
+                (chain_tokens.get('WETH', chain_tokens.get('WMATIC', chain_tokens.get('WBNB'))), chain_tokens.get('USDC')),
                 (chain_tokens.get('USDC'), chain_tokens.get('USDT')),
-                (chain_tokens.get('DAI'), chain_tokens.get('USDC')),
+                (chain_tokens.get('WBTC', chain_tokens.get('BTCB')), chain_tokens.get('WETH')),
+                (chain_tokens.get('WETH'), chain_tokens.get('DAI')),
             ]
-
-            # Remove None values from pairs
             token_pairs = [(t1, t2) for t1, t2 in token_pairs if t1 and t2]
 
             for token_in, token_out in token_pairs:
-                try:
-                    opportunity = calculate_arbitrage_opportunity(token_in, token_out, chain_name=chain_name)
-                    if opportunity:
-                        opportunities_found.append(opportunity)
-                        logger.info(f"Arbitrage opportunity found on {chain_name}: {opportunity['net_profit_usd']:.2f} USD")
-
-                        # Publish to Pub/Sub with chain-specific topic
+                # Bidirectional scan for each pair
+                for t1, t2 in [(token_in, token_out), (token_out, token_in)]:
+                    opp = find_optimal_capital_depth(t1, t2, chain_name)
+                    if opp and opp['net_profit_usd'] > 25: # Institutional threshold
+                        opportunities_found.append(opp)
+                        logger.info(f"HIGH-VOLUME Opportunity on {chain_name}: ${opp['net_profit_usd']:.2f} at {opp['amount_in']/(10**get_token_decimals(opp['token_in'], chain_name)):.2f} units")
+                        
+                        # Publish to dedicated high-volume topic
                         topic_path = publisher.topic_path(project_id, f'raw-opportunities-{chain_name}')
-                        data = json.dumps(opportunity).encode('utf-8')
-                        publisher.publish(topic_path, data)
-
-                except Exception as e:
-                    logger.error(f"Error scanning pair {token_in}-{token_out} on {chain_name}: {e}")
-
+                        publisher.publish(topic_path, json.dumps(opp).encode('utf-8'))
         except Exception as e:
             logger.error(f"Error scanning chain {chain_name}: {e}")
 
-    # Store in Redis cache
-    redis_conn = get_redis_connection()
-    redis_conn.set('latest_opportunities', json.dumps(opportunities_found), ex=3600)
-
-    logger.info(f"Multi-chain scan complete. Found {len(opportunities_found)} opportunities across {len(supported_chains)} chains")
+    # Update cache
+    get_redis_connection().set('latest_opportunities', json.dumps(opportunities_found), ex=3600)
+    logger.info(f"High-Volume Scan complete. Found {len(opportunities_found)} opportunities.")
 
 @app.route('/scan', methods=['GET'])
 def scan():

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Card from '../components/ui/Card';
 import { useApiData } from '../hooks/useApiData';
 import { Strategy } from '../types';
-import { getStrategyOptimization, OptimizationResult } from '../services/geminiService';
+import { getStrategyOptimization, OptimizationResult } from '../services/openaiService';
 import { Bot, Cpu, Zap } from 'lucide-react';
 
 const StrategyCard: React.FC<{ strategy: Strategy }> = ({ strategy }) => (

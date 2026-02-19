@@ -1,6 +1,1 @@
-# Security
-.env
-**/.env
-node_modules/
-dashboard_port.txt
-alpha-orion-profit-log.txt
+secrets.json

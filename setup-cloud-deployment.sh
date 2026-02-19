@@ -284,6 +284,13 @@ start_deployment() {
         if [ "$status" = "SUCCESS" ]; then
             echo -e "${GREEN}🎉 Enterprise deployment completed successfully!${NC}"
             echo -e "${BLUE}View results at: https://console.cloud.google.com/cloud-build/builds/$build_id${NC}"
+            
+            # Retrieve Frontend URL
+            FRONTEND_URL=$(gcloud run services describe frontend-dashboard --platform managed --region $REGION --format 'value(status.url)' 2>/dev/null || echo "URL_NOT_FOUND")
+            
+            echo ""
+            echo -e "${GREEN}📊 OFFICIAL DASHBOARD ACCESS:${NC}"
+            echo -e "${CYAN}👉 $FRONTEND_URL/official-dashboard.html${NC}"
             return 0
         else
             echo -e "${RED}❌ Deployment failed with status: $status${NC}"

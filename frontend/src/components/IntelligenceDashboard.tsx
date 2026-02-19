@@ -1,116 +1,53 @@
+import React from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-import React, { useState, useEffect } from 'react';
-import Card from '../components/ui/Card';
-import { useGeminiAnalysis } from '../hooks/useGeminiAnalysis';
-import { Activity, Cpu, Database, Zap, RefreshCw, Layers } from 'lucide-react';
-import { Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+const data = [
+  { name: '00:00', sentiment: 45, volatility: 20 },
+  { name: '04:00', sentiment: 55, volatility: 35 },
+  { name: '08:00', sentiment: 75, volatility: 50 },
+  { name: '12:00', sentiment: 65, volatility: 45 },
+  { name: '16:00', sentiment: 85, volatility: 60 },
+  { name: '20:00', sentiment: 70, volatility: 40 },
+  { name: '24:00', sentiment: 60, volatility: 30 },
+];
 
 const IntelligenceDashboard: React.FC = () => {
-    const { analysis, loading, refreshAnalysis } = useGeminiAnalysis();
-    const [optimizationCycle, setOptimizationCycle] = useState<'BUILD' | 'DEPLOY' | 'MONITOR' | 'OPTIMIZE'>('MONITOR');
-
-    useEffect(() => {
-        // Intelligence Cycle Tick
-        const cycles = ['BUILD', 'DEPLOY', 'MONITOR', 'OPTIMIZE'] as const;
-        let i = 0;
-        const interval = setInterval(() => {
-            setOptimizationCycle(cycles[i]);
-            i = (i + 1) % 4;
-        }, 5000); // 5-second cycle for visualization
-        return () => clearInterval(interval);
-    }, []);
-
-    const CycleBadge = ({ stage }: { stage: string }) => {
-        const isActive = optimizationCycle === stage;
-        return (
-            <div className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all duration-300 ${isActive ? 'border-blue-500 bg-blue-900/40 scale-105' : 'border-gray-700 bg-gray-800 opacity-50'
-                }`}>
-                <span className={`text-xs font-bold ${isActive ? 'text-blue-400' : 'text-gray-500'}`}>{stage}</span>
-                {isActive && <Activity className="w-4 h-4 text-blue-400 mt-1 animate-pulse" />}
-            </div>
-        );
-    };
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                    <Cpu className="text-purple-400" />
-                    Gemini 1.5 Pro Intelligence Core
-                </h1>
-                <div className="flex gap-2">
-                    <CycleBadge stage="BUILD" />
-                    <CycleBadge stage="DEPLOY" />
-                    <CycleBadge stage="MONITOR" />
-                    <CycleBadge stage="OPTIMIZE" />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card title="Latest Reasonings (Chain of Thought)">
-                    <div className="h-64 overflow-y-auto font-mono text-xs text-green-400 space-y-2 bg-black/50 p-4 rounded">
-                        {analysis?.reasoning ? (
-                            analysis.reasoning.map((step: string, i: number) => (
-                                <div key={i} className="flex gap-2">
-                                    <span className="text-gray-500">[{new Date().toLocaleTimeString()}]</span>
-                                    <span>{step}</span>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-gray-500 animate-pulse">
-                                <Zap className="w-4 h-4 mr-2" />
-                                Acquiring Satellite Telemetry...
-                            </div>
-                        )}
-                    </div>
-                </Card>
-
-                <Card title="System Optimization Metrics">
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={analysis?.metrics || []}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                                <XAxis dataKey="metric" stroke="#666" fontSize={10} />
-                                <YAxis stroke="#666" fontSize={10} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#111', borderColor: '#333' }}
-                                    itemStyle={{ color: '#fff' }}
-                                />
-                                <Bar dataKey="value" fill="#8884d8" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </Card>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-                <Card className="border-l-4 border-l-blue-500">
-                    <div className="flex justify-between">
-                        <h3 className="text-gray-400 text-sm">Active Contracts</h3>
-                        <Database className="w-4 h-4 text-blue-500" />
-                    </div>
-                    <p className="text-2xl font-bold text-white mt-1">V08-Elite</p>
-                    <p className="text-xs text-green-400">Verifying Block 192837...</p>
-                </Card>
-                <Card className="border-l-4 border-l-purple-500">
-                    <div className="flex justify-between">
-                        <h3 className="text-gray-400 text-sm">AI Prediction Model</h3>
-                        <Layers className="w-4 h-4 text-purple-500" />
-                    </div>
-                    <p className="text-2xl font-bold text-white mt-1">Gemini-1.5-Pro</p>
-                    <p className="text-xs text-purple-400">Latency: 142ms</p>
-                </Card>
-                <Card className="border-l-4 border-l-green-500">
-                    <div className="flex justify-between">
-                        <h3 className="text-gray-400 text-sm">Self-Healing</h3>
-                        <RefreshCw className="w-4 h-4 text-green-500" />
-                    </div>
-                    <p className="text-2xl font-bold text-white mt-1">Active</p>
-                    <p className="text-xs text-gray-400">0 Incidents last hour</p>
-                </Card>
-            </div>
+  return (
+    <div className="flex-grow bg-gray-900 p-6 rounded-lg border border-gray-800 text-gray-300 overflow-y-auto">
+      <h2 className="text-xl font-bold text-purple-400 mb-4">Market Intelligence</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-black/40 p-4 rounded border border-gray-700 h-80">
+          <h3 className="text-sm font-semibold mb-4 text-gray-400">Market Sentiment vs Volatility</h3>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} />
+                <YAxis stroke="#9CA3AF" fontSize={12} />
+                <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', color: '#fff' }} />
+                <Line type="monotone" dataKey="sentiment" stroke="#8884d8" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="volatility" stroke="#82ca9d" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-    );
+        
+        <div className="bg-black/40 p-4 rounded border border-gray-700 h-80">
+             <h3 className="text-sm font-semibold mb-4 text-gray-400">AI Opportunity Detection</h3>
+             <div className="space-y-3">
+                 <div className="flex justify-between items-center p-3 bg-gray-800 rounded border-l-4 border-green-500">
+                     <span className="font-mono text-green-400">WETH/USDC</span>
+                     <span className="text-xs text-gray-400">Confidence: <span className="text-white font-bold">98%</span></span>
+                 </div>
+                 <div className="flex justify-between items-center p-3 bg-gray-800 rounded border-l-4 border-yellow-500">
+                     <span className="font-mono text-yellow-400">WBTC/DAI</span>
+                     <span className="text-xs text-gray-400">Confidence: <span className="text-white font-bold">85%</span></span>
+                 </div>
+             </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default IntelligenceDashboard;

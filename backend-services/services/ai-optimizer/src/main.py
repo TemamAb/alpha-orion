@@ -3,39 +3,71 @@ from flask_cors import CORS
 import random
 import os
 import json
-import google.generativeai as genai
-from google.cloud import pubsub_v1
-from google.cloud import storage
-from google.cloud import bigquery
-from google.cloud import bigtable
-from google.cloud import secretmanager
+
+# Optional GCP imports (for local development without credentials)
+try:
+    import google.generativeai as genai
+    from google.cloud import pubsub_v1
+    from google.cloud import storage
+    from google.cloud import bigquery
+    from google.cloud import bigtable
+    from google.cloud import secretmanager
+    GCP_AVAILABLE = True
+except ImportError:
+    genai = None
+    pubsub_v1 = None
+    storage = None
+    bigquery = None
+    bigtable = None
+    secretmanager = None
+    GCP_AVAILABLE = False
+
+# Optional OpenAI imports
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    openai = None
+    OPENAI_AVAILABLE = False
+
 import psycopg2
 import redis
 
 app = Flask(__name__)
 CORS(app)
 
-# Initialize Gemini API
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY') or get_secret('gemini-api-key')
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-pro')
-    gemini_available = True
+# Initialize OpenAI (preferred) or Gemini API
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if openai_api_key and OPENAI_AVAILABLE:
+    openai.api_key = openai_api_key
+    ai_client = 'openai'
+    print("OpenAI initialized successfully")
 else:
-    model = None
-    gemini_available = False
-    print("Gemini API key not found - AI optimization will use fallback logic")
+    # Fallback to Gemini
+    gemini_api_key = os.getenv('GEMINI_API_KEY')
+    if gemini_api_key and GCP_AVAILABLE and genai:
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('gemini-pro')
+        ai_client = 'gemini'
+        print("Gemini API initialized")
+    else:
+        model = None
+        ai_client = None
+        print("No AI API key found - using fallback logic")
 
 # GCP Clients (with fallback for local development)
 project_id = os.getenv('PROJECT_ID', 'alpha-orion')
 try:
-    publisher = pubsub_v1.PublisherClient()
-    storage_client = storage.Client()
-    bigquery_client = bigquery.Client()
-    bigtable_client = bigtable.Client(project=project_id)
-    secret_client = secretmanager.SecretManagerServiceClient()
-    gcp_available = True
-    print("GCP services initialized successfully")
+    if GCP_AVAILABLE and pubsub_v1:
+        publisher = pubsub_v1.PublisherClient()
+        storage_client = storage.Client()
+        bigquery_client = bigquery.Client()
+        bigtable_client = bigtable.Client(project=project_id)
+        secret_client = secretmanager.SecretManagerServiceClient()
+        gcp_available = True
+        print("GCP services initialized successfully")
+    else:
+        raise Exception("GCP packages not available")
 except Exception as e:
     print(f"GCP services not available (expected in local dev): {e}")
     publisher = None
@@ -204,9 +236,10 @@ def optimize():
                 dataset_id = 'flash_loan_historical_data'
                 table_id = 'ai_optimizations'
                 table_ref = bigquery_client.dataset(dataset_id).table(table_id)
+                from datetime import datetime
 
                 row = {
-                    'timestamp': json.dumps({'$date': '2024-01-01T00:00:00Z'}),  # Current timestamp
+                    'timestamp': datetime.utcnow().isoformat(),
                     'prompt': prompt,
                     'optimization': json.dumps(optimization),
                     'market_context': json.dumps(market_context)

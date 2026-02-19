@@ -247,87 +247,85 @@ class MultiChainArbitrageEngine {
     return opportunities.slice(0, 25); // Return top 25 per chain
   }
 
-  // REAL TRIANGULAR ARBITRAGE WITH MULTIPLE PATHS
+  // REAL TRIANGULAR ARBITRAGE WITH DYNAMIC CAPITAL SCALING
   async findOptimizedTriangularArbitrage(chainKey, pair) {
     const opportunities = [];
     const chain = this.chains[chainKey];
 
-    // Multiple triangular paths for maximum profit
+    // Capital Tiers for High-Volume Probing (Standardized to USD equivalents)
+    const capitalTiers = [
+      ethers.utils.parseUnits('10.0', 18),   // Mid Volume (~$25k)
+      ethers.utils.parseUnits('100.0', 18),  // High Volume (~$250k)
+      ethers.utils.parseUnits('250.0', 18),  // Enterprise Volume (~$650k)
+      ethers.utils.parseUnits('500.0', 18)   // Institutional Volume (~$1.3M)
+    ];
+
     const triangularPaths = [
-      // Standard triangle
       [pair.base, pair.quote, pair.base],
-      // Extended triangles with more hops
       [pair.base, pair.quote, chain.wrappedToken, pair.base],
-      // Cross-stable triangles
       [pair.base, '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6', '0xdAC17F958D2ee523a2206206994597C13D831ec7', pair.base]
     ];
 
     for (const path of triangularPaths) {
-      try {
-        const loanAmount = ethers.utils.parseUnits('1.0', 18);
-        let currentAmount = loanAmount;
-        const dexes = [];
+      for (const loanAmount of capitalTiers) {
+        try {
+          let currentAmount = loanAmount;
+          const dexes = [];
 
-        // Execute path through multiple DEXes
-        for (let i = 0; i < path.length - 1; i++) {
-          const fromToken = path[i];
-          const toToken = path[i + 1];
+          for (let i = 0; i < path.length - 1; i++) {
+            const quote = await this.getBestQuote(chainKey, path[i], path[i+1], currentAmount);
+            if (!quote) { currentAmount = null; break; }
+            currentAmount = ethers.BigNumber.from(quote.toAmount);
+            dexes.push(quote.dex);
+          }
 
-          const quote = await this.getBestQuote(chainKey, fromToken, toToken, currentAmount);
-          if (!quote) break;
+          if (!currentAmount) continue;
 
-          currentAmount = ethers.BigNumber.from(quote.toAmount);
-          dexes.push(quote.dex);
-        }
-
-        // Calculate actual profit
-        const profit = currentAmount.sub(loanAmount);
-        const gasEstimate = await this.estimateGasCost(chainKey, 'triangular');
-
-        // Only include profitable opportunities after gas costs
-        if (profit.gt(gasEstimate.mul(ethers.BigNumber.from(2)))) {
+          const profit = currentAmount.sub(loanAmount);
+          const gasEstimate = await this.estimateGasCost(chainKey, 'triangular');
           const profitUSD = await this.convertToUSD(chainKey, profit, pair.base);
 
-          opportunities.push({
-            id: `tri-${chainKey}-${path.join('-')}-${Date.now()}`,
-            strategy: 'TRIANGULAR_OPTIMIZED',
-            chain: chainKey,
-            chainName: chain.name,
-            assets: path.map(addr => this.getTokenSymbol(chainKey, addr)),
-            path: path,
-            loanAmount: loanAmount,
-            potentialProfit: profitUSD,
-            netProfit: profitUSD - (gasEstimate.toNumber() * 0.0000001), // Gas cost in USD
-            exchanges: dexes,
-            gasEstimate: gasEstimate.toNumber(),
-            timestamp: Date.now(),
-            riskLevel: this.calculateRiskLevel(profitUSD),
-            confidence: this.calculatePathConfidence(path, dexes),
-            complexity: 'HIGH'
-          });
-        }
-      } catch (error) {
-        console.debug(`Triangular path failed: ${path.join('->')}`);
+          if (profitUSD > 50) { // High Volume Profitable Threshold
+            opportunities.push({
+              id: `tri-${chainKey}-${path.join('-')}-${loanAmount.toString().substring(0,4)}`,
+              strategy: 'TRIANGULAR_OPTIMIZED',
+              chain: chainKey,
+              chainName: chain.name,
+              assets: path.map(addr => this.getTokenSymbol(chainKey, addr)),
+              path: path,
+              loanAmount: loanAmount,
+              potentialProfit: profitUSD,
+              netProfit: profitUSD - (gasEstimate.toNumber() * 0.0000001),
+              exchanges: dexes,
+              gasEstimate: gasEstimate.toNumber(),
+              timestamp: Date.now(),
+              riskLevel: this.calculateRiskLevel(profitUSD),
+              complexity: 'HIGH'
+            });
+          }
+        } catch (e) { continue; }
       }
     }
-
     return opportunities;
   }
 
-  // REAL CROSS-DEX ARBITRAGE (MOST PROFITABLE)
+  // REAL CROSS-DEX ARBITRAGE WITH HIGH-VOLUME CAPITAL PROBING
   async findCrossDexArbitrageOpportunities(chainKey, pair) {
     const opportunities = [];
     const chain = this.chains[chainKey];
-
     if (chain.dexes.length < 2) return opportunities;
 
-    try {
-      const loanAmount = ethers.utils.parseUnits('2.0', 18); // Larger size for cross-DEX
-      const dexQuotes = [];
+    // High-Volume Tiers: Probing from $50k to $1M+
+    const volumeTiers = [
+      ethers.utils.parseUnits('20.0', 18),   // $50k
+      ethers.utils.parseUnits('100.0', 18),  // $250k
+      ethers.utils.parseUnits('500.0', 18)   // $1.3M
+    ];
 
-      // Get quotes from all DEXes
-      for (const dex of chain.dexes.slice(0, 3)) { // Top 3 DEXes
-        try {
+    for (const loanAmount of volumeTiers) {
+      try {
+        const dexQuotes = [];
+        for (const dex of chain.dexes.slice(0, 4)) {
           const buyQuote = await this.getDexSpecificQuote(chainKey, dex, pair.base, pair.quote, loanAmount);
           const sellQuote = await this.getDexSpecificQuote(chainKey, dex, pair.quote, pair.base, loanAmount);
 
@@ -340,102 +338,85 @@ class MultiChainArbitrageEngine {
               sellAmount: sellQuote.toAmount
             });
           }
-        } catch (error) {
-          console.debug(`DEX quote failed for ${dex}`);
         }
-      }
 
-      if (dexQuotes.length < 2) return opportunities;
+        if (dexQuotes.length < 2) continue;
 
-      // Find best arbitrage opportunity
-      const bestBuy = dexQuotes.reduce((best, current) =>
-        current.buyPrice < best.buyPrice ? current : best
-      );
+        const bestBuy = dexQuotes.reduce((b, c) => c.buyPrice < b.buyPrice ? c : b);
+        const bestSell = dexQuotes.reduce((b, c) => c.sellPrice > b.sellPrice ? c : b);
+        const priceDiff = (bestSell.sellPrice - bestBuy.buyPrice) / bestBuy.buyPrice;
 
-      const bestSell = dexQuotes.reduce((best, current) =>
-        current.sellPrice > best.sellPrice ? current : best
-      );
+        if (priceDiff > 0.0008) { // 0.08% spread for high volume
+          const profit = ethers.BigNumber.from(bestSell.sellAmount).sub(loanAmount);
+          const profitUSD = await this.convertToUSD(chainKey, profit, pair.base);
+          const gasCost = await this.estimateGasCost(chainKey, 'cross_dex');
 
-      const priceDiff = (bestSell.sellPrice - bestBuy.buyPrice) / bestBuy.buyPrice;
-
-      if (priceDiff > 0.001) { // 0.1% minimum arbitrage
-        const profit = ethers.BigNumber.from(bestSell.sellAmount).sub(loanAmount);
-        const profitUSD = await this.convertToUSD(chainKey, profit, pair.base);
-        const gasCost = await this.estimateGasCost(chainKey, 'cross_dex');
-
-        if (profit.gt(gasCost)) {
-          opportunities.push({
-            id: `cross-dex-${chainKey}-${bestBuy.dex}-${bestSell.dex}-${Date.now()}`,
-            strategy: 'CROSS_DEX_ARBITRAGE',
-            chain: chainKey,
-            chainName: chain.name,
-            assets: [this.getTokenSymbol(chainKey, pair.base), this.getTokenSymbol(chainKey, pair.quote)],
-            path: [pair.base, pair.quote],
-            loanAmount: loanAmount,
-            potentialProfit: profitUSD,
-            netProfit: profitUSD - (gasCost.toNumber() * 0.00000005), // Lower gas cost for cross-DEX
-            exchanges: [bestBuy.dex, bestSell.dex],
-            buyDex: bestBuy.dex,
-            sellDex: bestSell.dex,
-            priceDiff: priceDiff,
-            gasEstimate: gasCost.toNumber(),
-            timestamp: Date.now(),
-            riskLevel: 'LOW', // Cross-DEX is lower risk
-            confidence: Math.min(priceDiff * 1000, 0.95), // Higher confidence for larger spreads
-            complexity: 'MEDIUM'
-          });
+          if (profitUSD > 75) {
+            opportunities.push({
+              id: `cross-dex-${chainKey}-${bestBuy.dex}-${bestSell.dex}-${loanAmount.toString().substring(0,4)}`,
+              strategy: 'CROSS_DEX_ARBITRAGE',
+              chain: chainKey,
+              chainName: chain.name,
+              assets: [this.getTokenSymbol(chainKey, pair.base), this.getTokenSymbol(chainKey, pair.quote)],
+              path: [pair.base, pair.quote],
+              loanAmount: loanAmount,
+              potentialProfit: profitUSD,
+              exchanges: [bestBuy.dex, bestSell.dex],
+              buyDex: bestBuy.dex,
+              sellDex: bestSell.sellDex,
+              priceDiff: priceDiff,
+              gasEstimate: gasCost.toNumber(),
+              timestamp: Date.now(),
+              riskLevel: 'LOW',
+              confidence: Math.min(priceDiff * 1200, 0.98),
+              complexity: 'MEDIUM'
+            });
+          }
         }
-      }
-    } catch (error) {
-      console.warn(`Cross-DEX arbitrage failed on ${chainKey}: ${error.message}`);
+      } catch (e) { continue; }
     }
-
     return opportunities;
   }
 
-  // LIQUIDITY POOL INEFFICIENCY EXPLOITATION
+  // LIQUIDITY POOL INEFFICIENCY EXPLOITATION (Optimized for High Volume)
   async findLiquidityPoolInefficiencies(chainKey, pair) {
     const opportunities = [];
-
     try {
       const pools = await this.getActivePools(chainKey, pair);
+      const targetVolumes = [10, 100, 500]; // Multi-tier volumes in ETH equivalent
 
       for (const pool of pools) {
-        const poolPrice = await this.getPoolPrice(chainKey, pool);
-        const marketPrice = await this.getMarketPrice(chainKey, pair);
+        for (const volume of targetVolumes) {
+          const tradeSize = ethers.utils.parseUnits(volume.toString(), 18);
+          const poolPrice = await this.getPoolPrice(chainKey, pool);
+          const marketPrice = await this.getMarketPrice(chainKey, pair);
 
-        if (poolPrice && marketPrice) {
-          const priceDiff = Math.abs(poolPrice - marketPrice) / marketPrice;
+          if (poolPrice && marketPrice) {
+            const priceDiff = Math.abs(poolPrice - marketPrice) / marketPrice;
+            if (priceDiff > 0.0015) { 
+              const estimatedProfit = await this.calculatePoolArbitrageProfit(chainKey, pool, priceDiff, tradeSize);
+              const profitUSD = await this.convertToUSD(chainKey, estimatedProfit, pair.base);
 
-          if (priceDiff > 0.002) { // 0.2% inefficiency threshold
-            const tradeSize = ethers.utils.parseUnits('0.5', 18); // Smaller size for pool arb
-            const estimatedProfit = await this.calculatePoolArbitrageProfit(chainKey, pool, priceDiff, tradeSize);
-            const profitUSD = await this.convertToUSD(chainKey, estimatedProfit, pair.base);
-
-            if (estimatedProfit.gt(0)) {
-              opportunities.push({
-                id: `pool-arb-${chainKey}-${pool.address.substring(0, 6)}-${Date.now()}`,
-                strategy: 'LIQUIDITY_POOL_ARBITRAGE',
-                chain: chainKey,
-                chainName: this.chains[chainKey].name,
-                poolAddress: pool.address,
-                assets: [pair.base, pair.quote],
-                tradeSize: tradeSize,
-                potentialProfit: profitUSD,
-                priceInefficiency: priceDiff,
-                timestamp: Date.now(),
-                riskLevel: 'MEDIUM',
-                confidence: Math.max(0, 1 - priceDiff * 10), // Lower confidence for larger inefficiencies
-                complexity: 'HIGH'
-              });
+              if (profitUSD > 100) {
+                opportunities.push({
+                  id: `pool-arb-${chainKey}-${pool.address.substring(0, 6)}-V${volume}`,
+                  strategy: 'LIQUIDITY_POOL_ARBITRAGE',
+                  chain: chainKey,
+                  chainName: this.chains[chainKey].name,
+                  poolAddress: pool.address,
+                  assets: [pair.base, pair.quote],
+                  tradeSize: tradeSize,
+                  potentialProfit: profitUSD,
+                  timestamp: Date.now(),
+                  riskLevel: 'MEDIUM',
+                  confidence: 0.9
+                });
+              }
             }
           }
         }
       }
-    } catch (error) {
-      console.warn(`Liquidity pool arbitrage failed on ${chainKey}: ${error.message}`);
-    }
-
+    } catch (e) { }
     return opportunities;
   }
 

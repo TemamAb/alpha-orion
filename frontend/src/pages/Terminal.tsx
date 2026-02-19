@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { TerminalLine } from '../types';
-import { getTerminalResponse } from '../services/geminiService';
+import { getTerminalResponse } from '../services/openaiService';
 import { Bot, ChevronRight, CornerDownLeft } from 'lucide-react';
 
 const WelcomeMessage: TerminalLine = {

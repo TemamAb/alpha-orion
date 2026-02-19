@@ -62,6 +62,15 @@ else
     print_status "Docker available"
 fi
 
+# Check Python for benchmarking
+if ! command -v python3 &> /dev/null; then
+    print_warning "Python3 not found. Benchmarking will be skipped."
+    PYTHON_AVAILABLE=false
+else
+    PYTHON_AVAILABLE=true
+    print_status "Python3 available for benchmarking"
+fi
+
 echo ""
 
 # Step 2: Deploy Smart Contracts
@@ -204,7 +213,111 @@ fi
 
 echo ""
 
-# Step 6: Summary
+# Step 6: Apex Benchmarking Validation
+echo "🏆 Step 6: Apex Benchmarking Validation"
+echo "----------------------------------------"
+
+BENCHMARK_PASSED=true
+
+if [ "$GCLoud_AVAILABLE" = true ] && [ "$PYTHON_AVAILABLE" = true ] && [ -n "$ORCHESTRATOR_URL" ]; then
+    print_status "Running Apex Benchmarking validation..."
+
+    # Extract host from URL (remove https:// and path)
+    ORCHESTRATOR_HOST=$(echo "$ORCHESTRATOR_URL" | sed 's|https://||' | sed 's|/.*||')
+
+    # Run latency benchmark against deployed service
+    print_status "Running latency benchmark..."
+    cd "$ROOT_DIR"
+    python3 run_latency_benchmark.py \
+        --host "$ORCHESTRATOR_HOST" \
+        --port 443 \
+        --count 50 \
+        --rate 5.0 \
+        --target 50.0 > benchmark_results.json
+
+    # Check benchmark results
+    if [ -f "benchmark_results.json" ]; then
+        BENCHMARK_STATUS=$(python3 -c "
+import json
+with open('benchmark_results.json') as f:
+    data = json.load(f)
+print(data.get('status', 'UNKNOWN'))
+")
+
+        if [ "$BENCHMARK_STATUS" = "PASS" ]; then
+            print_status "✅ Benchmarking PASSED - Wintermute latency target met"
+        else
+            print_warning "❌ Benchmarking FAILED - Latency exceeds Wintermute target"
+            BENCHMARK_PASSED=false
+        fi
+
+        # Record benchmark results in deployed service
+        if [ "$BENCHMARK_PASSED" = true ]; then
+            P99_LATENCY=$(python3 -c "
+import json
+with open('benchmark_results.json') as f:
+    data = json.load(f)
+print(data.get('metrics', {}).get('p99_ms', 0))
+")
+            # Record successful benchmark
+            curl -s -X POST "${ORCHESTRATOR_URL}/benchmarking/record" \
+                -H "Content-Type: application/json" \
+                -d "{\"metric\": \"latency\", \"value\": $P99_LATENCY}" || \
+                print_warning "Failed to record benchmark metric"
+        fi
+    else
+        print_warning "Benchmark results not found"
+        BENCHMARK_PASSED=false
+    fi
+else
+    print_warning "Skipping benchmarking (missing requirements)"
+    BENCHMARK_PASSED=false
+fi
+
+echo ""
+
+# Step 7: Rollback Check
+echo "🔄 Step 7: Rollback Check"
+echo "-------------------------"
+
+if [ "$BENCHMARK_PASSED" = false ]; then
+    print_warning "❌ Benchmarks failed - initiating rollback"
+
+    if [ "$GCLoud_AVAILABLE" = true ]; then
+        print_status "Rolling back brain-orchestrator deployment..."
+
+        # Get previous revision
+        PREV_REVISION=$(gcloud run revisions list \
+            --service brain-orchestrator \
+            --region "$REGION" \
+            --limit 2 \
+            --format 'value(metadata.name)' | sed -n '2p')
+
+        if [ -n "$PREV_REVISION" ]; then
+            print_status "Rolling back to previous revision: $PREV_REVISION"
+            gcloud run services update-traffic brain-orchestrator \
+                --region "$REGION" \
+                --to-revisions "$PREV_REVISION=100" \
+                --quiet
+
+            print_warning "🚨 DEPLOYMENT ROLLED BACK DUE TO BENCHMARK FAILURE"
+            print_warning "Please investigate performance issues before redeploying"
+            exit 1
+        else
+            print_warning "No previous revision found for rollback"
+            exit 1
+        fi
+    else
+        print_warning "Cannot rollback (gcloud not available)"
+        exit 1
+    fi
+else
+    print_status "✅ All benchmarks passed - deployment approved"
+fi
+
+echo ""
+
+# Step 8: Summary
 echo "=============================================="
 echo "✅ Deployment Complete!"
 echo "=============================================="
@@ -222,6 +335,7 @@ if [ "$GCLoud_AVAILABLE" = true ]; then
     echo "   $ORCHESTRATOR_URL/health"
     echo "   $ORCHESTRATOR_URL/profit/real-time"
     echo "   $ORCHESTRATOR_URL/blockchain/status"
+    echo "   $ORCHESTRATOR_URL/benchmarking/status"
 fi
 
 echo ""
@@ -232,8 +346,8 @@ echo "   3. Set up monitoring alerts"
 echo "   4. Verify smart contract on Etherscan"
 echo ""
 
-# Step 7: Health Check
-echo "🏥 Step 6: Health Check"
+# Step 9: Health Check
+echo "🏥 Step 8: Health Check"
 echo "-----------------------"
 
 if [ -n "$ORCHESTRATOR_URL" ]; then

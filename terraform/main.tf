@@ -27,7 +27,7 @@ module "user-api-service" {
   project_id                    = "alpha-orion"
   location                      = "us-central1"
   service_name                  = "user-api-service"
- "container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/user-api-service:${lookup(var.image_versions, \"user-api-service\", \"latest\")}"
+  container_image               = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/user-api-service:${lookup(var.image_versions, \"user-api-service\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"], ["roles/logging.logWriter"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
@@ -75,7 +75,7 @@ module "scanner-service-data-analysis" {
   location                      = "us-central1"
   service_name                  = "eye-scanner-us"
   description                   = "Responsible for data collection and opportunity identification in the US region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/eye-scanner-us:${lookup(var.image_versions, \"eye-scanner-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/eye-scanner-us:${lookup(var.image_versions, \"eye-scanner-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/pubsub.publisher", "roles/pubsub.subscriber", "roles/run.invoker"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"], ["roles/bigquery.dataEditor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -104,7 +104,7 @@ module "orchestrator-service" {
   location                      = "us-central1"
   service_name                  = "brain-orchestrator-us"
   description                   = "Manages workflow and orchestrates strategies in the US region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-orchestrator-us:${lookup(var.image_versions, \"brain-orchestrator-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-orchestrator-us:${lookup(var.image_versions, \"brain-orchestrator-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/pubsub.publisher", "roles/pubsub.subscriber", "roles/run.invoker"], ["roles/pubsub.publisher", "roles/pubsub.subscriber", "roles/run.invoker"], ["roles/secretmanager.secretAccessor"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"], ["roles/run.invoker"], ["roles/run.invoker"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -133,7 +133,7 @@ module "ai-optimizer-service" {
   location                      = "us-central1"
   service_name                  = "brain-ai-optimizer-us"
   description                   = "Continuously optimizes AI models for performance in the US region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-ai-optimizer-us:${lookup(var.image_versions, \"brain-ai-optimizer-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-ai-optimizer-us:${lookup(var.image_versions, \"brain-ai-optimizer-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/aiplatform.user"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -164,7 +164,7 @@ module "dashboard-frontend" {
   project_id                    = "alpha-orion"
   location                      = "us-central1"
   service_name                  = "flash-loan-dashboard"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/flash-loan-dashboard:${lookup(var.image_versions, \"flash-loan-dashboard\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/flash-loan-dashboard:${lookup(var.image_versions, \"flash-loan-dashboard\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
@@ -192,7 +192,7 @@ module "withdrawal-service" {
   project_id                    = "alpha-orion"
   location                      = "us-central1"
   service_name                  = "withdrawal-service"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/withdrawal-service:${lookup(var.image_versions, \"withdrawal-service\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/withdrawal-service:${lookup(var.image_versions, \"withdrawal-service\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -225,8 +225,8 @@ module "scanner-output-topic" {
   source             = "github.com/terraform-google-modules/terraform-google-pubsub?ref=v8.3.2"
   project_id         = "alpha-orion"
   topic              = "raw-opportunities"
-  push_subscriptions = concat([{"name" = module.scanner-service-data-analysis.apphub_service_uri.service_id, "oidc_service_account_email" = module.scanner-service-data-analysis.service_account_id.email, "push_endpoint" = module.scanner-service-data-analysis.service_uri}], [{"oidc_service_account_email" = module.orchestrator-service.service_account_id.email, "push_endpoint" = module.orchestrator-service.service_uri, "name" = module.orchestrator-service.apphub_service_uri.service_id}])
-  pull_subscriptions = concat([{"name" = module.scanner-service-data-analysis.service_name, "service_account" = module.scanner-service-data-analysis.service_account_id.email}], [{"service_account" = module.orchestrator-service.service_account_id.email, "name" = module.orchestrator-service.service_name}])
+  push_subscriptions = concat([{name = module.scanner-service-data-analysis.apphub_service_uri.service_id, "oidc_service_account_email" = module.scanner-service-data-analysis.service_account_id.email, "push_endpoint" = module.scanner-service-data-analysis.service_uri}], [{"oidc_service_account_email" = module.orchestrator-service.service_account_id.email, "push_endpoint" = module.orchestrator-service.service_uri, name = module.orchestrator-service.apphub_service_uri.service_id}])
+  pull_subscriptions = concat([{name = module.scanner-service-data-analysis.service_name, service_account = module.scanner-service-data-analysis.service_account_id.email}], [{service_account = module.orchestrator-service.service_account_id.email, name = module.orchestrator-service.service_name}])
   depends_on         = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "execution-request-topic" {
@@ -319,7 +319,7 @@ module "ai-terminal-frontend" {
   project_id                    = "alpha-orion"
   location                      = "us-central1"
   service_name                  = "ai-terminal-frontend"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/ai-terminal-frontend:${lookup(var.image_versions, \"ai-terminal-frontend\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/ai-terminal-frontend:${lookup(var.image_versions, \"ai-terminal-frontend\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
@@ -347,7 +347,7 @@ module "ai-agent-service" {
   project_id                    = "alpha-orion"
   location                      = "us-central1"
   service_name                  = "ai-agent-service"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/ai-agent-service:${lookup(var.image_versions, \"ai-agent-service\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/ai-agent-service:${lookup(var.image_versions, \"ai-agent-service\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/aiplatform.user"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -378,7 +378,7 @@ module "benchmarking-scraper-service" {
   project_id                    = "alpha-orion"
   location                      = "us-central1"
   service_name                  = "benchmarking-scraper-service"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/benchmarking-scraper-service:${lookup(var.image_versions, \"benchmarking-scraper-service\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/benchmarking-scraper-service:${lookup(var.image_versions, \"benchmarking-scraper-service\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -407,7 +407,7 @@ module "strategy-engine-service" {
   location                      = "us-central1"
   service_name                  = "brain-strategy-engine-us"
   description                   = "Selects and executes optimal strategies in the US region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-strategy-engine-us:${lookup(var.image_versions, \"brain-strategy-engine-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-strategy-engine-us:${lookup(var.image_versions, \"brain-strategy-engine-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -447,7 +447,7 @@ module "flash-loan-lb-global-lb-backend" {
   load_balancing_scheme   = "EXTERNAL_MANAGED"
   protocol                = "HTTP"
   enable_cdn              = true
-  serverless_neg_backends = concat([{"region" = module.dashboard-frontend.location, "service_name" = module.dashboard-frontend.service_name, "service_version" = "", "type" = "cloud-run"}], [{"service_name" = module.dashboard-frontend-eu.service_name, "service_version" = "", "type" = "cloud-run", "region" = module.dashboard-frontend-eu.location}])
+  serverless_neg_backends = concat([{"region" = module.dashboard-frontend.location, service_name = module.dashboard-frontend.service_name, "service_version" = "", "type" = "cloud-run"}], [{service_name = module.dashboard-frontend-eu.service_name, "service_version" = "", "type" = "cloud-run", "region" = module.dashboard-frontend-eu.location}])
   security_policy         = "projects/alpha-orion/global/securityPolicies/flash-loan-security-policy"
   depends_on              = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
@@ -485,8 +485,8 @@ module "scanner-output-topic-eu" {
   source             = "github.com/terraform-google-modules/terraform-google-pubsub?ref=v8.3.2"
   project_id         = "alpha-orion"
   topic              = "raw-opportunities-eu"
-  push_subscriptions = concat([{"oidc_service_account_email" = module.scanner-service-data-analysis-eu.service_account_id.email, "push_endpoint" = module.scanner-service-data-analysis-eu.service_uri, "name" = module.scanner-service-data-analysis-eu.apphub_service_uri.service_id}], [{"push_endpoint" = module.orchestrator-service-eu.service_uri, "name" = module.orchestrator-service-eu.apphub_service_uri.service_id, "oidc_service_account_email" = module.orchestrator-service-eu.service_account_id.email}])
-  pull_subscriptions = concat([{"name" = module.scanner-service-data-analysis-eu.service_name, "service_account" = module.scanner-service-data-analysis-eu.service_account_id.email}], [{"name" = module.orchestrator-service-eu.service_name, "service_account" = module.orchestrator-service-eu.service_account_id.email}])
+  push_subscriptions = concat([{"oidc_service_account_email" = module.scanner-service-data-analysis-eu.service_account_id.email, "push_endpoint" = module.scanner-service-data-analysis-eu.service_uri, name = module.scanner-service-data-analysis-eu.apphub_service_uri.service_id}], [{"push_endpoint" = module.orchestrator-service-eu.service_uri, name = module.orchestrator-service-eu.apphub_service_uri.service_id, "oidc_service_account_email" = module.orchestrator-service-eu.service_account_id.email}])
+  pull_subscriptions = concat([{name = module.scanner-service-data-analysis-eu.service_name, service_account = module.scanner-service-data-analysis-eu.service_account_id.email}], [{name = module.orchestrator-service-eu.service_name, service_account = module.orchestrator-service-eu.service_account_id.email}])
   depends_on         = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "execution-request-topic-eu" {
@@ -509,7 +509,7 @@ module "user-api-service-eu" {
   project_id                    = "alpha-orion"
   location                      = "europe-west1"
   service_name                  = "user-api-service-eu"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/user-api-service-eu:${lookup(var.image_versions, \"user-api-service-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/user-api-service-eu:${lookup(var.image_versions, \"user-api-service-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
@@ -538,7 +538,7 @@ module "scanner-service-data-analysis-eu" {
   location                      = "europe-west1"
   service_name                  = "eye-scanner-eu"
   description                   = "Responsible for data collection and opportunity identification in the EU region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/eye-scanner-eu:${lookup(var.image_versions, \"eye-scanner-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/eye-scanner-eu:${lookup(var.image_versions, \"eye-scanner-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/pubsub.publisher", "roles/pubsub.subscriber", "roles/run.invoker"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -567,7 +567,7 @@ module "orchestrator-service-eu" {
   location                      = "europe-west1"
   service_name                  = "brain-orchestrator-eu"
   description                   = "Manages workflow and orchestrates strategies in the EU region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-orchestrator-eu:${lookup(var.image_versions, \"brain-orchestrator-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-orchestrator-eu:${lookup(var.image_versions, \"brain-orchestrator-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/pubsub.publisher", "roles/pubsub.subscriber", "roles/run.invoker"], ["roles/pubsub.publisher", "roles/pubsub.subscriber", "roles/run.invoker"], ["roles/secretmanager.secretAccessor"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"], ["roles/run.invoker"], ["roles/run.invoker"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -596,7 +596,7 @@ module "ai-optimizer-service-eu" {
   location                      = "europe-west1"
   service_name                  = "brain-ai-optimizer-eu"
   description                   = "Continuously optimizes AI models for performance in the EU region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-ai-optimizer-eu:${lookup(var.image_versions, \"brain-ai-optimizer-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-ai-optimizer-eu:${lookup(var.image_versions, \"brain-ai-optimizer-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/aiplatform.user"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -627,7 +627,7 @@ module "dashboard-frontend-eu" {
   project_id                    = "alpha-orion"
   location                      = "europe-west1"
   service_name                  = "flash-loan-dashboard-eu"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/flash-loan-dashboard-eu:${lookup(var.image_versions, \"flash-loan-dashboard-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/flash-loan-dashboard-eu:${lookup(var.image_versions, \"flash-loan-dashboard-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
@@ -655,7 +655,7 @@ module "withdrawal-service-eu" {
   project_id                    = "alpha-orion"
   location                      = "europe-west1"
   service_name                  = "withdrawal-service-eu"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/withdrawal-service-eu:${lookup(var.image_versions, \"withdrawal-service-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/withdrawal-service-eu:${lookup(var.image_versions, \"withdrawal-service-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -683,7 +683,7 @@ module "ai-terminal-frontend-eu" {
   project_id                    = "alpha-orion"
   location                      = "europe-west1"
   service_name                  = "ai-terminal-frontend-eu"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/ai-terminal-frontend-eu:${lookup(var.image_versions, \"ai-terminal-frontend-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/ai-terminal-frontend-eu:${lookup(var.image_versions, \"ai-terminal-frontend-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
@@ -711,7 +711,7 @@ module "ai-agent-service-eu" {
   project_id                    = "alpha-orion"
   location                      = "europe-west1"
   service_name                  = "ai-agent-service-eu"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/ai-agent-service-eu:${lookup(var.image_versions, \"ai-agent-service-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/ai-agent-service-eu:${lookup(var.image_versions, \"ai-agent-service-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/aiplatform.user"], ["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -742,7 +742,7 @@ module "benchmarking-scraper-service-eu" {
   project_id                    = "alpha-orion"
   location                      = "europe-west1"
   service_name                  = "benchmarking-scraper-service-eu"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/benchmarking-scraper-service-eu:${lookup(var.image_versions, \"benchmarking-scraper-service-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/benchmarking-scraper-service-eu:${lookup(var.image_versions, \"benchmarking-scraper-service-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -771,7 +771,7 @@ module "strategy-engine-service-eu" {
   location                      = "europe-west1"
   service_name                  = "brain-strategy-engine-eu"
   description                   = "Selects and executes optimal strategies in the EU region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-strategy-engine-eu:${lookup(var.image_versions, \"brain-strategy-engine-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-strategy-engine-eu:${lookup(var.image_versions, \"brain-strategy-engine-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/secretmanager.secretAccessor"], ["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -801,7 +801,7 @@ module "flash-loan-lb-global-lb-backend-ai-terminal" {
   load_balancing_scheme   = "EXTERNAL_MANAGED"
   protocol                = "HTTP"
   enable_cdn              = true
-  serverless_neg_backends = concat([{"region" = module.ai-terminal-frontend.location, "service_name" = module.ai-terminal-frontend.service_name, "service_version" = "", "type" = "cloud-run"}], [{"service_name" = module.ai-terminal-frontend-eu.service_name, "service_version" = "", "type" = "cloud-run", "region" = module.ai-terminal-frontend-eu.location}])
+  serverless_neg_backends = concat([{"region" = module.ai-terminal-frontend.location, service_name = module.ai-terminal-frontend.service_name, "service_version" = "", "type" = "cloud-run"}], [{service_name = module.ai-terminal-frontend-eu.service_name, "service_version" = "", "type" = "cloud-run", "region" = module.ai-terminal-frontend-eu.location}])
   depends_on              = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "alloydb-primary-us" {
@@ -898,7 +898,7 @@ module "historical-data-warehouse" {
   description    = "BigQuery dataset for flash loan historical data, leveraging BigQuery ML for predictive modeling, pattern identification, and anomaly detection."
   project_id     = "alpha-orion"
   encryption_key = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
-  tables         = [{"schema" = "[{\"description\": \"A string type unique identifier\",\"mode\": \"NULLABLE\",\"name\": \"simpleId\",\"type\": \"STRING\"},{\"description\": \"A field to hold integer values\",\"mode\": \"NULLABLE\",\"name\": \"integerField\",\"type\": \"INTEGER\"},{\"description\": \"Data\",\"mode\": \"NULLABLE\",\"name\": \"data\",\"type\": \"STRING\"}]", "table_id" = "table-1"}]
+  tables         = [{schema = "[{\"description\": \"A string type unique identifier\",\"mode\": \"NULLABLE\",\"name\": \"simpleId\",\"type\": \"STRING\"},{\"description\": \"A field to hold integer values\",\"mode\": \"NULLABLE\",\"name\": \"integerField\",\"type\": \"INTEGER\"},{\"description\": \"Data\",\"mode\": \"NULLABLE\",\"name\": \"data\",\"type\": \"STRING\"}]", table_id = "table-1"}]
   depends_on     = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
 module "order-management-service-us" {
@@ -906,7 +906,7 @@ module "order-management-service-us" {
   project_id                    = "alpha-orion"
   location                      = "us-central1"
   service_name                  = "order-management-service-us"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/order-management-service-us:${lookup(var.image_versions, \"order-management-service-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/order-management-service-us:${lookup(var.image_versions, \"order-management-service-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -934,7 +934,7 @@ module "order-management-service-eu" {
   project_id                    = "alpha-orion"
   location                      = "europe-west1"
   service_name                  = "order-management-service-eu"
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/order-management-service-eu:${lookup(var.image_versions, \"order-management-service-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/order-management-service-eu:${lookup(var.image_versions, \"order-management-service-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -963,7 +963,7 @@ module "risk-management-service-us" {
   location                      = "us-central1"
   service_name                  = "brain-risk-management-us"
   description                   = "Assesses and manages risks associated with flash loans in the US region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-risk-management-us:${lookup(var.image_versions, \"brain-risk-management-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-risk-management-us:${lookup(var.image_versions, \"brain-risk-management-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -992,7 +992,7 @@ module "risk-management-service-eu" {
   location                      = "europe-west1"
   service_name                  = "brain-risk-management-eu"
   description                   = "Assesses and manages risks associated with flash loans in the EU region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-risk-management-eu:${lookup(var.image_versions, \"brain-risk-management-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-risk-management-eu:${lookup(var.image_versions, \"brain-risk-management-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/alloydb.admin"], ["roles/redis.editor"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -1052,7 +1052,7 @@ module "dataflow-market-data-ingestion-us" {
   location                      = "us-central1"
   service_name                  = "dataflow-market-data-ingestion-us"
   description                   = "Cloud Dataflow job (represented as Cloud Run) for real-time market data ingestion into BigQuery and Bigtable."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/dataflow-market-data-ingestion-us:${lookup(var.image_versions, \"dataflow-market-data-ingestion-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/dataflow-market-data-ingestion-us:${lookup(var.image_versions, \"dataflow-market-data-ingestion-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/bigtable.admin"]
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -1081,7 +1081,7 @@ module "dataflow-market-data-ingestion-eu" {
   location                      = "europe-west1"
   service_name                  = "dataflow-market-data-ingestion-eu"
   description                   = "Cloud Dataflow job (represented as Cloud Run) for real-time market data ingestion into BigQuery and Bigtable."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/dataflow-market-data-ingestion-eu:${lookup(var.image_versions, \"dataflow-market-data-ingestion-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/dataflow-market-data-ingestion-eu:${lookup(var.image_versions, \"dataflow-market-data-ingestion-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/bigtable.admin"]
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -1110,7 +1110,7 @@ module "dataflow-cep-us" {
   location                      = "us-central1"
   service_name                  = "dataflow-cep-us"
   description                   = "Cloud Dataflow job (represented as Cloud Run) for complex event processing of raw opportunities."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/dataflow-cep-us:${lookup(var.image_versions, \"dataflow-cep-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/dataflow-cep-us:${lookup(var.image_versions, \"dataflow-cep-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   vpc_access = {
@@ -1138,7 +1138,7 @@ module "dataflow-cep-eu" {
   location                      = "europe-west1"
   service_name                  = "dataflow-cep-eu"
   description                   = "Cloud Dataflow job (represented as Cloud Run) for complex event processing of raw opportunities."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/dataflow-cep-eu:${lookup(var.image_versions, \"dataflow-cep-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/dataflow-cep-eu:${lookup(var.image_versions, \"dataflow-cep-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   vpc_access = {
@@ -1178,7 +1178,7 @@ module "blockchain-node-proxy-service-us" {
   location                      = "us-central1"
   service_name                  = "hand-blockchain-proxy-us"
   description                   = "Proxies communication with blockchain nodes for transaction settlement in the US region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/hand-blockchain-proxy-us:${lookup(var.image_versions, \"hand-blockchain-proxy-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/hand-blockchain-proxy-us:${lookup(var.image_versions, \"hand-blockchain-proxy-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   vpc_access = {
@@ -1206,7 +1206,7 @@ module "blockchain-node-proxy-service-eu" {
   location                      = "europe-west1"
   service_name                  = "hand-blockchain-proxy-eu"
   description                   = "Proxies communication with blockchain nodes for transaction settlement in the EU region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/hand-blockchain-proxy-eu:${lookup(var.image_versions, \"hand-blockchain-proxy-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/hand-blockchain-proxy-eu:${lookup(var.image_versions, \"hand-blockchain-proxy-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   vpc_access = {
@@ -1234,7 +1234,7 @@ module "smart-order-router-service-us" {
   location                      = "us-central1"
   service_name                  = "hand-smart-order-router-us"
   description                   = "Routes orders intelligently for optimal execution in the US region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/hand-smart-order-router-us:${lookup(var.image_versions, \"hand-smart-order-router-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/hand-smart-order-router-us:${lookup(var.image_versions, \"hand-smart-order-router-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -1263,7 +1263,7 @@ module "smart-order-router-service-eu" {
   location                      = "europe-west1"
   service_name                  = "hand-smart-order-router-eu"
   description                   = "Routes orders intelligently for optimal execution in the EU region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/hand-smart-order-router-eu:${lookup(var.image_versions, \"hand-smart-order-router-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/hand-smart-order-router-eu:${lookup(var.image_versions, \"hand-smart-order-router-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -1292,7 +1292,7 @@ module "ai-optimization-orchestrator-us" {
   location                      = "us-central1"
   service_name                  = "brain-ai-optimization-orchestrator-us"
   description                   = "Orchestrates the continuous AI optimization loop in the US region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-ai-optimization-orchestrator-us:${lookup(var.image_versions, \"brain-ai-optimization-orchestrator-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-ai-optimization-orchestrator-us:${lookup(var.image_versions, \"brain-ai-optimization-orchestrator-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/aiplatform.user"], ["roles/run.invoker"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -1323,7 +1323,7 @@ module "ai-optimization-orchestrator-eu" {
   location                      = "europe-west1"
   service_name                  = "brain-ai-optimization-orchestrator-eu"
   description                   = "Orchestrates the continuous AI optimization loop in the EU region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-ai-optimization-orchestrator-eu:${lookup(var.image_versions, \"brain-ai-optimization-orchestrator-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-ai-optimization-orchestrator-eu:${lookup(var.image_versions, \"brain-ai-optimization-orchestrator-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/aiplatform.user"], ["roles/run.invoker"])
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
@@ -1354,7 +1354,7 @@ module "simulation-service-us" {
   location                      = "us-central1"
   service_name                  = "brain-simulation-us"
   description                   = "Simulates flash loan scenarios for strategy validation and optimization in the US region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-simulation-us:${lookup(var.image_versions, \"brain-simulation-us\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-simulation-us:${lookup(var.image_versions, \"brain-simulation-us\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   vpc_access = {
@@ -1381,7 +1381,7 @@ module "simulation-service-eu" {
   location                      = "europe-west1"
   service_name                  = "brain-simulation-eu"
   description                   = "Simulates flash loan scenarios for strategy validation and optimization in the EU region."
-"container_image" = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-simulation-eu:${lookup(var.image_versions, \"brain-simulation-eu\", \"latest\")}"
+container_image = "us-docker.pkg.dev/alpha-orion/${var.artifact_registry_repo}/brain-simulation-eu:${lookup(var.image_versions, \"brain-simulation-eu\", \"latest\")}"
   gpu_zonal_redundancy_disabled = false
   ingress                       = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   vpc_access = {
@@ -1420,4 +1420,15 @@ module "project-services-billing-project" {
   project_id                  = "alpha-orion"
   disable_services_on_destroy = false
   activate_apis               = ["accesscontextmanager.googleapis.com", "admin.googleapis.com", "alloydb.googleapis.com", "appengine.googleapis.com", "apphub.googleapis.com", "bigquery.googleapis.com", "bigquerystorage.googleapis.com", "bigtable.googleapis.com", "bigtableadmin.googleapis.com", "billingbudgets.googleapis.com", "certificatemanager.googleapis.com", "cloudbilling.googleapis.com", "cloudkms.googleapis.com", "cloudresourcemanager.googleapis.com", "compute.googleapis.com", "dns.googleapis.com", "essentialcontacts.googleapis.com", "iam.googleapis.com", "iamcredentials.googleapis.com", "iap.googleapis.com", "memcache.googleapis.com", "monitoring.googleapis.com", "oslogin.googleapis.com", "pubsub.googleapis.com", "redis.googleapis.com", "run.googleapis.com", "secretmanager.googleapis.com", "serviceconsumermanagement.googleapis.com", "servicedirectory.googleapis.com", "servicenetworking.googleapis.com", "serviceusage.googleapis.com", "storage-api.googleapis.com", "storage.googleapis.com", "vpcaccess.googleapis.com"]
+}
+# ==============================================================================
+# APEX BENCHMARKING INFRASTRUCTURE
+# Mirrors production for isolated performance testing
+# ==============================================================================
+
+module "benchmarking_environment" {
+  source = "./benchmarking_environment.tf"
+  project_id = "alpha-orion"
+  region = "us-central1"
+  depends_on = [module.project-services-alpha-orion, module.project-services-billing-project]
 }

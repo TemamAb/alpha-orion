@@ -14,7 +14,7 @@ import urllib.request
 import urllib.error
 import webbrowser
 
-DASHBOARD_FILE = 'unified-dashboard.html'
+DASHBOARD_FILE = 'official-dashboard.html'
 HARDCODED_PORT = 8888  # Proposed working port
 
 def find_free_port(start_port=8888, max_attempts=100):
@@ -71,7 +71,12 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         # API Endpoints - Proxy to Backend
-        api_prefixes = ['/analytics', '/trades', '/opportunities', '/mode', '/pimlico', '/health']
+        api_prefixes = [
+            '/analytics', '/trades', '/opportunities', '/mode', '/pimlico', '/health',
+            '/orchestrate', '/signals', '/scanner', '/options-arbitrage', 
+            '/perpetuals-arbitrage', '/gamma-scalping', '/delta-neutral', '/advanced-risk',
+            '/copilot'
+        ]
         if any(self.path.startswith(p) for p in api_prefixes):
             self.handle_api_request()
             return
