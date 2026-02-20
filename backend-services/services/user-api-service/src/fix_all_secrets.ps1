@@ -24,7 +24,6 @@ $UpdatesMade = $false
 
 # Define critical keys to check
 $Checks = @{
-    "ONE_INCH_API_KEY" = "Enter 1inch API Key (Free at portal.1inch.dev)"
     "INFURA_API_KEY"   = "Enter Infura API Key (Free at infura.io)"
     "PIMLICO_API_KEY"  = "Enter Pimlico API Key (Free at pimlico.io)"
     "WALLET_ADDRESS"   = "Enter Wallet Address (0x...)"

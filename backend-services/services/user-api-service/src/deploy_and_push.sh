@@ -79,7 +79,7 @@ if ! command -v gcloud &> /dev/null; then
     exit 0
 fi
 
-REQUIRED_SECRETS=("profit-destination-wallet" "pimlico-api-key" "one-inch-api-key" "infura-api-key" "polygon-rpc-url" "ethereum-rpc-url")
+REQUIRED_SECRETS=("profit-destination-wallet" "pimlico-api-key" "infura-api-key" "polygon-rpc-url" "ethereum-rpc-url")
 
 for SECRET in "${REQUIRED_SECRETS[@]}"; do
     if ! gcloud secrets describe "$SECRET" &>/dev/null; then

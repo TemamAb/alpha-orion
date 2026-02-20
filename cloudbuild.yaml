@@ -48,7 +48,7 @@ steps:
       - '--concurrency=80'
       - '--set-env-vars=PORT=8080,NODE_ENV=production,GCP_PROJECT_ID=$PROJECT_ID'
       - >-
-        --set-secrets=DATABASE_URL=DATABASE_URL:latest,REDIS_URL=REDIS_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest,PIMLICO_API_KEY=PIMLICO_API_KEY:latest,ONE_INCH_API_KEY=ONE_INCH_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,ETHEREUM_RPC_URL=ETHEREUM_RPC_URL:latest,PROFIT_WALLET_ADDRESS=PROFIT_WALLET_ADDRESS:latest
+        --set-secrets=DATABASE_URL=DATABASE_URL:latest,REDIS_URL=REDIS_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest,PIMLICO_API_KEY=PIMLICO_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,ETHEREUM_RPC_URL=ETHEREUM_RPC_URL:latest,PROFIT_WALLET_ADDRESS=PROFIT_WALLET_ADDRESS:latest
 
   # ==============================================================================
   # 2. FRONTEND DASHBOARD (Nginx to serve static files)

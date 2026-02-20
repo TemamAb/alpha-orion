@@ -58,8 +58,7 @@ def check_secrets(project_id):
     required_secrets = [
         "DATABASE_URL",
         "REDIS_URL", 
-        "PIMLICO_API_KEY",
-        "ONE_INCH_API_KEY"
+        "PIMLICO_API_KEY"
     ]
     
     # gcloud secrets list returns full resource names: projects/ID/secrets/NAME

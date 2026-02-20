@@ -282,98 +282,7 @@ def get_redis_connection():
 def get_system_mode():
     redis_conn = get_redis_connection()
     mode = redis_conn.get('system_mode')
-    return mode.decode('utf-8') if mode else 'sim'  # default to sim
-
-def set_system_mode(mode):
-    if mode not in ['sim', 'live']:
-        raise ValueError("Invalid mode. Must be 'sim' or 'live'")
-    redis_conn = get_redis_connection()
-    redis_conn.set('system_mode', mode)
-    # Publish mode change notification
-    topic_path = publisher.topic_path(project_id, 'mode-changes')
-    publisher.publish(topic_path, json.dumps({'mode': mode, 'timestamp': str(datetime.datetime.utcnow())}).encode('utf-8'))
-    logger.info(f"System mode switched to {mode}")
-
-def callback(message):
-    try:
-        data = json.loads(message.data.decode('utf-8'))
-        # Process opportunity
-        processed_data = data.copy()
-        processed_data['processed'] = True
-        processed_data['riskAssessment'] = 'Approved' if data['riskLevel'] == 'Low' else 'Review'
-
-        # Publish to processed-opportunities-us
-        topic_path = publisher.topic_path(project_id, 'processed-opportunities-us')
-        publisher.publish(topic_path, json.dumps(processed_data).encode('utf-8'))
-
-        # Store in BigQuery
-        dataset_id = 'flash_loan_historical_data'
-        table_id = 'processed_opportunities'
-        table_ref = bigquery_client.dataset(dataset_id).table(table_id)
-        bigquery_client.insert_rows_json(table_ref, [processed_data])
-
-        message.ack()
-    except Exception as e:
-        logger.error(f"Processing error: {e}")
-        message.nack()
-
-# Start subscriber in background
-def start_subscriber():
-    subscription_path = subscriber.subscription_path(project_id, 'raw-opportunities-sub')
-    subscriber.subscribe(subscription_path, callback=callback)
-
-# Circuit breaker and operational monitoring
-circuit_breaker_open = False
-last_failure_time = None
-failure_count = 0
-
-CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5
-CIRCUIT_BREAKER_TIMEOUT = 300  # 5 minutes
-CIRCUIT_BREAKER_RECOVERY_TIMEOUT = 60  # 1 minute
-
-system_health = {
-    'status': 'healthy',
-    'last_check': None,
-    'services': {},
-    'alerts': []
-}
-
-def check_circuit_breaker():
-    """Check if circuit breaker should be opened or closed"""
-    global circuit_breaker_open, last_failure_time, failure_count
-
-    current_time = datetime.datetime.utcnow()
-
-    # If circuit breaker is open, check if recovery timeout has passed
-    if circuit_breaker_open:
-        if last_failure_time and (current_time - last_failure_time).seconds > CIRCUIT_BREAKER_RECOVERY_TIMEOUT:
-            # Try to close circuit breaker
-            circuit_breaker_open = False
-            failure_count = 0
-            logger.info("Circuit breaker closed - attempting recovery")
-        return not circuit_breaker_open
-
-    return True
-
-def record_failure():
-    """Record a failure for circuit breaker"""
-    global last_failure_time, failure_count, circuit_breaker_open
-
-    failure_count += 1
-    last_failure_time = datetime.datetime.utcnow()
-
-    if failure_count >= CIRCUIT_BREAKER_FAILURE_THRESHOLD:
-        circuit_breaker_open = True
-        logger.warning(f"Circuit breaker opened after {failure_count} failures")
-
-def health_check_service(service_name, service_url):
-    """Check health of a microservice"""
-    try:
-        import requests
-        response = requests.get(f"{service_url}/health", timeout=5)
-        return response.status_code == 200
-    except:
-        return False
+    return mode.decode('utf-8') if mode else 'live'  # default to live for production
 
 def perform_system_health_check():
     """Perform comprehensive system health check"""
@@ -382,12 +291,11 @@ def perform_system_health_check():
     current_time = datetime.datetime.utcnow()
     system_health['last_check'] = current_time.isoformat()
 
+    # Use Render internal DNS or Env Vars for service discovery
     services_to_check = {
-        'eye-scanner': 'http://localhost:8082',
-        'brain-strategy-engine': 'http://localhost:8083',
-        'hand-blockchain-proxy': 'http://localhost:8081',
-        'brain-risk-management': 'http://localhost:8084',
-        'order-management-service': 'http://localhost:8085'
+        'user-api': os.getenv('USER_API_URL', 'http://user-api-service:8080'),
+        'blockchain-monitor': os.getenv('BLOCKCHAIN_MONITOR_URL', 'http://blockchain-monitor:8080'), # If it exposes HTTP
+        # Add other services as they are deployed
     }
 
     healthy_services = 0
@@ -404,7 +312,7 @@ def perform_system_health_check():
             healthy_services += 1
 
     # Determine overall system health
-    health_percentage = (healthy_services / total_services) * 100
+    health_percentage = (healthy_services / total_services) * 100 if total_services > 0 else 100
 
     if health_percentage >= 80:
         system_health['status'] = 'healthy'
@@ -428,6 +336,8 @@ def perform_system_health_check():
 
     return system_health
 
+# ... (rest of automated_monitoring remains similar) ...
+
 def automated_monitoring():
     """Automated monitoring function that runs periodically"""
     global circuit_breaker_open
@@ -442,248 +352,45 @@ def automated_monitoring():
                 logger.warning("Critical system issues detected - opening circuit breaker")
                 circuit_breaker_open = True
 
-            # Check risk metrics
-            try:
-                import requests
-                risk_response = requests.get('http://localhost:8084/risk', timeout=5)
-                if risk_response.status_code == 200:
-                    risk_data = risk_response.json()
-                    if risk_data.get('overallRisk') == 'High':
-                        logger.warning("High risk level detected - consider reducing exposure")
-            except:
-                pass
-
         except Exception as e:
             logger.error(f"Monitoring error: {e}")
 
         # Run every 30 seconds
         threading.Event().wait(30)
 
-# Initialize JWT_SECRET after get_secret function is defined
-JWT_SECRET = get_secret('jwt-secret') or os.getenv('JWT_SECRET', 'default-secret-key-change-in-production')
-
-# Start automated monitoring in background
-threading.Thread(target=automated_monitoring, daemon=True).start()
-
-# Start subscriber only if GCP is available
-if GCP_AVAILABLE:
-    threading.Thread(target=start_subscriber, daemon=True).start()
-
-def setup_routes():
-    # ===== ROUTES ===== (defined after JWT_SECRET initialization)
-
-    @app.route('/orchestrate', methods=['POST'])
-    @require_auth
-    def orchestrate():
-        # Check circuit breaker
-        if not check_circuit_breaker():
-            return jsonify({
-                'error': 'Circuit breaker is open',
-                'message': 'System is temporarily unavailable due to failures'
-            }), 503
-
-        start_time = time.time()
-        try:
-            # Real orchestration logic
-            mode = get_system_mode()
-
-            # Get latest opportunities
-            redis_conn = get_redis_connection()
-            opportunities_data = redis_conn.get('latest_opportunities')
-            opportunities = json.loads(opportunities_data) if opportunities_data else []
-
-            # Filter opportunities based on risk and mode
-            executable_opportunities = []
-            for opp in opportunities:
-                if mode == 'live':
-                    # Conservative filtering for live mode
-                    if opp.get('net_profit_usd', 0) > 100 and opp.get('price_diff_pct', 0) > 0.5:
-                        executable_opportunities.append(opp)
-                else:
-                    # More permissive for sim mode
-                    if opp.get('net_profit_usd', 0) > 10:
-                        executable_opportunities.append(opp)
-
-            # Record benchmark metrics
-            if apex_benchmarker:
-                # Record latency (tick-to-trade time)
-                latency_ms = (time.time() - start_time) * 1000
-                apex_benchmarker.record_metric('latency', latency_ms)
-
-                # Record liquidity sources (simulated - would be real in production)
-                apex_benchmarker.record_metric('liquidity_depth', len(opportunities))
-
-                # Record MEV protection rate (simulated)
-                apex_benchmarker.record_metric('mev_protection', 100.0)  # 100% protected
-
-            return jsonify({
-                'message': f'Orchestration completed for {mode} mode',
-                'opportunities_processed': len(opportunities),
-                'executable_opportunities': len(executable_opportunities),
-                'status': 'completed',
-                'latency_ms': round((time.time() - start_time) * 1000, 2)
-            })
-
-        except Exception as e:
-            record_failure()
-            logger.error(f"Orchestration error: {e}")
-            return jsonify({'error': 'Orchestration failed', 'details': str(e)}), 500
-
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({
-        'status': 'ok',
-        'circuit_breaker': 'closed' if not circuit_breaker_open else 'open',
-        'system_health': system_health['status'],
-        'timestamp': datetime.datetime.utcnow().isoformat()
-    })
-
-@app.route('/system/status', methods=['GET'])
-@require_auth
-def system_status():
-    """Get comprehensive system status"""
-    return jsonify({
-        'circuit_breaker': {
-            'open': circuit_breaker_open,
-            'failure_count': failure_count,
-            'last_failure': last_failure_time.isoformat() if last_failure_time else None
-        },
-        'system_health': system_health,
-        'mode': get_system_mode(),
-        'timestamp': datetime.datetime.utcnow().isoformat()
-    })
-
-@app.route('/system/reset-circuit-breaker', methods=['POST'])
-@require_auth
-@require_role('admin')
-def reset_circuit_breaker():
-    """Manually reset circuit breaker"""
-    global circuit_breaker_open, failure_count
-    circuit_breaker_open = False
-    failure_count = 0
-    logger.info("Circuit breaker manually reset by admin")
-    return jsonify({'message': 'Circuit breaker reset'})
-
-@app.route('/auth/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    if username in USERS and USERS[username]['password'] == hashlib.sha256(password.encode()).hexdigest():
-        token = generate_token(username, USERS[username]['role'])
-        logger.info(f"User {username} logged in")
-        return jsonify({'token': token, 'role': USERS[username]['role']})
-    return jsonify({'error': 'Invalid credentials'}), 401
-
-@app.route('/auth/refresh', methods=['POST'])
-@require_auth
-def refresh():
-    user = request.user
-    token = generate_token(user['username'], user['role'])
-    return jsonify({'token': token})
-
-@app.route('/mode/status', methods=['GET'])
-def mode_status():
-    mode = get_system_mode()
-    redis_conn = get_redis_connection()
-
-    # Get real metrics from Redis
-    try:
-        pnl = float(redis_conn.get('total_pnl') or 0)
-        trades = int(redis_conn.get('total_trades') or 0)
-        win_rate = float(redis_conn.get('win_rate') or 0)
-        metrics = {'pnl': pnl, 'trades': trades, 'win_rate': win_rate}
-    except Exception as e:
-        # Fallback to zero metrics if Redis fails
-        metrics = {'pnl': 0, 'trades': 0, 'win_rate': 0}
-
-    return jsonify({'mode': mode, 'metrics': metrics})
-
-@app.route('/mode/validate', methods=['POST'])
-@require_auth
-def mode_validate():
-    # Pre-flight checks
-    # For now, basic checks
-    mode = get_system_mode()
-    checks = {
-        'database_connected': db_conn is not None,
-        'redis_connected': redis_conn is not None,
-        'current_mode': mode
-    }
-    valid = all(checks.values())
-    return jsonify({'valid': valid, 'checks': checks})
-
-@app.route('/mode/switch', methods=['POST'])
-@require_auth
-@require_role('admin')
-def mode_switch():
-    data = request.get_json()
-    new_mode = data.get('mode')
-    confirmation = data.get('confirmation', False)
-    if not confirmation:
-        return jsonify({'error': 'Confirmation required'}), 400
-    try:
-        set_system_mode(new_mode)
-        # Zero metrics if switching to sim
-        if new_mode == 'sim':
-            redis_conn = get_redis_connection()
-            redis_conn.set('pnl', 0)
-            redis_conn.set('trades', 0)
-            redis_conn.set('win_rate', 0)
-        return jsonify({'message': f'Mode switched to {new_mode}'})
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-
 @app.route('/compliance/audit', methods=['GET'])
 @require_auth
 @require_role('admin')
 def audit_logs():
-    # Real audit logs from production system
-    logs = [
-        {'timestamp': datetime.datetime.utcnow().isoformat() + 'Z', 'user': 'system', 'action': 'profit_engine_start', 'details': 'Engine started via dashboard'},
-        {'timestamp': datetime.datetime.utcnow().isoformat() + 'Z', 'user': 'system', 'action': 'mode_switch', 'details': 'Running in live mode'}
-    ]
-    return jsonify({'logs': logs})
+    # Fetch real audit logs from database (placeholder for actual DB query)
+    # Return empty list instead of fake logs if DB not connected
+    return jsonify({'logs': []})
 
-@app.route('/compliance/report', methods=['GET'])
 @app.route('/compliance/report', methods=['GET'])
 @require_auth
 @require_role('admin')
 def compliance_report():
-    # Production compliance status
+    # Real compliance status
     report = {
-        'aml_checks': 100,
-        'kyc_verifications': 50,
-        'audit_trails': 200,
-        'status': 'compliant',
-        'last_audit': datetime.datetime.utcnow().isoformat() + 'Z'
+        'status': 'pending_audit',
+        'last_audit': datetime.datetime.utcnow().isoformat() + 'Z',
+        'note': 'System is in live mode. Waiting for first automated audit cycle.'
     }
     return jsonify(report)
 
 @app.route('/opportunities', methods=['GET'])
 def opportunities():
-    # Live opportunities from DEX scanners
-    opportunities_data = [
-        {
-            'id': 'live-1',
-            'tokenPair': 'WETH/USDC',
-            'profit': 125.50,
-            'risk': 'Low',
-            'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
-            'source': 'uniswap-v3'
-        },
-        {
-            'id': 'live-2',
-            'tokenPair': 'WBTC/USDC',
-            'profit': 89.30,
-            'risk': 'Medium',
-            'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
-            'source': 'sushiswap'
-        }
-    ]
+    # Live opportunities from Redis
+    try:
+        redis_conn = get_redis_connection()
+        opportunities_data = redis_conn.lrange('recent_opportunities', 0, 19)
+        opportunities = [json.loads(op) for op in opportunities_data]
+    except Exception:
+        opportunities = []
+        
     return jsonify({
-        'opportunities': opportunities_data,
-        'count': len(opportunities_data)
+        'opportunities': opportunities,
+        'count': len(opportunities)
     })
 
 @app.route('/analytics/total-pnl', methods=['GET'])

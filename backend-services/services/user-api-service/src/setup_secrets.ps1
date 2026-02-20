@@ -8,7 +8,6 @@ Write-Host ""
 $Secrets = @{
     "profit-destination-wallet" = "Enter your Wallet Address (0x...)"
     "pimlico-api-key"           = "Enter Pimlico API Key (Free at pimlico.io)"
-    "one-inch-api-key"          = "Enter 1inch API Key (Free at portal.1inch.dev)"
     "infura-api-key"            = "Enter Infura API Key (Free at infura.io)"
     "polygon-rpc-url"           = "Enter Polygon RPC URL (default: https://polygon-rpc.com)"
     "ethereum-rpc-url"          = "Enter Ethereum RPC URL"

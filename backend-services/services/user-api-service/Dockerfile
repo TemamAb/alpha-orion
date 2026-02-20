@@ -1,29 +1,49 @@
-# Use official Node.js 18 image as base
-FROM node:18-alpine
+# Stage 1: Builder
+# We use a full Node image to build native dependencies (like tfjs-node)
+FROM node:18-bullseye AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Install production dependencies
-# We copy package.json first to leverage Docker cache
+# Install build tools required for TensorFlow and other native modules
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files first to leverage Docker cache
 COPY package*.json ./
 
-# Install dependencies including redis for state management
-RUN npm install --production && npm install redis
+# Install dependencies (including devDependencies for build steps)
+RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Expose the port the app runs on
-EXPOSE 8080
+# Build the application (if you have a build script, e.g., for TypeScript)
+# RUN npm run build
 
-# Environment variables
+# Prune dev dependencies to keep the image small
+RUN npm prune --production
+
+# Stage 2: Production Runner
+# Use a slim image for the final runtime to reduce attack surface and size
+FROM node:18-bullseye-slim
+
+WORKDIR /app
+
+# Copy built node_modules and source from builder stage
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/package.json ./
+
+# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+# Expose the port
+EXPOSE 8080
 
 # Start the application
-CMD ["node", "src/index.js"]
+CMD ["npm", "start"]

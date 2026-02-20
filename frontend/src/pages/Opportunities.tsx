@@ -2,7 +2,7 @@
 import React from 'react';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
-import { useApiData } from '../hooks/useMockData';
+import { useApiData } from '../hooks/useApiData';
 import { Opportunity } from '../types';
 
 const RiskBadge = ({ risk }: { risk: 'Low' | 'Medium' | 'High' }) => {
@@ -44,9 +44,9 @@ const Opportunities: React.FC = () => {
       render: (item: Opportunity) => <RiskBadge risk={item.riskLevel as 'Low' | 'Medium' | 'High'} />,
     },
     {
-        key: 'id' as keyof Opportunity,
-        header: 'Action',
-        render: (_item: Opportunity) => <button className="text-blue-500 hover:text-blue-400 text-xs font-bold">EXECUTE</button>
+      key: 'id' as keyof Opportunity,
+      header: 'Action',
+      render: (_item: Opportunity) => <button className="text-blue-500 hover:text-blue-400 text-xs font-bold">EXECUTE</button>
     }
   ];
 

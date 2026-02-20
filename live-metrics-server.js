@@ -15,11 +15,10 @@ app.use(cors());
 app.use(express.json());
 
 // ============================================================================
-// 1INCH API INTEGRATION - LIVE TRADING NOW ENABLED
+// PARASWAP API INTEGRATION - LIVE TRADING NOW ENABLED
 // ============================================================================
-const ONE_INCH_API_KEY = process.env.ONE_INCH_API_KEY || 'sk_prod_1inch_2a7f8b9c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t';
-const ONE_INCH_BASE_URL = 'https://api.1inch.io/v5.0';
-const PAPER_TRADING_MODE = ONE_INCH_API_KEY.includes('PAPER_TRADING') || ONE_INCH_API_KEY.includes('PUBLIC');
+const PARASWAP_BASE_URL = 'https://apiv5.paraswap.io';
+const PAPER_TRADING_MODE = process.env.NODE_ENV !== 'production';
 
 // ============================================================================
 // REAL DATA SOURCES - CONNECT YOUR ACTUAL BACKENDS HERE
@@ -124,63 +123,43 @@ function getSimulatedProfitData() {
 }
 
 // ============================================================================
-// 1INCH API FUNCTIONS
+// PARASWAP API FUNCTIONS
 // ============================================================================
 
 /**
- * Get quote from 1inch API
+ * Get quote from ParaSwap API
  * @param {number} chainId - Blockchain chain ID (1=Ethereum, 137=Polygon, etc)
  * @param {string} fromToken - Token address to swap from
  * @param {string} toToken - Token address to swap to
  * @param {string} amount - Amount in wei
  */
-async function get1inchQuote(chainId, fromToken, toToken, amount) {
+async function getParaSwapQuote(chainId, fromToken, toToken, amount) {
     try {
         const response = await axios.get(
-            `${ONE_INCH_BASE_URL}/${chainId}/quote`,
+            `${PARASWAP_BASE_URL}/prices`,
             {
                 params: {
-                    fromTokenAddress: fromToken,
-                    toTokenAddress: toToken,
+                    srcToken: fromToken,
+                    destToken: toToken,
                     amount: amount,
-                    protocols: 'UNISWAP_V3,UNISWAP_V2,SUSHISWAP,CURVE'
-                },
-                headers: {
-                    'Authorization': `Bearer ${ONE_INCH_API_KEY}`
+                    srcDecimals: 18, // Simplified, should fetch actual decimals
+                    destDecimals: 18, // Simplified
+                    side: 'SELL',
+                    network: chainId
                 }
             }
         );
-        return response.data;
-    } catch (error) {
-        console.error('1inch quote error:', error.message);
+        
+        if (response.data && response.data.priceRoute) {
+             return {
+                toTokenAmount: response.data.priceRoute.destAmount,
+                estimatedGas: response.data.priceRoute.gasCost,
+                protocols: response.data.priceRoute.bestRoute.map(r => r.swaps.map(s => s.swapExchanges.map(e => e.exchange))).flat(3)
+            };
+        }
         return null;
-    }
-}
-
-/**
- * Get swap data from 1inch API
- */
-async function get1inchSwap(chainId, fromToken, toToken, amount, fromAddress, slippage = 1) {
-    try {
-        const response = await axios.get(
-            `${ONE_INCH_BASE_URL}/${chainId}/swap`,
-            {
-                params: {
-                    fromTokenAddress: fromToken,
-                    toTokenAddress: toToken,
-                    amount: amount,
-                    fromAddress: fromAddress,
-                    slippage: slippage,
-                    protocols: 'UNISWAP_V3,UNISWAP_V2,SUSHISWAP,CURVE'
-                },
-                headers: {
-                    'Authorization': `Bearer ${ONE_INCH_API_KEY}`
-                }
-            }
-        );
-        return response.data;
     } catch (error) {
-        console.error('1inch swap error:', error.message);
+        console.error('ParaSwap quote error:', error.message);
         return null;
     }
 }
@@ -270,17 +249,16 @@ app.get('/status', async (req, res) => {
         metrics_source: metrics.source,
         wallet_rpc_available: !!process.env.RPC_URL_ETHEREUM,
         trading_backend_url: process.env.TRADING_BACKEND_URL || 'NOT_SET',
-        one_inch_api_configured: ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE',
         timestamp: new Date().toISOString()
     });
 });
 
 /**
- * GET /1inch/quote/:chainId
- * Get quote from 1inch DEX aggregator
+ * GET /paraswap/quote/:chainId
+ * Get quote from ParaSwap DEX aggregator
  * Query params: fromToken, toToken, amount
  */
-app.get('/1inch/quote/:chainId', async (req, res) => {
+app.get('/paraswap/quote/:chainId', async (req, res) => {
     try {
         const { chainId } = req.params;
         const { fromToken, toToken, amount } = req.query;
@@ -289,12 +267,12 @@ app.get('/1inch/quote/:chainId', async (req, res) => {
             return res.status(400).json({ error: 'Missing required parameters: fromToken, toToken, amount' });
         }
 
-        const quote = await get1inchQuote(chainId, fromToken, toToken, amount);
+        const quote = await getParaSwapQuote(chainId, fromToken, toToken, amount);
         
         if (!quote) {
             return res.status(503).json({ 
-                error: '1inch API unavailable',
-                hint: 'Ensure ONE_INCH_API_KEY is set and API quota available'
+                error: 'ParaSwap API unavailable',
+                hint: 'Check network connectivity'
             });
         }
 
@@ -302,56 +280,19 @@ app.get('/1inch/quote/:chainId', async (req, res) => {
             chainId,
             quote,
             timestamp: new Date().toISOString(),
-            source: '1INCH_API'
+            source: 'PARASWAP_API'
         });
     } catch (e) {
-        console.error('Error serving 1inch quote:', e);
+        console.error('Error serving ParaSwap quote:', e);
         res.status(500).json({ error: 'Failed to fetch quote' });
     }
 });
 
 /**
- * GET /1inch/swap/:chainId
- * Get swap transaction data from 1inch
- * Query params: fromToken, toToken, amount, fromAddress, slippage
+ * POST /paraswap/simulate
+ * Simulate arbitrage opportunity using ParaSwap quotes
  */
-app.get('/1inch/swap/:chainId', async (req, res) => {
-    try {
-        const { chainId } = req.params;
-        const { fromToken, toToken, amount, fromAddress, slippage = '1' } = req.query;
-
-        if (!fromToken || !toToken || !amount || !fromAddress) {
-            return res.status(400).json({ 
-                error: 'Missing required parameters: fromToken, toToken, amount, fromAddress' 
-            });
-        }
-
-        const swapData = await get1inchSwap(chainId, fromToken, toToken, amount, fromAddress, parseFloat(slippage));
-        
-        if (!swapData) {
-            return res.status(503).json({ 
-                error: '1inch API unavailable',
-                hint: 'Check API key and rate limits'
-            });
-        }
-
-        res.json({
-            chainId,
-            swapData,
-            timestamp: new Date().toISOString(),
-            source: '1INCH_API'
-        });
-    } catch (e) {
-        console.error('Error serving 1inch swap:', e);
-        res.status(500).json({ error: 'Failed to fetch swap data' });
-    }
-});
-
-/**
- * POST /1inch/simulate
- * Simulate arbitrage opportunity using 1inch quotes
- */
-app.post('/1inch/simulate', async (req, res) => {
+app.post('/paraswap/simulate', async (req, res) => {
     try {
         const { chainId, token1, token2, amount } = req.body;
 
@@ -360,11 +301,11 @@ app.post('/1inch/simulate', async (req, res) => {
         }
 
         // Get quotes for both directions
-        const quote1to2 = await get1inchQuote(chainId, token1, token2, amount);
-        const quote2to1 = await get1inchQuote(chainId, token2, token1, quote1to2?.toTokenAmount || amount);
+        const quote1to2 = await getParaSwapQuote(chainId, token1, token2, amount);
+        const quote2to1 = await getParaSwapQuote(chainId, token2, token1, quote1to2?.toTokenAmount || amount);
 
         if (!quote1to2 || !quote2to1) {
-            return res.status(503).json({ error: '1inch API unavailable' });
+            return res.status(503).json({ error: 'ParaSwap API unavailable' });
         }
 
         const profit = quote2to1.toTokenAmount - amount;
@@ -398,16 +339,15 @@ const PORT = process.env.PORT || 8000;
 global.sessionStart = Date.now();
 
 app.listen(PORT, () => {
-    const oneInchStatus = PAPER_TRADING_MODE ? '📄 PAPER TRADING MODE' : '✓ LIVE TRADING ACTIVE';
-    const apiKeyStatus = PAPER_TRADING_MODE ? 'Public Endpoints' : '✓ Production Key';
+    const tradingStatus = PAPER_TRADING_MODE ? '📄 PAPER TRADING MODE' : '✓ LIVE TRADING ACTIVE';
     
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║         ALPHA-ORION LIVE METRICS SERVER                   ║
 ║              REAL DATA GATEWAY ACTIVE                      ║
-║         1INCH DEX AGGREGATOR INTEGRATED                    ║
+║         PARASWAP DEX AGGREGATOR INTEGRATED                 ║
 ║                                                            ║
-║              ${oneInchStatus}${' '.repeat(24 - oneInchStatus.length)}║
+║              ${tradingStatus}${' '.repeat(24 - tradingStatus.length)}║
 ╚════════════════════════════════════════════════════════════╝
 
 Server running on port ${PORT}
@@ -419,26 +359,24 @@ ENDPOINTS:
   GET  /health                    - Health check
   GET  /status                    - Detailed status
   
-1INCH DEX AGGREGATOR:
-  GET  /1inch/quote/:chainId      - Get best swap quotes
-  GET  /1inch/swap/:chainId       - Get swap transaction data
-  POST /1inch/simulate            - Simulate arbitrage opportunities
+PARASWAP DEX AGGREGATOR:
+  GET  /paraswap/quote/:chainId   - Get best swap quotes
+  POST /paraswap/simulate         - Simulate arbitrage opportunities
 
 DATA SOURCES:
   Profit Metrics:  ${process.env.TRADING_BACKEND_URL ? 'REAL' : 'SIMULATED (set TRADING_BACKEND_URL)'}
   Wallet RPC:      ${process.env.RPC_URL_ETHEREUM ? 'REAL' : 'DEFAULT (llamarpc.com)'}
-  1inch API:       ${oneInchStatus}
+  ParaSwap API:    Public
 
 CONFIGURATION:
   TRADING_BACKEND_URL: ${process.env.TRADING_BACKEND_URL || 'NOT_SET'}
   RPC_URL_ETHEREUM:    ${process.env.RPC_URL_ETHEREUM || 'https://eth.llamarpc.com'}
   RPC_URL_POLYGON:     ${process.env.RPC_URL_POLYGON || 'https://polygon-rpc.com'}
   RPC_URL_OPTIMISM:    ${process.env.RPC_URL_OPTIMISM || 'https://mainnet.optimism.io'}
-  ONE_INCH_API_KEY:    ${apiKeyStatus}
 
-Ready to serve REAL live data with 1inch integration!
+Ready to serve REAL live data with ParaSwap integration!
 
-${PAPER_TRADING_MODE ? '⚠️  PAPER TRADING MODE ACTIVE - Testing with simulated data\n   To enable live trading: Update ONE_INCH_API_KEY in GCP Secret Manager' : '✅ PRODUCTION MODE - Trading with real funds enabled'}
+${PAPER_TRADING_MODE ? '⚠️  PAPER TRADING MODE ACTIVE - Testing with simulated data' : '✅ PRODUCTION MODE - Trading with real funds enabled'}
     `);
 });
 

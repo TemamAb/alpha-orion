@@ -1,10 +1,10 @@
 # Alpha-Orion Flash Loan Arbitrage Application
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Deployment](https://img.shields.io/badge/Deployment-GCP-green.svg)](https://console.cloud.google.com/)
-[![CI/CD](https://img.shields.io/badge/CI/CD-Cloud%20Build-orange.svg)](https://cloud.google.com/cloud-build)
+[![Deployment](https://render.com/images/deploy-to-render-button.svg)](https://render.com)
+[![CI](https://github.com/TemamAb/alpha-orion/actions/workflows/ci.yml/badge.svg)](https://github.com/TemamAb/alpha-orion/actions/workflows/ci.yml)
 
-A high-performance, enterprise-grade flash loan arbitrage application built on Google Cloud Platform with multi-region deployment, automated CI/CD, and comprehensive security measures.
+A high-performance, enterprise-grade flash loan arbitrage application designed for a modern, serverless cloud stack. It is deployed on Render and leverages a suite of powerful, scalable, and cost-effective services.
 
 ## 📋 Table of Contents
 
@@ -22,104 +22,38 @@ A high-performance, enterprise-grade flash loan arbitrage application built on G
 
 ## 🎯 Overview
 
-Alpha-Orion is a sophisticated flash loan arbitrage system designed to identify and execute profitable arbitrage opportunities across decentralized exchanges. The application leverages advanced algorithms, real-time market data, and automated execution to maximize returns while minimizing risk.
-
-### Key Capabilities
-
-- **Real-time Arbitrage Detection**: Continuous monitoring of DEX pairs across multiple blockchains
-- **Automated Execution**: Smart contract-based flash loan execution with atomic transactions
-- **Risk Management**: Built-in slippage protection and gas optimization
-- **Multi-Region Deployment**: Global infrastructure for low-latency operations
-- **Enterprise Security**: Binary authorization, encrypted communications, and audit trails
+Alpha-Orion is a sophisticated flash loan arbitrage system designed to identify and execute profitable arbitrage opportunities across decentralized exchanges. The application leverages advanced algorithms, real-time market data, and automated execution to maximize returns while minimizing risk on a modern PaaS architecture.
 
 ## 🏗️ Architecture
 
-### Infrastructure Components
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend UI   │    │   Backend API   │    │   Orchestrator  │
-│   (React/Vite)  │◄──►│   (Node.js)     │◄──►│   (Python)      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │   Scanner       │
-                    │   (Python)      │
-                    └─────────────────┘
-                             │
-                    ┌─────────────────┐
-                    │   Executor      │
-                    │   (Solidity)    │
-                    └─────────────────┘
-```
-
 ### Technology Stack
 
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
-- **Backend**: Node.js, Express, TypeScript
+- **Backend Services**: Node.js (User API), Python (AI & Blockchain Services)
 - **Blockchain**: Solidity, Web3.js, Ethers.js
-- **Infrastructure**: Google Cloud Platform (GCP)
-- **Database**: AlloyDB (PostgreSQL), Redis, BigQuery
-- **Orchestration**: Kubernetes Engine (GKE)
-- **CI/CD**: Cloud Build, GitHub Actions
-- **Security**: Binary Authorization, KMS, Secret Manager
-
-## ✨ Key Features Summary
-
-Alpha-Orion is a cutting-edge flash loan arbitrage platform featuring:
-
-- **Gasless Trading**: Pimlico ERC-4337 integration for zero gas fees on Polygon zkEVM
-- **Real-time Arbitrage Detection**: Continuous DEX monitoring across multiple chains
-- **Automated Execution**: Smart contract-based flash loan arbitrage with atomic transactions
-- **Live Profit Dashboard**: Real-time P&L tracking, metrics, and analytics
-- **AI Optimization**: Gemini AI integration for strategy enhancement
-- **Enterprise Security**: GCP-based deployment with binary authorization and encryption
-- **Multi-Region Infrastructure**: Global deployment for low-latency operations
-- **Backtesting Environment**: Dedicated clusters for strategy validation
-- **Risk Management**: Slippage protection, gas optimization, and audit logging
-- **Auto-Withdrawal**: Gasless USDC transfers at configurable thresholds
+- **Deployment Platform**: [Render](https://render.com/) (Infrastructure as Code via `render.yaml`)
+- **Database**: Neon (Serverless PostgreSQL)
+- **Cache & Pub/Sub**: Upstash (Serverless Redis)
+- **AI/ML**: OpenAI (GPT-4o for strategy optimization)
+- **CI/CD**: GitHub Actions
 
 ## ✨ Features
-
-### Core Features
 
 - 🔍 **Market Scanner**: Real-time DEX pair monitoring across multiple chains
 - 🤖 **Arbitrage Engine**: Automated opportunity identification and execution
 - ⚡ **Flash Loans**: Atomic transaction execution with instant liquidation
 - 📊 **Analytics Dashboard**: Real-time P&L tracking and performance metrics
 - 🔒 **Risk Management**: Slippage protection and gas optimization
-- 🌐 **Multi-Region**: Global deployment for optimal performance
-
-### Advanced Features
-
-- **Backtesting Environment**: Dedicated GKE cluster for strategy testing
-- **Market Data Lake**: BigQuery-based historical data storage
-- **Real-time Alerts**: Pub/Sub-based notification system
-- **API Rate Limiting**: Built-in protection against API abuse
-- **Audit Logging**: Comprehensive transaction and system logs
+- 🧠 **AI-Powered Copilot**: OpenAI integration for conversational strategy analysis.
 
 ## 📋 Prerequisites
 
 ### System Requirements
 
 - Node.js 18+ and npm
-- Python 3.9+
+- Python 3.9+ and pip
 - Docker 20+
-- Terraform 1.5+
-- Google Cloud SDK (gcloud)
 - Git
-
-### GCP Requirements
-
-- GCP Project with billing enabled
-- Required APIs enabled:
-  - Cloud Run API
-  - Container Registry API
-  - Kubernetes Engine API
-  - Cloud Build API
-  - Binary Authorization API
+- A code editor like VS Code
 
 ## 🚀 Quick Start
 
@@ -131,178 +65,80 @@ Alpha-Orion is a cutting-edge flash loan arbitrage platform featuring:
    cd alpha-orion
    ```
 
-2. **Install dependencies**
+2. **Install Dependencies for each service**
+   Navigate into each service directory (e.g., `backend-services/services/user-api-service`) and run:
    ```bash
-   # Frontend
-   cd frontend && npm install
-
-   # Backend services
-   cd ../backend && npm install
-   cd ../scanner && pip install -r requirements.txt
-   cd ../orchestrator && pip install -r requirements.txt
+   npm install 
+   # or for Python services
+   pip install -r requirements.txt
    ```
 
-3. **Configure environment**
+3. **Configure Local Environment**
+   Create a `.env` file in each service's directory based on the `README.md` within that service.
    ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
+   # Example for user-api-service
+   PORT=8080
+   DATABASE_URL=...
+   REDIS_URL=...
    ```
 
-4. **Start development servers**
+4. **Run Services Locally**
+   In separate terminals, start each required service.
    ```bash
-   # Frontend
-   cd frontend && npm run dev
-
-   # Backend (in separate terminals)
-   cd backend && npm run dev
-   cd scanner && python main.py
-   cd orchestrator && python main.py
+   # Example for user-api-service
+   cd backend-services/services/user-api-service
+   npm start
    ```
 
-### Docker Development
+### Docker Development (Recommended)
 
-```bash
-# Build all services
-docker-compose build
+To spin up the entire stack (API, Postgres, Redis) with a single command:
 
-# Start all services
-docker-compose up
-```
+1. Ensure Docker Desktop is running.
+2. Run:
+   ```bash
+   ./VERIFY_DOCKER_BUILD.ps1
+   ```
+   Or manually:
+   ```bash
+   docker-compose up --build
+   ```
+3. The API will be available at `http://localhost:8080`.
 
 ## 📦 Deployment
 
-### Automated Deployment (Recommended)
+This project is configured for **Auto-Deploy on Push** to Render.
 
-1. **Push to main branch**
+1. **Commit your changes**
    ```bash
    git add .
-   git commit -m "Deploy to production"
+   git commit -m "feat: your awesome new feature"
+   ```
+
+2. **Push to the `main` branch**
+   ```bash
    git push origin main
    ```
 
-2. **Monitor deployment**
-   - GitHub Actions will trigger automatically
-   - Check deployment status in GCP Console
-   - Monitor logs in Cloud Logging
-
-### Manual Deployment
-
-1. **Setup Artifact Registry**
-   ```bash
-   ./setup-registry.sh
-   ```
-
-2. **Deploy infrastructure**
-   ```bash
-   cd terraform
-   terraform init
-   terraform plan
-   terraform apply
-   ```
-
-3. **Deploy services**
-   ```bash
-   gcloud builds submit --config cloudbuild.yaml .
-   ```
+3. **Monitor the build on Render**
+   Render will automatically detect the push, start a new build based on `render.yaml`, and deploy the services upon success.
 
 ## ⚙️ Configuration
 
-### Environment Variables
+All production configuration is managed via **Environment Groups** and **Service-level Environment Variables** in the Render Dashboard. The `render.yaml` file links services to these variables.
 
-Create a `.env` file in the root directory:
-
-```env
-# GCP Configuration
-GCP_PROJECT_ID=alpha-orion
-GCP_REGION=us-central1
-GCP_ZONE=us-central1-a
-
-# Database
-DATABASE_URL=postgresql://user:password@alloydb-host:5432/alpha_orion
-REDIS_URL=redis://redis-host:6379
-
-# Blockchain
-INFURA_PROJECT_ID=your_infura_project_id
-PRIVATE_KEY=your_private_key
-RPC_URL=https://mainnet.infura.io/v3/YOUR_PROJECT_ID
-
-# Security
-JWT_SECRET=your_jwt_secret
-API_KEY=your_api_key
-
-# Monitoring
-SENTRY_DSN=your_sentry_dsn
-```
-
-### Terraform Variables
-
-Update `terraform/terraform.tfvars`:
-
-```hcl
-project_id = "alpha-orion"
-region = "us-central1"
-zone = "us-central1-a"
-
-# Service configurations
-scanner_instances = 3
-orchestrator_instances = 2
-executor_instances = 5
-
-# Database configuration
-alloydb_tier = "db-custom-4-16384"
-redis_memory_size_gb = 16
-```
+**Secrets (e.g., API keys) should NEVER be committed to `render.yaml`.** They must be set securely in the Render dashboard.
 
 ## 📊 Monitoring
 
-### Application Monitoring
-
-- **Cloud Logging**: Centralized log aggregation
-- **Cloud Monitoring**: Performance metrics and alerting
-- **Error Reporting**: Automatic error tracking
-- **Trace**: Distributed tracing for request flows
-
-### Business Monitoring
-
-- **BigQuery**: Arbitrage performance analytics
-- **Data Studio**: Executive dashboards
-- **Pub/Sub**: Real-time alert notifications
-
-### Health Checks
-
-```bash
-# Check service health
-curl https://api.alpha-orion.com/health
-
-# Check database connectivity
-gcloud sql instances describe alpha-orion-db
-
-# Check GKE cluster
-kubectl get pods -n alpha-orion
-```
+Application logs, performance metrics, and deployment statuses are available directly within the Render Dashboard for each service. The `user-api-service` exposes a `/health` endpoint which is used by Render for health checks.
 
 ## 🔒 Security
 
-### Authentication & Authorization
-
-- **Binary Authorization**: Only attested images can be deployed
-- **IAM**: Least-privilege access control
-- **Secret Manager**: Secure credential storage
-- **KMS**: Encryption key management
-
-### Network Security
-
-- **VPC**: Isolated network environment
-- **Cloud Armor**: DDoS protection and WAF
-- **Private GKE**: Private cluster endpoints
-- **VPC Service Controls**: Data exfiltration protection
-
-### Compliance
-
-- **Audit Logs**: Comprehensive system auditing
-- **Data Encryption**: At-rest and in-transit encryption
-- **GDPR Compliance**: Data privacy and protection
-- **Regular Security Scans**: Automated vulnerability scanning
+- **Secret Management**: Secrets are managed via Render Environment Groups, ensuring they are not exposed in the codebase.
+- **CI/CD Pipeline**: The GitHub Actions workflow runs tests on every push, preventing regressions from reaching production.
+- **Smart Contracts**: The codebase includes a Hardhat test suite to validate smart contract logic and security.
+- **Network**: Render provides automatic SSL for web services and manages network infrastructure.
 
 ## 🤝 Contributing
 

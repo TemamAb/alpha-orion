@@ -2,28 +2,6 @@
 
 ## Critical API Keys Required
 
-### 1. **1inch API Key** (REQUIRED for arbitrage)
-**Purpose**: DEX aggregation, price quotes, swap execution  
-**Status**: ⚠ MISSING - Must be configured
-
-#### How to Get:
-1. Visit: https://portal.1inch.io/
-2. Click "Sign Up" or "Login"
-3. Create or select workspace
-4. Create new application
-5. Copy API Key
-6. Set environment variable:
-```bash
-export ONE_INCH_API_KEY="your-api-key-here"
-```
-
-#### Where It's Used:
-- `live-metrics-server.js` - 1inch quote/swap endpoints
-- `backend-services/services/user-api-service/src/multi-chain-arbitrage-engine.js` - DEX routing
-- GCP Secret Manager: `one-inch-api-key`
-
----
-
 ### 2. **Pimlico API Key** (For gasless transactions)
 **Status**: ✅ CONFIGURED
 ```
@@ -34,6 +12,17 @@ pim_TDJjCjeAJdArjep3usKXTu
 #### Where It's Used:
 - Backend: `pimlico-gasless.js`
 - GCP Secret Manager: `pimlico-api-key`
+
+---
+
+### 1.1 **ParaSwap** (Alternative / Substitute)
+**Status**: ✅ CONFIGURED in `router.py`
+**Purpose**: Free alternative to 1inch/0x for DEX aggregation.
+
+#### Configuration:
+ParaSwap's public API does not strictly require an API key for basic price checking.
+The integration in `router.py` uses the public endpoint: `https://apiv5.paraswap.io/prices`.
+No environment variable is currently required for basic usage.
 
 ---
 
@@ -96,8 +85,8 @@ export PROFIT_WALLET_ADDRESS="0x1234...abcd"
 
 ### Create `.env.production` file:
 ```bash
-# 1inch DEX Aggregator (CRITICAL)
-ONE_INCH_API_KEY=your-1inch-api-key-here
+# DEX Aggregators
+ZERO_EX_API_KEY=your-0x-api-key-optional # Optional
 
 # Blockchain RPC Providers
 INFURA_API_KEY=your-infura-key
@@ -145,16 +134,12 @@ terraform apply
 ### Manual Setup:
 ```bash
 # Create secrets
-gcloud secrets create one-inch-api-key --data-file=- <<< "your-api-key"
 gcloud secrets create infura-api-key --data-file=- <<< "your-infura-key"
 gcloud secrets create etherscan-api-key --data-file=- <<< "your-etherscan-key"
 gcloud secrets create profit-wallet-address --data-file=- <<< "0x..."
 gcloud secrets create deployer-private-key --data-file=- <<< "0x..."
 
 # Grant Cloud Run service account access
-gcloud secrets add-iam-policy-binding one-inch-api-key \
-  --member=serviceAccount:PROJECT_ID-compute@appspot.gserviceaccount.com \
-  --role=roles/secretmanager.secretAccessor
 ```
 
 ---

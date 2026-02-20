@@ -26,12 +26,11 @@ const DEX_ROUTERS = {
 
 class MultiChainArbitrageEngine {
   constructor(mevRouter) {
-    this.oneInchApiKey = process.env.ONE_INCH_API_KEY;
     this.mevRouter = mevRouter;
     this.infuraApiKey = process.env.INFURA_API_KEY;
     this.privateKey = process.env.PRIVATE_KEY;
 
-    if (!this.oneInchApiKey || !this.infuraApiKey || !this.privateKey) {
+    if (!this.infuraApiKey || !this.privateKey) {
       throw new Error("MultiChainArbitrageEngine: Missing critical environment variables");
     }
 
@@ -44,7 +43,7 @@ class MultiChainArbitrageEngine {
         nativeToken: 'ETH',
         wrappedToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
         flashLoanProvider: '0x87870Bcd2C8d8b9F8c7e4c6eE3d4c8F2a1b3c5d7', // Aave V3 Pool
-        dexes: ['uniswap', 'sushiswap', 'pancakeswap', '1inch']
+        dexes: ['uniswap', 'sushiswap', 'pancakeswap', 'paraswap']
       },
       polygon: {
         chainId: 137,
@@ -53,7 +52,7 @@ class MultiChainArbitrageEngine {
         nativeToken: 'MATIC',
         wrappedToken: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270', // WMATIC
         flashLoanProvider: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave V3 Pool
-        dexes: ['quickswap', 'sushiswap', '1inch']
+        dexes: ['quickswap', 'sushiswap', 'paraswap']
       },
       'polygon-zkevm': {
         chainId: 1101,
@@ -62,7 +61,7 @@ class MultiChainArbitrageEngine {
         nativeToken: 'ETH',
         wrappedToken: '0x4F9A0e7FD2Bf60675dE95FA66388785275276641', // WETH
         flashLoanProvider: process.env.FLASH_LOAN_EXECUTOR_ADDRESS,
-        dexes: ['1inch', 'quickswap']
+        dexes: ['paraswap', 'quickswap']
       },
       bsc: {
         chainId: 56,
@@ -71,7 +70,7 @@ class MultiChainArbitrageEngine {
         nativeToken: 'BNB',
         wrappedToken: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', // WBNB
         flashLoanProvider: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // PancakeSwap
-        dexes: ['pancakeswap', 'biswap', '1inch']
+        dexes: ['pancakeswap', 'biswap', 'paraswap']
       },
       arbitrum: {
         chainId: 42161,
@@ -80,7 +79,7 @@ class MultiChainArbitrageEngine {
         nativeToken: 'ETH',
         wrappedToken: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1', // WETH
         flashLoanProvider: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave V3 Pool
-        dexes: ['uniswap', 'sushiswap', '1inch']
+        dexes: ['uniswap', 'sushiswap', 'paraswap']
       },
       optimism: {
         chainId: 10,
@@ -89,7 +88,7 @@ class MultiChainArbitrageEngine {
         nativeToken: 'ETH',
         wrappedToken: '0x4200000000000000000000000000000000000006', // WETH
         flashLoanProvider: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave V3 Pool
-        dexes: ['uniswap', '1inch']
+        dexes: ['uniswap', 'paraswap']
       },
       avalanche: {
         chainId: 43114,
@@ -98,7 +97,7 @@ class MultiChainArbitrageEngine {
         nativeToken: 'AVAX',
         wrappedToken: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7', // WAVAX
         flashLoanProvider: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave V3 Pool
-        dexes: ['traderjoe', 'pangolin', '1inch']
+        dexes: ['traderjoe', 'pangolin', 'paraswap']
       },
       fantom: {
         chainId: 250,
@@ -107,7 +106,7 @@ class MultiChainArbitrageEngine {
         nativeToken: 'FTM',
         wrappedToken: '0x21be370D5312f44cB42ce377BC9b8a0cEFf21FC20', // WFTM
         flashLoanProvider: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave V3 Pool
-        dexes: ['spookyswap', 'spiritswap', '1inch']
+        dexes: ['spookyswap', 'spiritswap', 'paraswap']
       }
     };
 
@@ -273,7 +272,7 @@ class MultiChainArbitrageEngine {
           const dexes = [];
 
           for (let i = 0; i < path.length - 1; i++) {
-            const quote = await this.getBestQuote(chainKey, path[i], path[i+1], currentAmount);
+            const quote = await this.getBestQuote(chainKey, path[i], path[i + 1], currentAmount);
             if (!quote) { currentAmount = null; break; }
             currentAmount = ethers.BigNumber.from(quote.toAmount);
             dexes.push(quote.dex);
@@ -287,7 +286,7 @@ class MultiChainArbitrageEngine {
 
           if (profitUSD > 50) { // High Volume Profitable Threshold
             opportunities.push({
-              id: `tri-${chainKey}-${path.join('-')}-${loanAmount.toString().substring(0,4)}`,
+              id: `tri-${chainKey}-${path.join('-')}-${loanAmount.toString().substring(0, 4)}`,
               strategy: 'TRIANGULAR_OPTIMIZED',
               chain: chainKey,
               chainName: chain.name,
@@ -353,7 +352,7 @@ class MultiChainArbitrageEngine {
 
           if (profitUSD > 75) {
             opportunities.push({
-              id: `cross-dex-${chainKey}-${bestBuy.dex}-${bestSell.dex}-${loanAmount.toString().substring(0,4)}`,
+              id: `cross-dex-${chainKey}-${bestBuy.dex}-${bestSell.dex}-${loanAmount.toString().substring(0, 4)}`,
               strategy: 'CROSS_DEX_ARBITRAGE',
               chain: chainKey,
               chainName: chain.name,
@@ -393,7 +392,7 @@ class MultiChainArbitrageEngine {
 
           if (poolPrice && marketPrice) {
             const priceDiff = Math.abs(poolPrice - marketPrice) / marketPrice;
-            if (priceDiff > 0.0015) { 
+            if (priceDiff > 0.0015) {
               const estimatedProfit = await this.calculatePoolArbitrageProfit(chainKey, pool, priceDiff, tradeSize);
               const profitUSD = await this.convertToUSD(chainKey, estimatedProfit, pair.base);
 
@@ -442,8 +441,8 @@ class MultiChainArbitrageEngine {
   }
 
   async getDexSpecificQuote(chainKey, dex, fromToken, toToken, amount) {
-    if (dex === '1inch') {
-      return await this.get1inchQuote(this.chains[chainKey].chainId, fromToken, toToken, amount.toString());
+    if (dex === 'paraswap') {
+      return await this.getParaSwapQuote(this.chains[chainKey].chainId, fromToken, toToken, amount.toString());
     }
 
     // Real On-Chain Quote using Router
@@ -506,7 +505,7 @@ class MultiChainArbitrageEngine {
     let confidence = 0.6;
 
     if (path.length === 3) confidence += 0.1; // Triangular
-    if (dexes.includes('1inch')) confidence += 0.15; // Reliable DEX
+    if (dexes.includes('paraswap')) confidence += 0.15; // Reliable DEX
     if (dexes.length === new Set(dexes).size) confidence += 0.1; // Different DEXes
 
     return Math.min(confidence, 0.9);
@@ -538,125 +537,65 @@ class MultiChainArbitrageEngine {
   }
 
   async getPoolPrice(chainKey, pool) {
-    // Get pool price (simplified)
-    // In production, query the pool contract for reserves to calculate price
-    return 2000 + (Math.random() - 0.5) * 50; // Simulate price with some variance
-  }
-
-  async getMarketPrice(chainKey, pair) {
-    // Get market price from multiple sources
-    // In production, aggregate from multiple DEXs or use a price oracle
-    return 2000 + (Math.random() - 0.5) * 20; // Simulate market price
-  }
-
-  async calculatePoolArbitrageProfit(chainKey, pool, priceDiff, tradeSize) {
-    // Calculate impermanent loss and arbitrage profit
-    const slippage = priceDiff * 0.5; // Assume 50% of inefficiency is capturable
-    const profit = tradeSize.mul(Math.floor(slippage * 10000)).div(10000);
-
-    return profit;
-  }
-
-  async getMultiDexQuote(chainKey, srcToken, dstToken, amount) {
-    const chain = this.chains[chainKey];
-
-    // Try 1inch first (most reliable)
-    if (chain.dexes.includes('1inch')) {
-      try {
-        const quote = await this.get1inchQuote(chain.chainId, srcToken, dstToken, amount);
-        if (quote) return { ...quote, dex: '1inch' };
-      } catch (error) {
-        console.debug(`[MultiChainArbitrageEngine] 1inch quote failed on ${chainKey}`);
-      }
-    }
-
-    // Fallback to other DEXes
-    for (const dex of chain.dexes) {
-      if (dex === '1inch') continue;
-
-      try {
-        const quote = await this.getDexQuote(chainKey, dex, srcToken, dstToken, amount);
-        if (quote) return { ...quote, dex };
-      } catch (error) {
-        console.debug(`[MultiChainArbitrageEngine] ${dex} quote failed on ${chainKey}`);
-      }
-    }
-
+    // In strict production mode, we do not guess or simulate.
+    // Use on-chain query to pool.getReserves() in v2.0
     return null;
   }
 
-  async get1inchQuote(chainId, src, dst, amount) {
-    const url = `https://api.1inch.dev/swap/v5.2/${chainId}/quote`;
-    const config = {
-      headers: { 'Authorization': `Bearer ${this.oneInchApiKey}` },
-      params: { src, dst, amount, from: this.chains.ethereum.flashLoanProvider }
-    };
+  async getMarketPrice(chainKey, pair) {
+    // In strict production mode, we do not guess or simulate.
+    // Use Chainlink Oracles in v2.0
+    return null;
+  }
 
-    try {
-      const response = await axios.get(url, config);
-      return {
-        toAmount: response.data.toAmount,
-        toTokenAmount: response.data.toTokenAmount,
-        estimatedGas: response.data.estimatedGas
-      };
-    } catch (error) {
-      console.debug(`[1inch] Quote failed: ${error.response?.data?.description || error.message}`);
-      return null;
-    }
+  async calculatePoolArbitrageProfit(chainKey, pool, priceDiff, tradeSize) {
+    return ethers.BigNumber.from(0);
   }
 
   async getDexQuote(chainKey, dex, srcToken, dstToken, amount) {
-    // Simplified DEX quote implementation
-    // In production, integrate with specific DEX APIs or subgraph
-    const chain = this.chains[chainKey];
-
-    try {
-      // Mock quote with some variance for different DEXes
-      const baseAmount = ethers.BigNumber.from(amount);
-      const variance = (Math.random() - 0.5) * 0.02; // ±1% variance
-      const quotedAmount = baseAmount.mul(ethers.utils.parseUnits((1 + variance).toString(), 0)).div(ethers.utils.parseUnits('1', 0));
-
-      return {
-        toAmount: quotedAmount.toString(),
-        toTokenAmount: parseFloat(ethers.utils.formatUnits(quotedAmount, 18)),
-        estimatedGas: 150000
-      };
-    } catch (error) {
-      return null;
-    }
+    // Use ONLY real on-chain quotes via getDexSpecificQuote.
+    // If that failed, we do not fallback to simulation.
+    return null;
   }
 
   async convertToUSD(chainKey, amount, tokenAddress) {
-    // In production, use a reliable price oracle (e.g., Chainlink)
+    // Production: Use known stablecoin calc or return 0 if unknown.
+    // Do not guess ETH price without Oracle.
     try {
-      const tokenPrice = await this.getTokenPrice(chainKey, tokenAddress);
-      // Assuming 18 decimals for simplicity, fetch actual decimals in production
-      const tokenAmount = parseFloat(ethers.utils.formatUnits(amount, 18));
-      return tokenAmount * tokenPrice;
-    } catch (error) {
-      console.warn(`[MultiChainArbitrageEngine] Failed to convert to USD for ${tokenAddress} on ${chainKey}: ${error.message}`);
-      // Fallback: try to get a generic ETH price if it's a wrapped native token, otherwise a default
-      const isWrappedNative = tokenAddress === this.chains[chainKey].wrappedToken;
-      const fallbackPrice = isWrappedNative ? 2000 : 1; // Assume $2000 for ETH/WETH, $1 for stablecoins
-      return parseFloat(ethers.utils.formatUnits(amount, 18)) * fallbackPrice;
+      const decimals = 18; // In prod, fetch decimals
+      const val = parseFloat(ethers.utils.formatUnits(amount, decimals));
+
+      // Basic stablecoin check
+      const stablecoins = [
+        '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6', // USDC
+        '0xdAC17F958D2ee523a2206206994597C13D831ec7', // USDT
+        '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
+      ];
+
+      if (stablecoins.includes(tokenAddress)) {
+        return val * 1.0;
+      }
+
+      // For other tokens, we return 0 in strict mode to avoid fake profit reporting
+      // unless we have a real oracle connection.
+      // The V08 Engine will simply skip USD-based filtering if price is unknown,
+      // relying on ETH-based profitability instead.
+      return 0;
+    } catch (e) {
+      return 0;
     }
   }
 
-
   async getTokenPrice(chainKey, tokenAddress) {
-    // Simplified price fetching - integrate with price feeds in production
-    const ethPrice = 2000; // Mock ETH price
-    const tokenPrices = {
-      [this.chains[chainKey].wrappedToken]: ethPrice, // WETH = ETH price
-      '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6': 1, // USDC = $1
-      '0xdAC17F958D2ee523a2206206994597C13D831ec7': 1, // USDT = $1
-      // Add other common token prices
-      '0x6B175474E89094C44Da98b954EedeAC495271d0F': 1, // DAI = $1
-      '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984': 5, // UNI = $5
-      '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9': 100, // AAVE = $100
-    };
-
-    return tokenPrices[tokenAddress] || ethPrice;
+    // Strict production mode: No mock prices.
+    // Only return 1.0 for known stablecoins.
+    const stablecoins = [
+      '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6', // USDC
+      '0xdAC17F958D2ee523a2206206994597C13D831ec7', // USDT
+      '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
+    ];
+    if (stablecoins.includes(tokenAddress)) return 1.0;
+    return 0;
   }
 
   calculateRiskLevel(profitUSD) {
@@ -734,25 +673,52 @@ class MultiChainArbitrageEngine {
     // i=1: router[1], in=path[1](B), out=path[2](A).
     const fullTokenPath = [opportunity.path[0], opportunity.path[1], opportunity.path[0]];
 
-    const tx = await this.contracts[chainKey].executeFlashArbitrage(
-      opportunity.path[0],
-      opportunity.loanAmount,
-      fullTokenPath,
-      routerPath,
-      0, // Dynamic profit check handles revert
-      Math.floor(Date.now() / 1000) + 300 // 5 min deadline
-    );
+    // 5. Execute Transaction (Gasless Priority)
+    if (this.pimlicoEngine && (chainKey === 'polygon' || chainKey === 'polygon-zkevm')) {
+      console.log(`[Cross-DEX] Executing via Pimlico Gasless Paymaster on ${chainKey}...`);
 
-    console.log(`[Cross-DEX] Executed on ${opportunity.buyDex}/${opportunity.sellDex}: ${tx.hash}`);
+      // Populate transaction data instead of sending
+      const txData = await this.contracts[chainKey].populateTransaction.executeFlashArbitrage(
+        opportunity.path[0],
+        opportunity.loanAmount,
+        fullTokenPath,
+        routerPath,
+        0,
+        Math.floor(Date.now() / 1000) + 300
+      );
 
-    const receipt = await tx.wait();
+      // Execute via UserOp
+      const userOpHash = await this.pimlicoEngine.executeArbitrageUserOp(this.contracts[chainKey].address, txData.data);
+      console.log(`[Cross-DEX] Gasless UserOp Submitted: ${userOpHash}`);
 
-    return {
-      transactionHash: tx.hash,
-      status: receipt.status === 1 ? 'confirmed' : 'failed',
-      gasUsed: receipt.gasUsed.toString(),
-      profit: opportunity.potentialProfit
-    };
+      return {
+        transactionHash: userOpHash, // Using UserOp hash as ref
+        status: 'submitted',
+        gasUsed: '0', // Gasless for EOA
+        profit: opportunity.potentialProfit,
+        isGasless: true
+      };
+    } else {
+      // Standard EOA Execution
+      const tx = await this.contracts[chainKey].executeFlashArbitrage(
+        opportunity.path[0],
+        opportunity.loanAmount,
+        fullTokenPath,
+        routerPath,
+        0,
+        Math.floor(Date.now() / 1000) + 300
+      );
+
+      console.log(`[Cross-DEX] Executed on ${opportunity.buyDex}/${opportunity.sellDex}: ${tx.hash}`);
+      const receipt = await tx.wait();
+
+      return {
+        transactionHash: tx.hash,
+        status: receipt.status === 1 ? 'confirmed' : 'failed',
+        gasUsed: receipt.gasUsed.toString(),
+        profit: opportunity.potentialProfit
+      };
+    }
   }
 
   // TRIANGULAR ARBITRAGE EXECUTION
@@ -771,31 +737,81 @@ class MultiChainArbitrageEngine {
       return addr;
     });
 
-    const tx = await this.contracts[chainKey].executeFlashArbitrage(
-      opportunity.path[0],
-      opportunity.loanAmount,
-      opportunity.path,
-      routerPath,
-      0,
-      Math.floor(Date.now() / 1000) + 300
-    );
+    // Execute Transaction (Gasless Priority)
+    if (this.pimlicoEngine && (chainKey === 'polygon' || chainKey === 'polygon-zkevm')) {
+      console.log(`[Triangular] Executing via Pimlico Gasless Paymaster on ${chainKey}...`);
 
-    console.log(`[Triangular] Executed path ${opportunity.path.join('->')}: ${tx.hash}`);
-    const receipt = await tx.wait();
+      const txData = await this.contracts[chainKey].populateTransaction.executeFlashArbitrage(
+        opportunity.path[0],
+        opportunity.loanAmount,
+        opportunity.path,
+        routerPath,
+        0,
+        Math.floor(Date.now() / 1000) + 300
+      );
 
-    return {
-      transactionHash: tx.hash,
-      status: receipt.status === 1 ? 'confirmed' : 'failed',
-      profit: opportunity.potentialProfit
-    };
+      const userOpHash = await this.pimlicoEngine.executeArbitrageUserOp(this.contracts[chainKey].address, txData.data);
+      console.log(`[Triangular] Gasless UserOp Submitted: ${userOpHash}`);
+
+      return {
+        transactionHash: userOpHash,
+        status: 'submitted',
+        profit: opportunity.potentialProfit,
+        isGasless: true
+      };
+    } else {
+      const tx = await this.contracts[chainKey].executeFlashArbitrage(
+        opportunity.path[0],
+        opportunity.loanAmount,
+        opportunity.path,
+        routerPath,
+        0,
+        Math.floor(Date.now() / 1000) + 300
+      );
+
+      console.log(`[Triangular] Executed path ${opportunity.path.join('->')}: ${tx.hash}`);
+      const receipt = await tx.wait();
+
+      return {
+        transactionHash: tx.hash,
+        status: receipt.status === 1 ? 'confirmed' : 'failed',
+        profit: opportunity.potentialProfit
+      };
+    }
   }
 
   // LIQUIDITY POOL ARBITRAGE EXECUTION
-  // LIQUIDITY POOL ARBITRAGE EXECUTION
-  // Note: This requires a specialized pool interaction contract, sticking to V08 Flash interface for now
   async executePoolArbitrage(opportunity) {
-    console.log("Pool Arbitrage Strategy requires specialized V08 Pool Contract. Skipping for this phase.");
-    return { status: 'skipped' };
+    console.log(`[Pool Arb] Analyzing liquidity inefficiency for pool ${opportunity.poolAddress}...`);
+
+    // Since 'Pool Arbitrage' often implies a specific pool vs market, and our V08 Kernel is router-centric,
+    // we resolve this by finding the best executable Cross-DEX path for the assets right now.
+    // This effectively converts a "Pool Signal" into an "Executable Route".
+
+    try {
+      const pair = {
+        base: opportunity.assets[0],
+        quote: opportunity.assets[1]
+      };
+
+      // Re-scan for the best current route (Real-Time Execution)
+      // This ensures we have valid routers and fresh quotes
+      const realTimeOpps = await this.findCrossDexArbitrageOpportunities(opportunity.chain, pair);
+
+      if (realTimeOpps.length > 0) {
+        const bestOpp = realTimeOpps[0];
+        console.log(`[Pool Arb] Resolved to executable Cross-DEX strategy: ${bestOpp.buyDex} -> ${bestOpp.sellDex}`);
+
+        // Execute the resolved opportunity
+        return await this.executeCrossDexArbitrage(bestOpp);
+      } else {
+        console.warn(`[Pool Arb] Opportunity vanished or no executable route found for ${opportunity.poolAddress}`);
+        return { status: 'failed', reason: 'no_route' };
+      }
+    } catch (error) {
+      console.error(`[Pool Arb] Execution validation failed: ${error.message}`);
+      throw error;
+    }
   }
 
   // STANDARD ARBITRAGE EXECUTION (fallback)
@@ -811,12 +827,27 @@ class MultiChainArbitrageEngine {
       minProfit
     );
 
+    // Check Gasless Support
+    if (this.pimlicoEngine && (chainKey === 'polygon' || chainKey === 'polygon-zkevm')) {
+      console.log(`[Standard Arb] Executing via Pimlico Gasless Paymaster...`);
+      const userOpHash = await this.pimlicoEngine.executeArbitrageUserOp(this.contracts[chainKey].address, txData.data);
+
+      return {
+        transactionHash: userOpHash,
+        status: 'submitted',
+        isGasless: true,
+        profit: opportunity.potentialProfit,
+        executionTime: Date.now() - opportunity.timestamp
+      };
+    }
+
+    // Fallback to EOA
     const transaction = {
       to: this.contracts[chainKey].address,
       data: txData.data,
       value: '0',
       chainId: chain.chainId,
-      gasPrice: gasPrice, // Use optimized gas price
+      gasPrice: await this.optimizeGasPrice(chainKey),
     };
 
     const tradeSizeUSD = opportunity.potentialProfit;
@@ -827,8 +858,7 @@ class MultiChainArbitrageEngine {
     const receipt = executionResult.receipt || await this.providers[chainKey].waitForTransaction(executionResult.txHash); // Wait for transaction confirmation
 
     return {
-      transactionHash: tx.hash,
-      userOpHash: tx.hash,
+      transactionHash: receipt.transactionHash,
       status: receipt.status === 1 ? 'confirmed' : 'failed',
       gasUsed: receipt.gasUsed.toString(),
       blockNumber: receipt.blockNumber,
