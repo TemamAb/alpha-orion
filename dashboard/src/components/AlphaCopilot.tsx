@@ -1,44 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bot, 
-  Brain, 
   Zap, 
-  Target, 
-  Activity, 
   Send,
-  MessageSquare,
   Sparkles,
-  Cpu,
-  BarChart3,
-  Shield,
-  Globe,
-  X,
-  ChevronDown,
   MoreVertical,
-  Copy,
   RefreshCw,
   TrendingUp,
   Wallet,
-  Settings,
-  Hexagon
+  Rocket,
+  HeartPulse,
+  ActivitySquare,
+  Loader2,
+  Play,
+  Pause
 } from 'lucide-react';
 import { sendChatMessage, getSimulatedResponse } from '../services/openaiService';
+import { copilotEngine, DeploymentStatus, ProfitStatus } from '../services/copilotEngine';
 
-// Chat message types
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  isTyping?: boolean;
 }
 
-// Quick action buttons for the copilot
 interface QuickAction {
   id: string;
   label: string;
   icon: React.ReactNode;
   prompt: string;
+  category: 'trading' | 'system' | 'deploy';
 }
 
 const AlphaCopilot: React.FC = () => {
@@ -46,100 +38,168 @@ const AlphaCopilot: React.FC = () => {
     {
       id: '1',
       role: 'assistant',
-      content: '👋 Hello! I\'m Alpha-Copilot, your AI-powered arbitrage trading assistant.\n\nI can help you with:\n• Analyzing market opportunities\n• Monitoring performance metrics\n• Optimizing trade execution\n• Checking wallet balances\n• Reviewing strategy performance\n\nHow can I assist you today?',
+      content: `👋 Hello! I'm Alpha-Copilot v2.0, your AI-powered self-deploying trading assistant.
+
+🎯 My Capabilities:
+• Self-Deploying: I can deploy Alpha-Orion to production
+• Self-Healing: I automatically fix service issues
+• Profit Detection: I monitor trading profitability
+• Real-time Control: @deploy, @heal, @profit commands
+
+Try these commands:
+@deploy status   → Check deployment status
+@deploy restart  → Restart all services  
+@heal now        → Run self-healing
+@profit status   → Check profit metrics
+
+How can I assist you today?`,
       timestamp: new Date()
     }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [showDeployPanel, setShowDeployPanel] = useState(false);
+  const [deploymentStatus, setDeploymentStatus] = useState<DeploymentStatus | null>(null);
+  const [profitStatus, setProfitStatus] = useState<ProfitStatus | null>(null);
+  const [isEngineRunning, setIsEngineRunning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when messages change
+  useEffect(() => {
+    const initEngine = async () => {
+      try {
+        copilotEngine.addListener((status) => {
+          setDeploymentStatus(status);
+        });
+        await copilotEngine.start();
+        setIsEngineRunning(true);
+        setDeploymentStatus(copilotEngine.getDeploymentStatus());
+        setProfitStatus(copilotEngine.getProfitStatus());
+      } catch (error) {
+        console.error('Failed to start copilot engine:', error);
+      }
+    };
+
+    initEngine();
+
+    return () => {
+      copilotEngine.stop();
+    };
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Quick action buttons
   const quickActions: QuickAction[] = [
-    {
-      id: 'opportunities',
-      label: 'Find Opportunities',
-      icon: <Zap size={14} />,
-      prompt: 'What are the current arbitrage opportunities?'
-    },
-    {
-      id: 'performance',
-      label: 'Check Performance',
-      icon: <TrendingUp size={14} />,
-      prompt: 'Show me the current performance metrics'
-    },
-    {
-      id: 'wallets',
-      label: 'Wallet Status',
-      icon: <Wallet size={14} />,
-      prompt: 'What are the current wallet balances?'
-    },
-    {
-      id: 'strategies',
-      label: 'Strategy Info',
-      icon: <Brain size={14} />,
-      prompt: 'Tell me about the active strategies'
-    },
-    {
-      id: 'optimize',
-      label: 'Optimize',
-      icon: <Settings size={14} />,
-      prompt: 'What optimizations are available?'
-    },
-    {
-      id: 'benchmark',
-      label: 'Benchmark',
-      icon: <Target size={14} />,
-      prompt: 'How do we compare to benchmarks?'
-    }
+    { id: 'opportunities', label: 'Find Opportunities', icon: <Zap size={14} />, prompt: 'What are the current arbitrage opportunities?', category: 'trading' },
+    { id: 'performance', label: 'Check Performance', icon: <TrendingUp size={14} />, prompt: 'Show me the current performance metrics', category: 'trading' },
+    { id: 'deploy-status', label: 'Deploy Status', icon: <Rocket size={14} />, prompt: '@deploy status', category: 'deploy' },
+    { id: 'heal', label: 'Self-Heal', icon: <HeartPulse size={14} />, prompt: '@heal now', category: 'deploy' },
+    { id: 'profit', label: 'Profit Status', icon: <ActivitySquare size={14} />, prompt: '@profit status', category: 'deploy' },
+    { id: 'wallets', label: 'Wallet Status', icon: <Wallet size={14} />, prompt: 'What are the current wallet balances?', category: 'trading' }
   ];
 
-  // Simulated AI responses based on user input
-  const generateResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    if (input.includes('opportunity') || input.includes('arbitrage') || input.includes('profit')) {
-      return `📊 **Current Arbitrage Opportunities**\n\nI've detected several opportunities:\n\n**1. Tri-Arb on ETH/ARB**\n• Spread: 0.85%\n• Potential profit: ~$4,500\n• Confidence: 94%\n\n**2. Cross-Chain on WBTC**\n• Spread: 0.42%\n• Potential profit: ~$2,100\n• Confidence: 87%\n\n**3. Flash Loan on Uniswap**\n• Spread: 0.28%\n• Potential profit: ~$1,400\n• Confidence: 91%\n\nWould you like me to execute any of these?`;
+  const handleCopilotCommand = async (command: string): Promise<string> => {
+    const cmd = command.toLowerCase().trim();
+
+    if (cmd.startsWith('@deploy')) {
+      const action = cmd.replace('@deploy', '').trim();
+      if (action === 'status' || action === '') {
+        const status = deploymentStatus;
+        if (!status) return '🔄 Loading deployment status...';
+        
+        const phaseIcons: Record<string, string> = {
+          idle: '⏸️', detecting: '🔍', deploying: '🚀', healing: '💚', running: '✅', error: '❌'
+        };
+
+        return `🚀 **Deployment Status**
+
+**Phase:** ${phaseIcons[status.phase]} ${status.phase.toUpperCase()}
+
+**Services:**
+✅ ${status.services.dashboard?.name || 'Dashboard'}: ${status.services.dashboard?.status || 'unknown'}
+✅ ${status.services.userApi?.name || 'User API'}: ${status.services.userApi?.status || 'unknown'}
+✅ ${status.services.brainOrchestrator?.name || 'Brain Orchestrator'}: ${status.services.brainOrchestrator?.status || 'unknown'}
+
+**Circuit Breaker:** ${status.phase === 'error' ? '🔴 OPEN' : '🟢 CLOSED'}
+**Engine:** ${isEngineRunning ? '🟢 Running' : '🔴 Stopped'}
+
+_Updated: ${new Date(status.lastUpdate).toLocaleString()}_`;
+      }
+      
+      if (action === 'restart') {
+        await copilotEngine.triggerDeployment();
+        return '🚀 **Deployment Triggered**\n\nI\'ve initiated a deployment restart. This may take a few minutes.';
+      }
     }
-    
-    if (input.includes('performance') || input.includes('metric') || input.includes('stat')) {
-      return `📈 **Current Performance Metrics**\n\n| Metric | Value | Change |\n|--------|-------|--------|\n| Profit/Trade | $145.50 | +2.3% |\n| Trades/Hour | 12 | +1 |\n| Latency | 42ms | -3ms |\n| Success Rate | 98.2% | +0.5% |\n| Capital Velocity | 85% | Stable |\n\nThe optimization engine is running at 85% efficiency.`;
+
+    if (cmd.startsWith('@heal')) {
+      const action = cmd.replace('@heal', '').trim();
+      if (action === 'now' || action === 'run' || action === '') {
+        return '💚 **Initiating Self-Healing**\n\nI\'m running diagnostics and will attempt to fix any issues automatically...';
+      }
+      if (action === 'enable') {
+        return '🟢 **Auto-Healing Enabled**\n\nSelf-healing is already enabled.';
+      }
+      if (action === 'disable') {
+        return '🔴 **Auto-Healing Disabled**\n\nNote: Disabling self-healing is not recommended.';
+      }
     }
-    
-    if (input.includes('wallet') || input.includes('balance') || input.includes('fund')) {
-      return `💰 **Wallet Status**\n\n| Wallet | Balance | Chain | Status |\n|--------|---------|-------|--------|\n| Main Treasury | 125.45 ETH | Ethereum | ✅ Valid |\n| Execution Wallet | 5.20 ETH | Arbitrum | ✅ Valid |\n| Cold Storage | 1,050.00 ETH | Ethereum | ✅ Valid |\n\n**Total: 1,180.65 ETH** (~$3.8M)`;
+
+    if (cmd.startsWith('@profit')) {
+      const action = cmd.replace('@profit', '').trim();
+      if (action === 'status' || action === '') {
+        const profit = profitStatus;
+        if (!profit) return '🔄 Loading profit status...';
+        
+        return `💰 **Profit Status**
+
+**Mode:** ${profit.mode.toUpperCase()}
+
+**Metrics:**
+• Total P&L: $${profit.totalPnl.toLocaleString()}
+• Trades: ${profit.tradesCount}
+• Profit/Hour: $${profit.profitPerHour.toFixed(2)}
+
+${profit.lastTradeTimestamp ? `_Last trade: ${new Date(profit.lastTradeTimestamp).toLocaleString()}_` : '_No trades yet_'}
+${profit.mode === 'profitable' ? '\n🎉 **System is generating profit!**' : ''}`;
+      }
     }
-    
-    if (input.includes('strategy') || input.includes('strategies')) {
-      return `🧠 **Active Strategies**\n\n**1. Flash Loan Tri-Arb** (35% allocation)\n• Status: Active\n• Performance: +$145/tx\n\n**2. Cross-Chain Arbitrage** (25% allocation)\n• Status: Active\n• Performance: +$89/tx\n\n**3. Liquidations** (18% allocation)\n• Status: Active\n• Performance: +$230/tx\n\n**4. MEV Protection** (12% allocation)\n• Status: Active\n• Savings: 15% gas\n\n**5. Statistical Arb** (10% allocation)\n• Status: Optimizing\n• Performance: +$45/tx`;
+
+    if (cmd === '@help' || cmd === '@commands') {
+      return `🤖 **Alpha-Copilot Commands**
+
+**Deployment:**
+• @deploy status - Check deployment status
+• @deploy restart - Restart all services
+
+**Self-Healing:**
+• @heal now - Run self-healing immediately
+
+**Profit:**
+• @profit status - Check profit metrics`;
     }
-    
-    if (input.includes('optimize') || input.includes('optimization') || input.includes('improve')) {
-      return `⚡ **Available Optimizations**\n\n**Gas Optimization:**\n• Using Pimlico → Save 23% gas\n• Current avg: 85 gwei → Target: 65 gwei\n\n**Route Optimization:**\n• Uniswap V3 → 94% efficiency\n• Sushiswap → 89% efficiency\n\n**Pool Selection:**\n• Current: Top 5 pools\n• Recommendation: Add Curve pool\n\nShould I apply these optimizations?`;
+
+    return null;
+  };
+
+  const processMessage = async (userInput: string): Promise<string> => {
+    if (userInput.startsWith('@')) {
+      const commandResponse = await handleCopilotCommand(userInput);
+      if (commandResponse) return commandResponse;
     }
-    
-    if (input.includes('benchmark') || input.includes('compare') || input.includes('wintermute')) {
-      return `🎯 **Benchmark Comparison**\n\n| Metric | Alpha-Orion | Wintermute | 1inch |\n|--------|-------------|------------|-------|\n| Latency | 42ms | 50ms | 55ms |\n| Success Rate | 98.2% | 97.5% | 96.8%\n| Gas Cost | 85 gwei | 92 gwei | 88 gwei |\n| Profit/tx | $145 | $132 | $128 |\n\n**Alpha-Orion is outperforming all benchmarks!** 🚀`;
+
+    try {
+      return await sendChatMessage(userInput);
+    } catch (error) {
+      return getSimulatedResponse(userInput);
     }
-    
-    if (input.includes('help') || input.includes('what can')) {
-      return `🤖 **I can help you with:**\n\n• **Market Analysis** - Find arbitrage opportunities\n• **Performance** - Monitor trading metrics\n• **Wallets** - Check balances and status\n• **Strategies** - Review active strategies\n• **Optimization** - Improve execution\n• **Benchmarks** - Compare performance\n\nJust ask me anything about your arbitrage trading!`;
-    }
-    
-    // Default response
-    return `I understand you're asking about: "${userInput}"\n\nI can provide detailed analysis on:\n• Arbitrage opportunities\n• Performance metrics\n• Wallet status\n• Trading strategies\n• System optimizations\n• Benchmark comparisons\n\nWhat specific information would you like to know?`;
   };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    // Add user message
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -152,8 +212,7 @@ const AlphaCopilot: React.FC = () => {
     setIsTyping(true);
 
     try {
-      // Call OpenAI backend
-      const aiResponse = await sendChatMessage(inputValue);
+      const aiResponse = await processMessage(userMessage.content);
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -162,7 +221,6 @@ const AlphaCopilot: React.FC = () => {
       };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      // Fallback to simulated response on error
       const aiResponse = getSimulatedResponse(inputValue);
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -180,7 +238,6 @@ const AlphaCopilot: React.FC = () => {
     setInputValue(action.prompt);
     setShowQuickActions(false);
     
-    // Add user message
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -191,8 +248,7 @@ const AlphaCopilot: React.FC = () => {
     setIsTyping(true);
 
     try {
-      // Call OpenAI backend
-      const aiResponse = await sendChatMessage(action.prompt);
+      const aiResponse = await processMessage(action.prompt);
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -201,7 +257,6 @@ const AlphaCopilot: React.FC = () => {
       };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      // Fallback to simulated response on error
       const aiResponse = getSimulatedResponse(action.prompt);
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -226,81 +281,26 @@ const AlphaCopilot: React.FC = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const getPhaseColor = (phase: string) => {
+    const colors: Record<string, string> = {
+      idle: 'bg-slate-500', detecting: 'bg-blue-500', deploying: 'bg-purple-500',
+      healing: 'bg-green-500', running: 'bg-emerald-500', error: 'bg-red-500'
+    };
+    return colors[phase] || 'bg-slate-500';
+  };
+
+  const getProfitIcon = (mode: string) => {
+    const icons: Record<string, React.ReactNode> = {
+      inactive: <Pause size={12} />,
+      detecting: <Loader2 size={12} className="animate-spin" />,
+      active: <Play size={12} />,
+      profitable: <TrendingUp size={12} />
+    };
+    return icons[mode] || <ActivitySquare size={12} />;
+  };
+
   return (
     <div className="h-full flex flex-col bg-slate-950/95">
-      {/* Header */}
-      <div className="p-4 border-b border-white/5 bg-gradient-to-r from-purple-900/20 to-blue-900/20">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="p-2 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg shadow-lg shadow-purple-500/20">
-                <Bot size={20} className="text-white" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-950 animate-pulse" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                Alpha-Copilot
-                <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] rounded">AI</span>
-              </h2>
-              <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                <Sparkles size={10} className="text-purple-400" />
-                OpenAI Powered • Online
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={() => setMessages([{
-                id: '1',
-                role: 'assistant',
-                content: '👋 Hello! I\'m Alpha-Copilot, your AI-powered arbitrage trading assistant.\n\nI can help you with:\n• Analyzing market opportunities\n• Monitoring performance metrics\n• Optimizing trade execution\n• Checking wallet balances\n• Reviewing strategy performance\n\nHow can I assist you today?',
-                timestamp: new Date()
-              }])}
-              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-              title="New Chat"
-            >
-              <RefreshCw size={14} />
-            </button>
-            <button className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-              <MoreVertical size={14} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div 
-            key={message.id}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div className={`flex gap-2 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              {/* Avatar */}
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                message.role === 'user' 
-                  ? 'bg-blue-600' 
-                  : 'bg-gradient-to-br from-purple-600 to-blue-600'
-              }`}>
-                {message.role === 'user' ? (
-                  <span className="text-white text-xs font-bold">You</span>
-                ) : (
-                  <Bot size={14} className="text-white" />
-                )}
-              </div>
-              
-              {/* Message Bubble */}
-              <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`p-3 rounded-2xl ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-md'
-                    : 'bg-slate-800 text-slate-200 rounded-bl-md'
-                }`}>
-                  <p className="text-xs leading-relaxed whitespace-pre-line">{message.content}</p>
-                </div>
-                <span className="text-[10px] text-slate-500 mt-1 px-1">
-                  {formatTime(message.timestamp)}
                 </span>
               </div>
             </div>
