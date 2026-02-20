@@ -8,8 +8,8 @@ Here's a deep dive into the full workflow:
 
 Alpha-Orion operates as a distributed system with several specialized microservices:
 
-*   **`brain-orchestrator` (Python)**: The central intelligence unit. It orchestrates the entire trading lifecycle, housing the `EnterpriseProfitEngine` and interacting with other services.
-*   **`EnterpriseProfitEngine` (Node.js/JavaScript)**: The core logic for discovering, filtering, ranking, and initiating arbitrage opportunities.
+*   **`brain-orchestrator` (Python)**: The central intelligence unit. It orchestrates the entire trading lifecycle by making calls to the `EnterpriseProfitEngine` to find and execute trades.
+*   **`EnterpriseProfitEngine` (Node.js/JavaScript)**: The core logic for discovering, filtering, and ranking arbitrage opportunities. Its canonical implementation is now located at `strategies/enterprise/enterprise-profit-engine.js`.
 *   **`MultiChainArbitrageEngine` (Node.js/JavaScript)**: A lower-level component (dependency of `EnterpriseProfitEngine`) responsible for direct interaction with blockchains, DEXes, and flash loan providers for actual trade execution.
 *   **`blockchain-monitor` (Python)**: Listens to real-time events on various blockchains and streams them to the system.
 *   **`ai-optimizer` (Python/Flask)**: Provides AI-driven insights and optimization recommendations for trading strategies.
@@ -23,18 +23,25 @@ Alpha-Orion operates as a distributed system with several specialized microservi
 The process begins within the `brain-orchestrator`, specifically driven by the `EnterpriseProfitEngine`'s `generateProfitOpportunities()` method. This function is designed for high-velocity, parallel discovery:
 
 *   **Parallel Strategy Execution**: It concurrently executes multiple specialized arbitrage strategies using `Promise.all()`, ensuring that a wide array of market inefficiencies are scanned simultaneously.
-*   **Diverse Arbitrage Strategies**:
-    *   **Triangular Arbitrage (`findTriangularArbitrage`)**: Identifies price discrepancies across three assets within a single DEX or across multiple DEXes on the same chain (e.g., A->B->C->A).
-    *   **Cross-DEX Arbitrage (`findCrossDexArbitrage`)**: Exploits price differences for the same asset pair across different Decentralized Exchanges (DEXes) on the same blockchain.
-    *   **Cross-Chain Arbitrage (`findCrossChainArbitrage`)**: Detects price disparities for the same asset across different blockchain networks, requiring bridging solutions for execution.
-    *   **Liquidity Pool Arbitrage (`findLiquidityPoolArbitrage`)**: Targets inefficiencies within Automated Market Maker (AMM) liquidity pools by comparing pool prices to external market prices.
-    *   **MEV Extraction (`findMEVOpportunities`)**: Analyzes the mempool (pending transactions) to identify and exploit Miner Extractable Value (MEV) opportunities like front-running, back-running, or sandwich attacks.
-    *   **Statistical Arbitrage (`findStatisticalArbitrage`)**: Looks for mean-reversion in historically correlated asset pairs (e.g., WETH and stETH) using statistical measures like Z-scores.
-    *   **Order Flow Arbitrage (`findOrderFlowArbitrage`)**: Analyzes order book imbalances on DEXes to predict short-term price movements and capitalize on them.
 *   **"Game Changer" Strategies (Institutional Alpha)**:
     *   **LVR Rebalancing (`findLVRInversionOpportunities`)**: A sophisticated strategy to capture "Loss-Versus-Rebalancing" yield. It compares real-time CEX prices with DEX pool prices to identify and exploit the rebalancing leakage from AMMs.
     *   **Oracle Latency Arbitrage (`findOracleLatencyOpportunities`)**: Capitalizes on the time lag between slow on-chain oracle updates (e.g., Chainlink heartbeats) and rapid price movements on centralized exchanges.
     *   **Just-In-Time (JIT) Liquidity Attacks (`findJITLiquidityOpportunities`)**: An advanced MEV technique where the engine provides liquidity to a pool just before a large, pending swap (identified in the mempool) to earn trading fees, and then removes the liquidity in the same block.
+*   **Core Enterprise Strategies**:
+    *   **Triangular Arbitrage**: Identifies price discrepancies across three assets within a single DEX (e.g., A->B->C->A).
+    *   **Cross-DEX Arbitrage**: Exploits price differences for the same asset pair across different DEXes on the same blockchain.
+    *   **Cross-Chain Arbitrage**: Detects price disparities for the same asset across different blockchain networks.
+    *   **Liquidity Pool Arbitrage**: Targets inefficiencies within AMM liquidity pools by comparing pool prices to external market prices.
+    *   **MEV Extraction**: Analyzes the mempool to identify and exploit MEV opportunities like front-running, back-running, or sandwich attacks.
+    *   **Statistical Arbitrage**: Looks for mean-reversion in historically correlated asset pairs using statistical measures like Z-scores.
+    *   **Order Flow Arbitrage**: Analyzes order book imbalances on DEXes to predict and capitalize on short-term price movements.
+*   **Advanced & Derivative Strategies**:
+    *   **Flash Loan Yield Farming**: Uses flash loans to leverage high-yield farming positions for optimized, single-transaction returns.
+    *   **Options Arbitrage**: Exploits mispricing in options contracts, such as violations of put-call parity.
+    *   **Perpetuals Arbitrage**: Capitalizes on funding rate differentials and basis trading opportunities in perpetual futures markets.
+    *   **Gamma Scalping**: A delta-neutral options strategy designed to profit from market volatility by hedging gamma exposure.
+    *   **Delta-Neutral Strategies**: Implements market-neutral portfolio strategies to isolate alpha and hedge against broad market movements.
+    *   **Batch Auction Arbitrage**: Identifies and exploits price discrepancies in batch and Dutch auction mechanisms.
 *   **Data Sourcing**: Each strategy relies on real-time market data, which is fetched through various internal helper methods (e.g., `getDexPrice`, `getChainAssetPrice`, `analyzeMempool`, `getOrderBook`, `getRealTimeCEXPrice`, `getOnChainOraclePrice`) that interact with `MultiChainArbitrageEngine` or external data feeds.
 
 ## 3. Phase 2: Opportunity Filtering and Ranking

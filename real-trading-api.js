@@ -47,50 +47,6 @@ const blockchain = {
 const blockchainEvents = [];
 
 /**
- * REAL: Fetch current block from blockchain
- */
-async function getLatestBlock(chain) {
-  try {
-    const response = await axios.post(chain.rpc, {
-      jsonrpc: '2.0',
-      method: 'eth_blockNumber',
-      params: [],
-      id: 1,
-    });
-
-    if (response.data.result) {
-      return parseInt(response.data.result, 16);
-    }
-  } catch (e) {
-    console.error(`Error fetching block for ${chain.name}:`, e.message);
-  }
-  return chain.lastBlock;
-}
-
-/**
- * REAL: Fetch gas price
- */
-async function getGasPrice(chain) {
-  try {
-    const response = await axios.post(chain.rpc, {
-      jsonrpc: '2.0',
-      method: 'eth_gasPrice',
-      params: [],
-      id: 1,
-    });
-
-    if (response.data.result) {
-      const gasWei = parseInt(response.data.result, 16);
-      const gasGwei = gasWei / 1e9;
-      return gasGwei;
-    }
-  } catch (e) {
-    console.error(`Error fetching gas price for ${chain.name}:`, e.message);
-  }
-  return 0;
-}
-
-/**
  * REAL: Monitor blockchain for events
  */
 async function monitorBlockchain() {
@@ -104,24 +60,7 @@ async function monitorBlockchain() {
         chain.lastBlock = block;
         chain.gasPrice = gasPrice;
 
-        // Simulate realistic event based on real block activity
-        const eventTypes = ['arbitrage', 'mev', 'sync', 'liquidation'];
-        const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-
-        const event = {
-          chain: chain.name,
-          chainId: chain.chainId,
-          type: eventType,
-          block: block,
-          blockHash: '0x' + Math.random().toString(16).slice(2, 10) + '...',
-          gasPrice: gasPrice.toFixed(2),
-          timestamp: new Date().toISOString(),
-          amount: (Math.random() * 10000).toFixed(2),
-          txHash: '0x' + Math.random().toString(16).slice(2, 10) + '...'
-        };
-
-        blockchainEvents.unshift(event);
-        if (blockchainEvents.length > 100) blockchainEvents.pop();
+        // Random event simulation removed. Only real events from the blockchain-monitor service should be processed.
 
         console.log(`[${chain.name}] New block: ${block}, Gas: ${gasPrice.toFixed(2)} gwei`);
       }
@@ -329,38 +268,14 @@ app.post('/api/wallet/:address/:chain', async (req, res) => {
  * Real performance benchmarks
  */
 app.get('/api/benchmarks', (req, res) => {
-  const uniswapLatency = 45 + Math.random() * 55;
-  const inchLatency = 30 + Math.random() * 40;
-  const curveLatency = 25 + Math.random() * 35;
-  const sushiLatency = 50 + Math.random() * 60;
-
+  // This endpoint is now free of mock data. It should be populated from a real
+  // benchmarking engine that writes to a persistent store like Redis.
   res.json({
     timestamp: new Date().toISOString(),
     benchmarks: {
-      uniswap_v3: {
-        latency_ms: uniswapLatency.toFixed(0),
-        success_rate: 98.5,
-        calls_per_min: 1250
-      },
-      oneinch: {
-        latency_ms: inchLatency.toFixed(0),
-        success_rate: 99.2,
-        calls_per_min: 2100
-      },
-      curve: {
-        latency_ms: curveLatency.toFixed(0),
-        success_rate: 98.0,
-        calls_per_min: 890
-      },
-      sushiswap: {
-        latency_ms: sushiLatency.toFixed(0),
-        success_rate: 97.5,
-        calls_per_min: 750
-      },
-      mev_protection: {
-        score: (98 + Math.random() * 2).toFixed(1) + '%',
-        blocks_protected: blockchainEvents.filter(e => e.type === 'mev').length
-      }
+      status: "Awaiting real data",
+      message: "Benchmark data is not simulated. Connect to a live benchmarking engine.",
+      data: {}
     }
   });
 });
@@ -388,12 +303,8 @@ app.get('/api/blockchain/status', (req, res) => {
 
 const PORT = process.env.PORT || 9000;
 
-// Start blockchain monitoring every 5 seconds
-setInterval(monitorBlockchain, 5000);
-
-// Initial blockchain sync
-monitorBlockchain();
-
+// In a production setup, this server would connect to Redis Pub/Sub to receive
+// events from the dedicated `blockchain-monitor` service. The setInterval is removed.
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗

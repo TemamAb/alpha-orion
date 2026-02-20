@@ -17,22 +17,6 @@ import time
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../..'))
 from benchmarking_tracker import ApexBenchmarker
 
-# Optional GCP imports (for local development without credentials)
-try:
-    from google.cloud import pubsub
-    from google.cloud import storage
-    from google.cloud import bigquery
-    from google.cloud import bigtable
-    from google.cloud import secretmanager
-    GCP_AVAILABLE = True
-except ImportError:
-    GCP_AVAILABLE = False
-    pubsub = None
-    storage = None
-    bigquery = None
-    bigtable = None
-    secretmanager = None
-
 try:
     import psycopg2
     PSYCOPG_AVAILABLE = True
@@ -114,23 +98,6 @@ def require_role(role):
         wrapper.__name__ = f.__name__
         return wrapper
     return decorator
-
-# GCP Clients (only initialize if GCP is available)
-project_id = os.getenv('PROJECT_ID', 'alpha-orion')
-if GCP_AVAILABLE:
-    subscriber = pubsub.SubscriberClient()
-    publisher = pubsub.PublisherClient()
-    storage_client = storage.Client()
-    bigquery_client = bigquery.Client()
-    bigtable_client = bigtable.Client(project=project_id)
-    secret_client = secretmanager.SecretManagerServiceClient()
-else:
-    subscriber = None
-    publisher = None
-    storage_client = None
-    bigquery_client = None
-    bigtable_client = None
-    secret_client = None
 
 # Connections
 db_conn = None
@@ -239,13 +206,9 @@ def get_arbitrage_stats():
         return None
 
 def get_secret(secret_id):
-    try:
-        name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-        response = secret_client.access_secret_version(request={"name": name})
-        return response.payload.data.decode("UTF-8")
-    except Exception as e:
-        logger.warning(f"Could not fetch secret {secret_id}: {e}")
-        return None
+    # Render uses environment variables for secrets
+    env_var_name = secret_id.upper().replace('-', '_')
+    return os.getenv(env_var_name)
 
 # Initialize JWT_SECRET after get_secret function is defined
 JWT_SECRET = get_secret('jwt-secret') or os.getenv('JWT_SECRET', 'default-secret-key-change-in-production')
@@ -264,7 +227,7 @@ def get_db_connection():
     if db_conn is None:
         db_url = os.getenv('DATABASE_URL') or get_secret('database-url')
         if not db_url:
-            logger.error("DATABASE_URL not found in env or Secret Manager")
+            logger.error("DATABASE_URL not found in env")
             raise Exception("Missing DATABASE_URL")
         db_conn = psycopg2.connect(db_url)
     return db_conn
@@ -274,7 +237,7 @@ def get_redis_connection():
     if redis_conn is None:
         redis_url = os.getenv('REDIS_URL') or get_secret('redis-url')
         if not redis_url:
-            logger.error("REDIS_URL not found in env or Secret Manager")
+            logger.error("REDIS_URL not found in env")
             raise Exception("Missing REDIS_URL")
         redis_conn = redis.from_url(redis_url)
     return redis_conn
@@ -637,7 +600,7 @@ def strategies():
 
 @app.route('/terminal/logs', methods=['GET'])
 def terminal_logs():
-    """Get real system logs from Redis/GCP"""
+    """Get real system logs from Redis"""
     try:
         redis_conn = get_redis_connection()
         logs_json = redis_conn.get('system_logs')

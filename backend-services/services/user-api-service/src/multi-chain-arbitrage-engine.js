@@ -8,6 +8,11 @@ const ROUTER_ABI = [
   "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"
 ];
 
+// V3 Quoter ABI for exactInputSingle (Enterprise Standard for V3 Pricing)
+const QUOTER_ABI = [
+  "function quoteExactInputSingle(address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint160 sqrtPriceLimitX96) external returns (uint256 amountOut)"
+];
+
 // Router Addresses for supported chains (Added V3 & Curve for Depth)
 const DEX_ROUTERS = {
   ethereum: {
@@ -21,6 +26,145 @@ const DEX_ROUTERS = {
     uniswap_v3: '0xE592427A0AEce92De3Edee1F18E0157C05861564', // V3 Router
     sushiswap: '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506',
     curve: '0xF0d4c12A5768D806021F80a262B4d39d26C58b8D'
+  },
+  bsc: {
+    pancakeswap: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
+    biswap: '0x3a6d8cA21D1CF76F653A67577FA0D27453350dD8',
+    uniswap_v3: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24' // Pancake V3
+  },
+  arbitrum: {
+    uniswap: '0xE592427A0AEce92De3Edee1F18E0157C05861564', // V3
+    sushiswap: '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506',
+    camelot: '0xc873fEcbd354f5A56E00E710B90EF4201db2448d'
+  },
+  optimism: {
+    uniswap: '0xE592427A0AEce92De3Edee1F18E0157C05861564', // V3
+    velodrome: '0x9c12939390052919af3155f41bf4160fd3666a6f'
+  },
+  avalanche: {
+    traderjoe: '0x60aE616a2155Ee3d9A68541Ba4544862310933d4',
+    pangolin: '0xE54Ca86531e112f6C660D478fDf311405CC8660e'
+  },
+  fantom: {
+    spookyswap: '0xF491e7B69E4244ad4002BC14e878a34207E38c29',
+    spiritswap: '0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52'
+  },
+  'polygon-zkevm': {
+    quickswap: '0xF6Ad3CcF71AbB3E12beCf6b3D2a74C963859ADCd', // V3
+    pancakeswap: '0x678Aa4bF4E210cf2166753e054d5b7c31cc7fa86'
+  },
+  base: {
+    uniswap_v3: '0x2626664c2603336E57B271c5C0b26F421741e481', // SwapRouter02
+    aerodrome: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43',
+    baseswap: '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86'
+  }
+};
+
+// V3 Quoter Addresses (Required for accurate V3 pricing)
+const V3_QUOTERS = {
+  ethereum: '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6',
+  polygon: '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6',
+  arbitrum: '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6',
+  optimism: '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6',
+  base: '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a'
+};
+
+// Enterprise-Grade Token Mapping for Multi-Chain Support
+const TOKEN_ADDRESSES = {
+  ethereum: {
+    WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    USDC: '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6',
+    USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    DAI: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+    WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+    LINK: '0x514910771AF9Ca656af840dff83E8264EcF986CA',
+    UNI: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
+    AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
+    wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
+    rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
+    cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704'
+  },
+  polygon: {
+    WMATIC: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
+    WETH: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
+    USDC: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+    USDT: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+    DAI: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
+    WBTC: '0x1BFD67037B42Cf73acf2047067bd4F2C47D9BfD6',
+    LINK: '0x53E0bca35eC356BD5ddDFebbd1Fc0fD03FaBad39',
+    UNI: '0xb33eaad8d922b1083446dc23f610c2567fb5180f',
+    AAVE: '0xD6DF932A45C0f255f85145f286eA0b292B21C90B',
+    wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0' // Bridged
+  },
+  bsc: {
+    WBNB: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+    ETH: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8',
+    USDC: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
+    USDT: '0x55d398326f99059fF775485246999027B3197955',
+    DAI: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3',
+    WBTC: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c',
+    LINK: '0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD',
+    UNI: '0xBf5140A22578168FD562DCcF235E5D43A02ce9B1',
+    AAVE: '0xfb6115445Bff7b52FeB98650C87f445ba02E4a55'
+  },
+  arbitrum: {
+    WETH: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+    USDC: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+    DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
+    WBTC: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
+    LINK: '0xf97f4df75117a78c1A5a0DBb88F4330CAfce3042',
+    UNI: '0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0',
+    AAVE: '0xba5DdD1f9d7F570dc94a51479a000E3BCE967196',
+    ARB: '0x912CE59144191C1204E64559FE8253a0e49E6548',
+    wstETH: '0x5979D7b546E38E414F7E9822514be443A4800529'
+  },
+  optimism: {
+    WETH: '0x4200000000000000000000000000000000000006',
+    USDC: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607',
+    USDT: '0x94b008aA00579c1307B0EF2c499a98a359659956',
+    DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
+    WBTC: '0x68f180fcCe6836688e9084f035309E29Bf0A2095',
+    LINK: '0x350a791Bfc2C21F9Ed5d10980Dad2e2638ffa7f6',
+    OP: '0x4200000000000000000000000000000000000042',
+    wstETH: '0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb'
+  },
+  avalanche: {
+    WAVAX: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+    WETH: '0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB',
+    USDC: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
+    USDT: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7',
+    DAI: '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70',
+    WBTC: '0x50b7545627a5162F82A992c33b87aDc75187B218',
+    LINK: '0x5947BB275c521040051D82396192181b413227A3',
+    UNI: '0x8eBAf22B6F053dFFEaf46f4Dd9eFA95D89ba8580',
+    AAVE: '0x63a72806098Bd3D9520cC43356dD78afe5D386D9'
+  },
+  fantom: {
+    WFTM: '0x21be370D5312f44cB42ce377BC9b8a0cEFf21FC20',
+    WETH: '0x74b23882a30290451A17c44f4F05243b6b58C76d',
+    USDC: '0x04068DA6C83AFCFA0e13ba15A6696662335D5B75',
+    USDT: '0x049d68029688eAbF473097a2fC38ef61633A3C7A',
+    DAI: '0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E',
+    WBTC: '0x321162Cd933E2Be498Cd2267a90534A804051e11',
+    LINK: '0xb3654dc3D10Ea7645f8319668E8F54d2574FBdC8',
+    UNI: '0x29b0Da8680e8a5A94532699E1316b85883c785B0',
+    AAVE: '0x6a07A792eaCD97932b5E91E889752dB26bFbB4C1'
+  },
+  'polygon-zkevm': {
+    WETH: '0x4F9A0e7FD2Bf60675dE95FA66388785275276641',
+    USDC: '0xA8CE8aee21bC2A48a5EF670afCc9274C7bbbc035',
+    USDT: '0x1E4a5963aBFD975d8c9021ce480b42188849D41d',
+    DAI: '0xC5015b9d9161Dca2e2283615F9059C9757cE64C5',
+    WBTC: '0xEA034fb02eB1808C2cc3adbC15f447B93CbE08e1'
+  },
+  base: {
+    WETH: '0x4200000000000000000000000000000000000006',
+    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    USDT: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', // Native
+    DAI: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', // Placeholder/Bridged
+    cbETH: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22',
+    wstETH: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452'
   }
 };
 
@@ -28,10 +172,16 @@ class MultiChainArbitrageEngine {
   constructor(mevRouter) {
     this.mevRouter = mevRouter;
     this.infuraApiKey = process.env.INFURA_API_KEY;
-    this.privateKey = process.env.PRIVATE_KEY;
+    
+    if (process.env.PRIVATE_KEY) {
+      this.privateKey = process.env.PRIVATE_KEY;
+    } else {
+      console.warn("[MultiChainArbitrageEngine] No PRIVATE_KEY found. Generating random wallet for simulation.");
+      this.privateKey = ethers.Wallet.createRandom().privateKey;
+    }
 
-    if (!this.infuraApiKey || !this.privateKey) {
-      throw new Error("MultiChainArbitrageEngine: Missing critical environment variables");
+    if (!this.infuraApiKey) {
+      console.warn("[MultiChainArbitrageEngine] No INFURA_API_KEY found. Infura-dependent chains may fail to connect.");
     }
 
     // Supported chains configuration
@@ -107,6 +257,15 @@ class MultiChainArbitrageEngine {
         wrappedToken: '0x21be370D5312f44cB42ce377BC9b8a0cEFf21FC20', // WFTM
         flashLoanProvider: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave V3 Pool
         dexes: ['spookyswap', 'spiritswap', 'paraswap']
+      },
+      base: {
+        chainId: 8453,
+        name: 'Base',
+        rpcUrl: 'https://mainnet.base.org',
+        nativeToken: 'ETH',
+        wrappedToken: '0x4200000000000000000000000000000000000006', // WETH
+        flashLoanProvider: '0xBA12222222228d8Ba445958a75a0704d566BF2C8', // Balancer Vault (Example)
+        dexes: ['uniswap_v3', 'aerodrome', 'baseswap']
       }
     };
 
@@ -117,7 +276,14 @@ class MultiChainArbitrageEngine {
 
     for (const [chainKey, chainConfig] of Object.entries(this.chains)) {
       try {
-        this.providers[chainKey] = new ethers.providers.JsonRpcProvider(chainConfig.rpcUrl);
+        if (chainConfig.rpcUrl.includes('undefined')) {
+          console.warn(`[MultiChainArbitrageEngine] Skipping ${chainConfig.name}: Invalid RPC URL (missing API key?)`);
+          continue;
+        }
+
+        // Use static network definition to prevent noisy auto-detection errors
+        const network = new ethers.Network(chainConfig.name, chainConfig.chainId);
+        this.providers[chainKey] = new ethers.JsonRpcProvider(chainConfig.rpcUrl, network, { staticNetwork: true });
         this.wallets[chainKey] = new ethers.Wallet(this.privateKey, this.providers[chainKey]);
 
         if (chainConfig.flashLoanProvider) {
@@ -137,6 +303,7 @@ class MultiChainArbitrageEngine {
     // Top DEX chains priority (by TVL and liquidity)
     this.dexPriority = [
       'ethereum',     // #1 - Highest liquidity
+      'base',         // #2 - High volume L2 (New)
       'polygon',      // #2 - High liquidity, low fees
       'bsc',          // #3 - High volume
       'arbitrum',     // #4 - Fast, low fees
@@ -152,7 +319,7 @@ class MultiChainArbitrageEngine {
     this.performanceMetrics = {
       totalTrades: 0,
       successfulTrades: 0,
-      totalProfit: ethers.BigNumber.from(0),
+      totalProfit: 0n,
       executionTimes: [], // Duration in ms
       timestamps: [],     // Execution timestamp
       gasCosts: [],
@@ -201,21 +368,46 @@ class MultiChainArbitrageEngine {
   async scanChainForOpportunities(chainKey) {
     const chain = this.chains[chainKey];
     const opportunities = [];
+    const tokens = TOKEN_ADDRESSES[chainKey];
 
-    // REAL PROFIT-GENERATING TOKEN PAIRS (not generic placeholders)
-    const profitablePairs = [
-      // High-volume pairs with frequent arbitrage opportunities
-      { base: chain.wrappedToken, quote: '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6', symbol: 'USDC', volume: 'HIGH' },
-      { base: chain.wrappedToken, quote: '0xdAC17F958D2ee523a2206206994597C13D831ec7', symbol: 'USDT', volume: 'HIGH' },
-      { base: '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6', quote: '0xdAC17F958D2ee523a2206206994597C13D831ec7', symbol: 'USDC/USDT', volume: 'EXTREME' },
-      // DeFi tokens with price inefficiencies
-      { base: chain.wrappedToken, quote: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', symbol: 'UNI', volume: 'MEDIUM' },
-      { base: chain.wrappedToken, quote: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', symbol: 'AAVE', volume: 'MEDIUM' },
-      { base: chain.wrappedToken, quote: '0x514910771AF9Ca656af840dff83E8264EcF986CA', symbol: 'LINK', volume: 'MEDIUM' },
-      // Stablecoin triangles (most profitable)
-      { base: '0x6B175474E89094C44Da98b954EedeAC495271d0F', quote: '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6', symbol: 'DAI/USDC', volume: 'HIGH' },
-      { base: '0x6B175474E89094C44Da98b954EedeAC495271d0F', quote: '0xdAC17F958D2ee523a2206206994597C13D831ec7', symbol: 'DAI/USDT', volume: 'HIGH' }
+    if (!tokens) {
+        console.warn(`[MultiChainArbitrageEngine] No token map for ${chainKey}. Skipping.`);
+        return [];
+    }
+
+    // Dynamic Pair Configuration based on Chain Assets
+    const pairConfigs = [
+      { base: 'WETH', quote: 'USDC', volume: 'HIGH' },
+      { base: 'WETH', quote: 'USDT', volume: 'HIGH' },
+      { base: 'USDC', quote: 'USDT', volume: 'EXTREME' },
+      { base: 'WETH', quote: 'UNI', volume: 'MEDIUM' },
+      { base: 'WETH', quote: 'AAVE', volume: 'MEDIUM' },
+      { base: 'WETH', quote: 'LINK', volume: 'MEDIUM' },
+      { base: 'DAI', quote: 'USDC', volume: 'HIGH' },
+      { base: 'DAI', quote: 'USDT', volume: 'HIGH' },
+      // Enterprise Additions: LSDs and L2 Natives
+      { base: 'WETH', quote: 'wstETH', volume: 'EXTREME' }, // Staking Arb
+      { base: 'WETH', quote: 'rETH', volume: 'HIGH' },
+      { base: 'WETH', quote: 'ARB', volume: 'HIGH' }, // Arbitrum only
+      { base: 'WETH', quote: 'OP', volume: 'HIGH' }   // Optimism only
     ];
+
+    const profitablePairs = [];
+
+    for (const config of pairConfigs) {
+        // Resolve addresses dynamically. Fallback to chain's wrapped token if 'WETH' is requested but not in map (e.g. WMATIC on Polygon)
+        const baseAddr = tokens[config.base] || (config.base === 'WETH' ? chain.wrappedToken : undefined);
+        const quoteAddr = tokens[config.quote];
+
+        if (baseAddr && quoteAddr) {
+            profitablePairs.push({
+                base: baseAddr,
+                quote: quoteAddr,
+                symbol: `${config.base}/${config.quote}`,
+                volume: config.volume
+            });
+        }
+    }
 
     for (const pair of profitablePairs) {
       try {
@@ -253,19 +445,23 @@ class MultiChainArbitrageEngine {
 
     // Capital Tiers for High-Volume Probing (Standardized to USD equivalents)
     const capitalTiers = [
-      ethers.utils.parseUnits('10.0', 18),   // Mid Volume (~$25k)
-      ethers.utils.parseUnits('100.0', 18),  // High Volume (~$250k)
-      ethers.utils.parseUnits('250.0', 18),  // Enterprise Volume (~$650k)
-      ethers.utils.parseUnits('500.0', 18)   // Institutional Volume (~$1.3M)
+      ethers.parseUnits('10.0', 18),   // Mid Volume (~$25k)
+      ethers.parseUnits('100.0', 18),  // High Volume (~$250k)
+      ethers.parseUnits('250.0', 18),  // Enterprise Volume (~$650k)
+      ethers.parseUnits('500.0', 18)   // Institutional Volume (~$1.3M)
     ];
 
     const triangularPaths = [
       [pair.base, pair.quote, pair.base],
       [pair.base, pair.quote, chain.wrappedToken, pair.base],
-      [pair.base, '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6', '0xdAC17F958D2ee523a2206206994597C13D831ec7', pair.base]
+      // Dynamic path using USDC/USDT if available
+      TOKEN_ADDRESSES[chainKey]?.USDC && TOKEN_ADDRESSES[chainKey]?.USDT 
+        ? [pair.base, TOKEN_ADDRESSES[chainKey].USDC, TOKEN_ADDRESSES[chainKey].USDT, pair.base]
+        : null
     ];
 
     for (const path of triangularPaths) {
+      if (!path) continue;
       for (const loanAmount of capitalTiers) {
         try {
           let currentAmount = loanAmount;
@@ -274,13 +470,13 @@ class MultiChainArbitrageEngine {
           for (let i = 0; i < path.length - 1; i++) {
             const quote = await this.getBestQuote(chainKey, path[i], path[i + 1], currentAmount);
             if (!quote) { currentAmount = null; break; }
-            currentAmount = ethers.BigNumber.from(quote.toAmount);
+            currentAmount = BigInt(quote.toAmount);
             dexes.push(quote.dex);
           }
 
           if (!currentAmount) continue;
 
-          const profit = currentAmount.sub(loanAmount);
+          const profit = currentAmount - loanAmount;
           const gasEstimate = await this.estimateGasCost(chainKey, 'triangular');
           const profitUSD = await this.convertToUSD(chainKey, profit, pair.base);
 
@@ -294,9 +490,9 @@ class MultiChainArbitrageEngine {
               path: path,
               loanAmount: loanAmount,
               potentialProfit: profitUSD,
-              netProfit: profitUSD - (gasEstimate.toNumber() * 0.0000001),
+              netProfit: profitUSD - (Number(gasEstimate) * 0.0000001),
               exchanges: dexes,
-              gasEstimate: gasEstimate.toNumber(),
+              gasEstimate: Number(gasEstimate),
               timestamp: Date.now(),
               riskLevel: this.calculateRiskLevel(profitUSD),
               complexity: 'HIGH'
@@ -316,9 +512,9 @@ class MultiChainArbitrageEngine {
 
     // High-Volume Tiers: Probing from $50k to $1M+
     const volumeTiers = [
-      ethers.utils.parseUnits('20.0', 18),   // $50k
-      ethers.utils.parseUnits('100.0', 18),  // $250k
-      ethers.utils.parseUnits('500.0', 18)   // $1.3M
+      ethers.parseUnits('20.0', 18),   // $50k
+      ethers.parseUnits('100.0', 18),  // $250k
+      ethers.parseUnits('500.0', 18)   // $1.3M
     ];
 
     for (const loanAmount of volumeTiers) {
@@ -346,7 +542,7 @@ class MultiChainArbitrageEngine {
         const priceDiff = (bestSell.sellPrice - bestBuy.buyPrice) / bestBuy.buyPrice;
 
         if (priceDiff > 0.0008) { // 0.08% spread for high volume
-          const profit = ethers.BigNumber.from(bestSell.sellAmount).sub(loanAmount);
+          const profit = BigInt(bestSell.sellAmount) - loanAmount;
           const profitUSD = await this.convertToUSD(chainKey, profit, pair.base);
           const gasCost = await this.estimateGasCost(chainKey, 'cross_dex');
 
@@ -364,7 +560,7 @@ class MultiChainArbitrageEngine {
               buyDex: bestBuy.dex,
               sellDex: bestSell.sellDex,
               priceDiff: priceDiff,
-              gasEstimate: gasCost.toNumber(),
+              gasEstimate: Number(gasCost),
               timestamp: Date.now(),
               riskLevel: 'LOW',
               confidence: Math.min(priceDiff * 1200, 0.98),
@@ -386,7 +582,7 @@ class MultiChainArbitrageEngine {
 
       for (const pool of pools) {
         for (const volume of targetVolumes) {
-          const tradeSize = ethers.utils.parseUnits(volume.toString(), 18);
+          const tradeSize = ethers.parseUnits(volume.toString(), 18);
           const poolPrice = await this.getPoolPrice(chainKey, pool);
           const marketPrice = await this.getMarketPrice(chainKey, pair);
 
@@ -423,14 +619,14 @@ class MultiChainArbitrageEngine {
   async getBestQuote(chainKey, fromToken, toToken, amount) {
     const chain = this.chains[chainKey];
     let bestQuote = null;
-    let bestAmount = ethers.BigNumber.from(0);
+    let bestAmount = 0n;
 
     for (const dex of chain.dexes) {
       try {
         const quote = await this.getDexSpecificQuote(chainKey, dex, fromToken, toToken, amount);
-        if (quote && ethers.BigNumber.from(quote.toAmount).gt(bestAmount)) {
+        if (quote && BigInt(quote.toAmount) > bestAmount) {
           bestQuote = { ...quote, dex };
-          bestAmount = ethers.BigNumber.from(quote.toAmount);
+          bestAmount = BigInt(quote.toAmount);
         }
       } catch (error) {
         // Continue to next DEX
@@ -443,6 +639,33 @@ class MultiChainArbitrageEngine {
   async getDexSpecificQuote(chainKey, dex, fromToken, toToken, amount) {
     if (dex === 'paraswap') {
       return await this.getParaSwapQuote(this.chains[chainKey].chainId, fromToken, toToken, amount.toString());
+    }
+
+    // Enterprise V3 Handling: Use Quoter for V3 DEXes
+    if (dex.includes('v3') || dex === 'uniswap_v3') {
+      const quoterAddress = V3_QUOTERS[chainKey];
+      if (!quoterAddress) return null;
+
+      try {
+        const provider = this.providers[chainKey];
+        const quoterContract = new ethers.Contract(quoterAddress, QUOTER_ABI, provider);
+        
+        // Check multiple fee tiers for best price (500, 3000, 10000)
+        // For efficiency in this snippet, we default to 3000 (0.3%) or 500 (0.05%) for stablecoins
+        // In full enterprise mode, we would parallelize calls for all fee tiers.
+        const fee = (fromToken === TOKEN_ADDRESSES[chainKey]?.USDC || fromToken === TOKEN_ADDRESSES[chainKey]?.DAI || fromToken === TOKEN_ADDRESSES[chainKey]?.USDT) ? 500 : 3000;
+
+        // quoteExactInputSingle is not view in Solidity but can be static called
+        const amountOut = await quoterContract.quoteExactInputSingle.staticCall(fromToken, toToken, fee, amount, 0);
+
+        return {
+          toAmount: amountOut.toString(),
+          toTokenAmount: parseFloat(ethers.formatUnits(amountOut, 18)),
+          estimatedGas: 180000 // V3 swaps are slightly more expensive
+        };
+      } catch (e) {
+        return null;
+      }
     }
 
     // Real On-Chain Quote using Router
@@ -462,7 +685,7 @@ class MultiChainArbitrageEngine {
 
       return {
         toAmount: amountOut.toString(),
-        toTokenAmount: parseFloat(ethers.utils.formatUnits(amountOut, 18)), // Optimization: Fetch decimals dynamically in V2
+        toTokenAmount: parseFloat(ethers.formatUnits(amountOut, 18)), // Optimization: Fetch decimals dynamically in V2
         estimatedGas: 150000 // Standard swap gas
       };
     } catch (error) {
@@ -480,7 +703,7 @@ class MultiChainArbitrageEngine {
     const kelly = (winRate - (1 - winRate)) / (avgWin / avgLoss);
     const optimalFraction = Math.max(0.01, Math.min(kelly * 0.5, 0.1)); // Conservative Kelly
 
-    return opportunity.loanAmount.mul(Math.floor(optimalFraction * 100)).div(100);
+    return (opportunity.loanAmount * BigInt(Math.floor(optimalFraction * 100))) / 100n;
   }
 
   calculateOpportunityConfidence(opportunity) {
@@ -512,21 +735,14 @@ class MultiChainArbitrageEngine {
   }
 
   getTokenSymbol(chainKey, address) {
-    const tokenMap = {
-      [this.chains[chainKey].wrappedToken]: 'WETH',
-      '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6': 'USDC', // Ethereum USDC
-      '0xdAC17F958D2ee523a2206206994597C13D831ec7': 'USDT',
-      '0x6B175474E89094C44Da98b954EedeAC495271d0F': 'DAI',
-      '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984': 'UNI',
-      '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9': 'AAVE',
-      '0x514910771AF9Ca656af840dff83E8264EcF986CA': 'LINK'
-    };
-
-    // Add chain-specific tokens if they differ
-    if (chainKey === 'polygon' && address === '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270') return 'WMATIC';
-    if (chainKey === 'polygon-zkevm' && address === '0x4F9A0e7FD2Bf60675dE95FA66388785275276641') return 'WETH (zkEVM)';
-
-    return tokenMap[address] || 'UNKNOWN';
+    const tokens = TOKEN_ADDRESSES[chainKey];
+    if (tokens) {
+        for (const [symbol, addr] of Object.entries(tokens)) {
+            if (addr.toLowerCase() === address.toLowerCase()) return symbol;
+        }
+    }
+    if (address.toLowerCase() === this.chains[chainKey].wrappedToken.toLowerCase()) return 'Wrapped Native';
+    return 'UNKNOWN';
   }
 
   async getActivePools(chainKey, pair) {
@@ -549,7 +765,7 @@ class MultiChainArbitrageEngine {
   }
 
   async calculatePoolArbitrageProfit(chainKey, pool, priceDiff, tradeSize) {
-    return ethers.BigNumber.from(0);
+    return 0n;
   }
 
   async getDexQuote(chainKey, dex, srcToken, dstToken, amount) {
@@ -563,17 +779,14 @@ class MultiChainArbitrageEngine {
     // Do not guess ETH price without Oracle.
     try {
       const decimals = 18; // In prod, fetch decimals
-      const val = parseFloat(ethers.utils.formatUnits(amount, decimals));
+      const val = parseFloat(ethers.formatUnits(amount, decimals));
 
-      // Basic stablecoin check
-      const stablecoins = [
-        '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6', // USDC
-        '0xdAC17F958D2ee523a2206206994597C13D831ec7', // USDT
-        '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
-      ];
-
-      if (stablecoins.includes(tokenAddress)) {
-        return val * 1.0;
+      // Dynamic stablecoin check
+      const tokens = TOKEN_ADDRESSES[chainKey];
+      if (tokens) {
+          if (tokenAddress === tokens.USDC || tokenAddress === tokens.USDT || tokenAddress === tokens.DAI) {
+              return val * 1.0;
+          }
       }
 
       // For other tokens, we return 0 in strict mode to avoid fake profit reporting
@@ -589,12 +802,12 @@ class MultiChainArbitrageEngine {
   async getTokenPrice(chainKey, tokenAddress) {
     // Strict production mode: No mock prices.
     // Only return 1.0 for known stablecoins.
-    const stablecoins = [
-      '0xA0b86a33E6441e88C5F2712C3E9b74F5F1e3e2d6', // USDC
-      '0xdAC17F958D2ee523a2206206994597C13D831ec7', // USDT
-      '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
-    ];
-    if (stablecoins.includes(tokenAddress)) return 1.0;
+    const tokens = TOKEN_ADDRESSES[chainKey];
+    if (tokens) {
+        if (tokenAddress === tokens.USDC || tokenAddress === tokens.USDT || tokenAddress === tokens.DAI) {
+            return 1.0;
+        }
+    }
     return 0;
   }
 
@@ -678,7 +891,7 @@ class MultiChainArbitrageEngine {
       console.log(`[Cross-DEX] Executing via Pimlico Gasless Paymaster on ${chainKey}...`);
 
       // Populate transaction data instead of sending
-      const txData = await this.contracts[chainKey].populateTransaction.executeFlashArbitrage(
+      const txData = await this.contracts[chainKey].executeFlashArbitrage.populateTransaction(
         opportunity.path[0],
         opportunity.loanAmount,
         fullTokenPath,
@@ -741,7 +954,7 @@ class MultiChainArbitrageEngine {
     if (this.pimlicoEngine && (chainKey === 'polygon' || chainKey === 'polygon-zkevm')) {
       console.log(`[Triangular] Executing via Pimlico Gasless Paymaster on ${chainKey}...`);
 
-      const txData = await this.contracts[chainKey].populateTransaction.executeFlashArbitrage(
+      const txData = await this.contracts[chainKey].executeFlashArbitrage.populateTransaction(
         opportunity.path[0],
         opportunity.loanAmount,
         opportunity.path,
@@ -818,9 +1031,9 @@ class MultiChainArbitrageEngine {
   async executeStandardArbitrage(opportunity) {
     const chainKey = opportunity.chain;
     const gasPrice = await this.optimizeGasPrice(chainKey);
-    const minProfit = ethers.utils.parseUnits('0.001', 18);
+    const minProfit = ethers.parseUnits('0.001', 18);
 
-    const txData = await this.contracts[chainKey].populateTransaction.executeFlashLoanArbitrage(
+    const txData = await this.contracts[chainKey].executeFlashLoanArbitrage.populateTransaction(
       opportunity.path[0],
       opportunity.loanAmount,
       opportunity.path,
@@ -874,7 +1087,7 @@ class MultiChainArbitrageEngine {
     console.log(`[Batch-Velocity] Preparing batch of ${opportunities.length} trades for ${chainKey} (DryRun: ${dryRun})...`);
 
     // velocity check: ensure total volume > $100k to justify batch gas
-    const totalVolume = opportunities.reduce((acc, opp) => acc + opp.loanAmount, 0); // Simplified check
+    const totalVolume = opportunities.reduce((acc, opp) => acc + opp.loanAmount, 0n); // Simplified check
 
     const batchNodes = opportunities.map(opp => ({
       asset: opp.path[0],
@@ -882,7 +1095,7 @@ class MultiChainArbitrageEngine {
       tokenPath: opp.path,
       routerPath: this.resolveRouters(opp.exchanges, chainKey),
       feePath: this.resolveFees(opp.exchanges), // New: V3 Fee resolution
-      minProfit: ethers.utils.parseUnits('0.001', 18), // Dynamic based on risk
+      minProfit: ethers.parseUnits('0.001', 18), // Dynamic based on risk
       deadline: Math.floor(Date.now() / 1000) + 60
     }));
 
@@ -947,7 +1160,7 @@ class MultiChainArbitrageEngine {
     const provider = this.providers[chainKey];
     if (!provider) {
       console.warn(`[MultiChainArbitrageEngine] No provider for ${chainKey}, using default gas price.`);
-      return ethers.utils.parseUnits('20', 'gwei'); // Default to 20 Gwei
+      return ethers.parseUnits('20', 'gwei'); // Default to 20 Gwei
     }
 
     try {
@@ -961,10 +1174,10 @@ class MultiChainArbitrageEngine {
       else if (pendingTxCount > 20) multiplier = 1.1; // Light congestion
       multiplier *= 1.05; // Add competitive edge
 
-      return networkGasPrice.mul(Math.floor(multiplier * 100)).div(100);
+      return (networkGasPrice * BigInt(Math.floor(multiplier * 100))) / 100n;
     } catch (error) {
       console.error(`[MultiChainArbitrageEngine] Error optimizing gas price for ${chainKey}: ${error.message}`);
-      return ethers.utils.parseUnits('20', 'gwei'); // Fallback
+      return ethers.parseUnits('20', 'gwei'); // Fallback
     }
   }
 
@@ -987,7 +1200,7 @@ class MultiChainArbitrageEngine {
     if (analysis.success) {
       this.performanceMetrics.totalTrades++;
       this.performanceMetrics.successfulTrades++;
-      this.performanceMetrics.totalProfit = this.performanceMetrics.totalProfit.add(ethers.BigNumber.from(Math.floor(analysis.netProfit * 1e18)));
+      this.performanceMetrics.totalProfit = this.performanceMetrics.totalProfit + BigInt(Math.floor(analysis.netProfit * 1e18));
     }
 
     this.performanceMetrics.executionTimes.push(analysis.executionTime);
@@ -1003,7 +1216,7 @@ class MultiChainArbitrageEngine {
       this.performanceMetrics.profits.shift();
     }
 
-    // Structured Logging for Google Cloud
+    // Structured Logging (JSON)
     console.log(JSON.stringify({
       severity: analysis.success ? 'INFO' : 'ERROR',
       message: `Execution ${analysis.success ? 'Success' : 'Failed'}: $${analysis.netProfit.toFixed(2)}`,
@@ -1067,7 +1280,7 @@ class MultiChainArbitrageEngine {
     return {
       totalOps: totalTrades,
       alphaCaptureRate: totalTrades > 0 ? successfulTrades / totalTrades : 0,
-      totalYield: parseFloat(ethers.utils.formatUnits(this.performanceMetrics.totalProfit, 18)),
+      totalYield: parseFloat(ethers.formatUnits(this.performanceMetrics.totalProfit, 18)),
       hourlyYield: hourlyYield.toFixed(4),
       projected24hYield: projected24hYield.toFixed(4),
       executionLatencyMs: executionLatencyMs.toFixed(0),

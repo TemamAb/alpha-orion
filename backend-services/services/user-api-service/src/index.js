@@ -9,9 +9,9 @@ const pinoHttp = require('pino-http');
 const { pgPool, connectToDB } = require('./database');
 const { redisClient, redisSubscriber, connectRedis } = require('./redis-client');
 
-// Import the engine that holds the advanced metrics
-const MultiChainArbitrageEngine = require('./multi-chain-arbitrage-engine');
-const engine = new MultiChainArbitrageEngine(); // In a real app, this would be managed more carefully
+// Import the singleton manager for the main profit engine
+const { getProfitEngine } = require('./profit-engine-manager');
+const engine = getProfitEngine(); // Get the singleton instance
 
 // --- OpenAI Integration (Robust Import) ---
 let OpenAI;
@@ -24,6 +24,23 @@ try {
 const app = express();
 const server = http.createServer(app); // Create HTTP server from Express app
 const PORT = process.env.PORT || 8080;
+
+// --- WebSocket Server Initialization ---
+const wss = new WebSocketServer({ server });
+
+const broadcast = (data) => {
+  const message = typeof data === 'string' ? data : JSON.stringify(data);
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1) { // WebSocket.OPEN
+      client.send(message);
+    }
+  });
+};
+
+wss.on('connection', (ws) => {
+  logger.info('New WebSocket client connected');
+  ws.send(JSON.stringify({ type: 'CONNECTION_ESTABLISHED', timestamp: new Date().toISOString() }));
+});
 
 // Middleware
 app.use(cors());
@@ -82,11 +99,13 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       redisClient.get('gas_spent')
     ]);
 
+    const activeStrategies = Object.keys(engine.strategies).length;
+
     res.json({
       totalPnl: parseFloat(pnl || 0),
       totalTrades: parseInt(trades || 0),
       gasSpent: parseFloat(gas || 0),
-      activeStrategies: 1, // Currently only Flash Loan Arbitrage
+      activeStrategies: activeStrategies,
       systemStatus: 'active'
     });
   } catch (error) {
@@ -210,11 +229,14 @@ app.get('/api/wallets', authenticateToken, async (req, res) => {
 app.post('/api/wallets', authenticateToken, async (req, res) => {
   try {
     const newWallet = req.body;
-    // In a real app, validate address format and check balance on-chain here
+    // In production, a background job should validate the address and update its status.
+    // For now, we add it with a 'pending' status.
     const wallets = JSON.parse(await redisClient.get('wallets_data') || '[]');
-    wallets.push({ ...newWallet, id: Date.now().toString(), status: 'valid' });
+    const walletToAdd = { ...newWallet, id: Date.now().toString(), status: 'pending' };
+    wallets.push(walletToAdd);
     await redisClient.set('wallets_data', JSON.stringify(wallets));
-    res.json({ status: 'success', wallet: newWallet });
+    // Return the full wallet object including the generated ID and status
+    res.status(201).json({ status: 'success', wallet: walletToAdd });
   } catch (error) {
     res.status(500).json({ error: 'Failed to add wallet' });
   }

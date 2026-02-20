@@ -465,43 +465,38 @@ class InstitutionalComplianceEngine {
 
   // Helper methods for KYC verification
   async verifyDocument(documentData, provider) {
-    // In production, integrate with actual KYC providers
+    // STRICT PRODUCTION MODE: No mock success.
+    // Returns unverified if no real provider response is available.
     return {
-      verified: true,
-      confidence: 0.95,
-      extractedData: {
-        name: documentData.name,
-        documentNumber: documentData.number,
-        expiryDate: documentData.expiry
-      },
-      flags: []
+      verified: false,
+      confidence: 0,
+      extractedData: {},
+      flags: ['PROVIDER_NOT_CONNECTED'],
+      note: "Live verification requires active Jumio/Onfido integration."
     };
   }
 
   async verifyBiometric(biometricData, provider) {
-    // In production, integrate with biometric verification
     return {
-      verified: true,
-      confidence: 0.98,
-      matchScore: 0.96
+      verified: false,
+      confidence: 0,
+      matchScore: 0
     };
   }
 
   async verifyAddress(addressData) {
-    // In production, integrate with address verification services
     return {
-      verified: true,
-      confidence: 0.90,
-      sources: ['utility_bill', 'bank_statement']
+      verified: false,
+      confidence: 0,
+      sources: []
     };
   }
 
   async verifyAgainstDatabases(userId, documentData) {
-    // In production, check against government databases
     return {
-      verified: true,
+      verified: false,
       matches: [],
-      flags: []
+      flags: ['DB_CONNECTION_MISSING']
     };
   }
 

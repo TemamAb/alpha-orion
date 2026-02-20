@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deployment](https://render.com/images/deploy-to-render-button.svg)](https://render.com)
-[![CI](https://github.com/TemamAb/alpha-orion/actions/workflows/ci.yml/badge.svg)](https://github.com/TemamAb/alpha-orion/actions/workflows/ci.yml)
+[![CI](https://github.com/TemamAb/alphaorion/actions/workflows/ci.yml/badge.svg)](https://github.com/TemamAb/alphaorion/actions/workflows/ci.yml)
 
 A high-performance, enterprise-grade flash loan arbitrage application designed for a modern, serverless cloud stack. It is deployed on Render and leverages a suite of powerful, scalable, and cost-effective services.
 
@@ -61,8 +61,8 @@ Alpha-Orion is a sophisticated flash loan arbitrage system designed to identify 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/TemamAb/alpha-orion.git
-   cd alpha-orion
+   git clone https://github.com/TemamAb/alphaorion.git
+   cd alphaorion
    ```
 
 2. **Install Dependencies for each service**
@@ -163,8 +163,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For support and questions:
 - **Documentation**: [docs.alpha-orion.com](https://docs.alpha-orion.com)
-- **Issues**: [GitHub Issues](https://github.com/TemamAb/alpha-orion/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/TemamAb/alpha-orion/discussions)
+- **Issues**: [GitHub Issues](https://github.com/TemamAb/alphaorion/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/TemamAb/alphaorion/discussions)
 
 ## 🔄 Version History
 
@@ -178,4 +178,4 @@ For support and questions:
 
 **Project ID**: alpha-orion
 **GCP Project Number**: 380955632798
-**Repository**: https://github.com/TemamAb/alpha-orion
+**Repository**: https://github.com/TemamAb/alphaorion

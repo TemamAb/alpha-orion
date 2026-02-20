@@ -4,6 +4,10 @@ const { ethers } = require('ethers');
 class PimlicoGaslessEngine {
   constructor() {
     this.apiKey = process.env.PIMLICO_API_KEY;
+    if (!this.apiKey) {
+      throw new Error("Pimlico API Key not configured");
+    }
+
     // Default to Polygon Mainnet (137) or zkEVM (1101) based on config
     this.chainId = parseInt(process.env.CHAIN_ID || '137');
     this.chainKey = this.chainId === 1101 ? 'polygon-zkevm' : 'polygon'; // simplified mapping
@@ -12,6 +16,8 @@ class PimlicoGaslessEngine {
     if (this.chainId === 1101) {
       this.rpcUrl = process.env.POLYGON_ZKEVM_RPC_URL || 'https://rpc.polygon-zkevm.gateway.fm';
     }
+
+    this.provider = new ethers.JsonRpcProvider(this.rpcUrl);
 
     // Pimlico Endpoints
     this.bundlerUrl = `https://api.pimlico.io/v2/${this.chainKey}/rpc?apikey=${this.apiKey}`;
@@ -64,18 +70,18 @@ class PimlicoGaslessEngine {
       const factoryAbi = ["function createAccount(address owner, uint256 salt) returns (address)"];
       const factory = new ethers.Contract(this.factoryAddress, factoryAbi, this.provider);
       const initCallData = factory.interface.encodeFunctionData('createAccount', [this.signer.address, 0]);
-      this.initCode = ethers.utils.hexConcat([this.factoryAddress, initCallData]);
+      this.initCode = ethers.concat([this.factoryAddress, initCallData]);
 
       // Determine Address via EntryPoint view call (revert trick)
       try {
         const entryPoint = new ethers.Contract(this.entryPointAddress, ['function getSenderAddress(bytes initCode)'], this.provider);
-        await entryPoint.callStatic.getSenderAddress(this.initCode);
+        await entryPoint.getSenderAddress.staticCall(this.initCode);
       } catch (e) {
         // The revert data contains the address
         if (e.data || (e.error && e.error.data)) {
           const rawData = e.data || e.error.data;
           const addr = '0x' + rawData.slice(-40);
-          this.senderAddress = ethers.utils.getAddress(addr);
+          this.senderAddress = ethers.getAddress(addr);
           console.log(`[Pimlico] Smart Account Active: ${this.senderAddress}`);
         }
       }
@@ -126,14 +132,14 @@ class PimlicoGaslessEngine {
       // 2. Build UserOperation
       const userOp = {
         sender,
-        nonce: ethers.utils.hexlify(nonce),
+        nonce: ethers.hexlify(nonce),
         initCode: actualInitCode,
         callData,
-        callGasLimit: ethers.utils.hexlify(2500000),
-        verificationGasLimit: ethers.utils.hexlify(800000),
-        preVerificationGas: ethers.utils.hexlify(100000),
-        maxFeePerGas: ethers.utils.hexlify(ethers.utils.parseUnits('300', 'gwei')),
-        maxPriorityFeePerGas: ethers.utils.hexlify(ethers.utils.parseUnits('50', 'gwei')),
+        callGasLimit: ethers.hexlify(2500000),
+        verificationGasLimit: ethers.hexlify(800000),
+        preVerificationGas: ethers.hexlify(100000),
+        maxFeePerGas: ethers.hexlify(ethers.parseUnits('300', 'gwei')),
+        maxPriorityFeePerGas: ethers.hexlify(ethers.parseUnits('5', 'gwei')),
         paymasterAndData: '0x',
         signature: '0x'
       };
@@ -166,7 +172,7 @@ class PimlicoGaslessEngine {
       // 4. Sign UserOperation
       console.log("[Pimlico] Signing UserOperation (Owner)...");
       const userOpHash = await this.getUserOpHash(userOp, this.entryPointAddress, this.chainId);
-      userOp.signature = await this.signer.signMessage(ethers.utils.arrayify(userOpHash));
+      userOp.signature = await this.signer.signMessage(ethers.getBytes(userOpHash));
 
       // 5. Submit to Bundler
       console.log("[Pimlico] Submitting to Bundler...");
@@ -194,28 +200,28 @@ class PimlicoGaslessEngine {
 
   // Calculate standard ERC-4337 UserOp Hash (V0.6)
   async getUserOpHash(userOp, entryPoint, chainId) {
-    const packed = ethers.utils.defaultAbiCoder.encode(
+    const packed = ethers.AbiCoder.defaultAbiCoder().encode(
       ['address', 'uint256', 'bytes32', 'bytes32', 'uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'bytes32'],
       [
         userOp.sender,
         userOp.nonce,
-        ethers.utils.keccak256(userOp.initCode),
-        ethers.utils.keccak256(userOp.callData),
+        ethers.keccak256(userOp.initCode),
+        ethers.keccak256(userOp.callData),
         userOp.callGasLimit,
         userOp.verificationGasLimit,
         userOp.preVerificationGas,
         userOp.maxFeePerGas,
         userOp.maxPriorityFeePerGas,
-        ethers.utils.keccak256(userOp.paymasterAndData)
+        ethers.keccak256(userOp.paymasterAndData)
       ]
     );
 
-    const enc = ethers.utils.defaultAbiCoder.encode(
+    const enc = ethers.AbiCoder.defaultAbiCoder().encode(
       ['bytes32', 'address', 'uint256'],
-      [ethers.utils.keccak256(packed), entryPoint, chainId]
+      [ethers.keccak256(packed), entryPoint, chainId]
     );
 
-    return ethers.utils.keccak256(enc);
+    return ethers.keccak256(enc);
   }
 
   // Get Nonce from EntryPoint Contract

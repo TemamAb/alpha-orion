@@ -6,7 +6,7 @@ The **User API Service** is the central nervous system of the Alpha-Orion platfo
 
 - **Runtime**: Node.js v18 (LTS)
 - **Database**: PostgreSQL (via Neon/AlloyDB)
-- **Cache/PubSub**: Redis (via Upstash/GCP Redis)
+ - **Cache/PubSub**: Redis (via Upstash/Render Redis)
 - **AI**: OpenAI GPT-4o Integration
 
 ## 🚀 Getting Started
@@ -54,7 +54,7 @@ ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/...
 
 ## 🐳 Docker Support
 
-This service includes a multi-stage Dockerfile optimized for production (Render/Cloud Run).
+This service includes a multi-stage Dockerfile optimized for production (Render).
 
 **Build:**
 ```bash
