@@ -3,13 +3,30 @@ const { FlashbotsBundleProvider } = require('@flashbots/ethers-provider-bundle')
 
 class FlashbotsEngine {
     constructor() {
-        this.publicProvider = new ethers.JsonRpcProvider(process.env.ETHEREUM_RPC_URL);
+        this.publicProvider = null;
         this.privateKey = process.env.PRIVATE_KEY;
         this.flashbotsRelay = process.env.FLASHBOTS_RELAY || 'https://relay.flashbots.net';
         this.bundleProvider = null;
+        this.isAvailable = false;
 
-        if (!this.privateKey || !process.env.ETHEREUM_RPC_URL) {
-            throw new Error("PRIVATE_KEY and ETHEREUM_RPC_URL must be set in environment variables.");
+        const rpcUrl = process.env.ETHEREUM_RPC_URL;
+        
+        if (!rpcUrl) {
+            console.warn('[Flashbots] ETHEREUM_RPC_URL not set - Flashbots disabled');
+            return;
+        }
+
+        if (!this.privateKey) {
+            console.warn('[Flashbots] PRIVATE_KEY not set - Flashbots disabled');
+            return;
+        }
+
+        try {
+            this.publicProvider = new ethers.JsonRpcProvider(rpcUrl);
+            this.isAvailable = true;
+            console.log('[Flashbots] Initialized successfully');
+        } catch (err) {
+            console.error('[Flashbots] Failed to initialize:', err.message);
         }
     }
 

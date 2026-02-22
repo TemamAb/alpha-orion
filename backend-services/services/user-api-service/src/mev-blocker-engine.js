@@ -7,14 +7,26 @@ class MEVBlockerEngine {
     this.privateKey = process.env.PRIVATE_KEY;
     this.publicRpc = process.env.ETHEREUM_RPC_URL;
     
+    this.publicProvider = null;
+    this.mevProvider = null;
+    this.wallet = null;
+    this.isAvailable = false;
+
     if (!this.privateKey || !this.publicRpc) {
-        throw new Error("PRIVATE_KEY and ETHEREUM_RPC_URL must be set in environment variables.");
+      console.warn('[MEV Blocker] PRIVATE_KEY or ETHEREUM_RPC_URL not set - MEV Blocker disabled');
+      return;
     }
 
-    // Initialize providers
-    this.publicProvider = new ethers.JsonRpcProvider(this.publicRpc);
-    this.mevProvider = new ethers.JsonRpcProvider(this.mevBlockerRpc);
-    this.wallet = new ethers.Wallet(this.privateKey, this.publicProvider);
+    try {
+      // Initialize providers
+      this.publicProvider = new ethers.JsonRpcProvider(this.publicRpc);
+      this.mevProvider = new ethers.JsonRpcProvider(this.mevBlockerRpc);
+      this.wallet = new ethers.Wallet(this.privateKey, this.publicProvider);
+      this.isAvailable = true;
+      console.log('[MEV Blocker] Initialized successfully');
+    } catch (err) {
+      console.error('[MEV Blocker] Failed to initialize:', err.message);
+    }
   }
 
   async sendPrivateTransaction(transaction) {

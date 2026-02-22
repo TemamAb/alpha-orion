@@ -4,15 +4,35 @@ const { ethers } = require('ethers');
 
 class MEVRouter {
   constructor() {
-    this.mevBlocker = new MEVBlockerEngine();
-    this.flashbots = new FlashbotsEngine();
+    this.mevBlocker = null;
+    this.flashbots = null;
     this.strategy = process.env.MEV_STRATEGY || 'hybrid';
-    this.publicProvider = new ethers.JsonRpcProvider(process.env.ETHEREUM_RPC_URL);
-    if (!process.env.PRIVATE_KEY) {
-      throw new Error("PRIVATE_KEY environment variable is not set for MEVRouter.");
+    this.publicProvider = null;
+    this.wallet = null;
+    this.isAvailable = false;
+
+    // Check if required environment variables are set
+    const rpcUrl = process.env.ETHEREUM_RPC_URL;
+    const privateKey = process.env.PRIVATE_KEY;
+
+    if (!rpcUrl) {
+      console.warn('[MEV Router] ETHEREUM_RPC_URL not set - MEV features disabled');
+      return;
     }
 
-    this.wallet = new ethers.Wallet(process.env.PRIVATE_KEY, this.publicProvider);
+    if (!privateKey) {
+      console.warn('[MEV Router] PRIVATE_KEY not set - MEV features disabled');
+      return;
+    }
+
+    try {
+      this.publicProvider = new ethers.JsonRpcProvider(rpcUrl);
+      this.wallet = new ethers.Wallet(privateKey, this.publicProvider);
+      this.isAvailable = true;
+      console.log('[MEV Router] Initialized successfully');
+    } catch (err) {
+      console.error('[MEV Router] Failed to initialize:', err.message);
+    }
   }
 
   async routeTransaction(transaction, tradeSize) {
