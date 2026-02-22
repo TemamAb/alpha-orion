@@ -1,9 +1,9 @@
 require('dotenv').config();
 
 // Set default values for required env vars if not set (for development/free tier)
+// NOTE: Don't set REDIS_URL to empty string - let redis-client handle missing config gracefully
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-not-for-production';
-process.env.DATABASE_URL = process.env.DATABASE_URL || '';
-process.env.REDIS_URL = process.env.REDIS_URL || '';
+// DATABASE_URL and REDIS_URL should NOT have empty string defaults - they will be provided by Render
 
 console.log('Starting Alpha-Orion API Service...');
 
