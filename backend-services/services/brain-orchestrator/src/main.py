@@ -13,6 +13,26 @@ import requests
 import sys
 import time
 
+# Sentry SDK for error tracking
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+# Initialize Sentry if DSN is provided
+SENTRY_DSN = os.getenv('SENTRY_DSN')
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            FlaskIntegration(),
+            LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+        ],
+        traces_sample_rate=0.1,
+        environment=os.getenv('NODE_ENV', 'production'),
+        release=f'alpha-orion@2.1.0'
+    )
+    print(f"✅ Sentry initialized for environment: {os.getenv('NODE_ENV', 'production')}")
+
 # Add the benchmarking tracker
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../..'))
 from benchmarking_tracker import ApexBenchmarker

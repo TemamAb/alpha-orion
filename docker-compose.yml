@@ -17,14 +17,12 @@ services:
       - REDIS_URL=redis://redis:6379
       - PORT=8080
       - NODE_ENV=development
-      # Use a fixed secret for local development consistency.
-      - JWT_SECRET=local-dev-secret-for-testing-min-32-chars
-      # Pass through other necessary API keys from your host machine's .env file.
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-test-key}
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=admin123
-      - USER_USERNAME=user
-      - USER_PASSWORD=user123
+      # Credentials MUST be provided via environment variables - never hardcode in production
+      # Default values provided for local development only
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - USER_USERNAME=${USER_USERNAME:-user}
+      - USER_PASSWORD=${USER_PASSWORD:-user123}
       - ETHEREUM_RPC_URL=${ETHEREUM_RPC_URL}
     networks:
       - alpha-orion-net

@@ -7,3 +7,4 @@ requests==2.31.0
 pyjwt==2.8.0
 gunicorn==21.2.0
 cryptography>=41.0.0
+sentry-sdk[flask]>=1.40.0
