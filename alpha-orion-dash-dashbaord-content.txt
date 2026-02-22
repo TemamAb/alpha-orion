@@ -7,7 +7,7 @@ d.	Add Toggle : ETH/USD ( converts using worl-class converter in real time )
 2.	Sidebars : ( lefit side ; first column ) 
 a.	Alpha-copilot ( Gemini intelligence in institutional arbitrage flash loan app; the alpha-copilot is aware of the context of alpha-orion in build-deploy-monitor and optimize life cycle model.
 i.	The alpha-copilot is aware of the benchmarking system of alpha-orion
-ii.	The alpha orion system inegerates five arbitrage flash loan apps, 
+ii.	The alpha orion system inegerates five arbitrage flash loan benchmarks 
 iii.	The benchmark system selectes the top ranking metric from the five benchmarking apps ad the optimization engine continually works aimed at matching to or even going above the benchmarks
 b.	Monitor ( sidebar) 
 i.	Monitors the following metrics 

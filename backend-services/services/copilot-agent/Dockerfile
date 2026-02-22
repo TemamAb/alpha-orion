@@ -1,34 +1,19 @@
-# Alpha-Copilot Agent Dockerfile
+FROM python:3.9-slim
 
-FROM python:3.11-slim
-
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y gcc python3-dev && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-
-# Install Python dependencies
+# Copy requirements
+COPY backend-services/services/copilot-agent/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY src/ ./src/
+# Copy service code
+COPY backend-services/services/copilot-agent/src /app/src
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=src/main.py
+# Set Python path
+ENV PYTHONPATH=/app
 
-# Expose port
-EXPOSE 8082
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8082/health')" || exit 1
-
-# Run the application
-CMD ["gunicorn", "--worker-class", "gevent", "--bind", "0.0.0.0:8082", "--workers", "2", "src.main:app"]
+# Run Gunicorn (Port 8082 per main.py)
+CMD ["gunicorn", "--bind", "0.0.0.0:8082", "--chdir", "/app/src", "main:app"]

@@ -173,9 +173,3 @@ For support and questions:
 - Multi-region deployment
 - Enterprise security features
 - Automated CI/CD pipeline
-
----
-
-**Project ID**: alpha-orion
-**GCP Project Number**: 380955632798
-**Repository**: https://github.com/TemamAb/alphaorion

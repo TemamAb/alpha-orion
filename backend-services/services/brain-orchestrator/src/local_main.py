@@ -20,16 +20,35 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-# Configuration
-JWT_SECRET = os.getenv('JWT_SECRET', 'local-dev-secret-change-in-production')
+# Configuration - JWT_SECRET must be set via environment variable
+jwt_secret_from_env = os.getenv('JWT_SECRET')
+if not jwt_secret_from_env:
+    # CRITICAL SECURITY FIX: Fail if JWT_SECRET not provided
+    logging.error("CRITICAL: JWT_SECRET not set - cannot start in production mode")
+    raise ValueError("JWT_SECRET environment variable must be set for production")
+JWT_SECRET = jwt_secret_from_env
 ARBITRAGE_CONTRACT_ADDRESS = os.getenv('ARBITRAGE_CONTRACT_ADDRESS', '')
 ETHEREUM_RPC_URL = os.getenv('ETHEREUM_RPC_URL', 'https://rpc.ankr.com/eth')
 PIMLICO_API_KEY = os.getenv('PIMLICO_API_KEY', '')
 
-# Users
-USERS = {
-    'admin': {'password': hashlib.sha256('admin123'.encode()).hexdigest(), 'role': 'admin'},
-}
+# Users loaded from environment variables for security
+def load_users_from_env():
+    users = {}
+    admin_user = os.getenv('ADMIN_USERNAME', 'admin')
+    admin_pass = os.getenv('ADMIN_PASSWORD')
+    
+    if admin_pass:
+        users[admin_user] = {'password': hashlib.sha256(admin_pass.encode()).hexdigest(), 'role': 'admin'}
+    else:
+        # CRITICAL SECURITY FIX: Fail securely if credentials not provided
+        # Never use default credentials in production
+        import logging
+        logging.error("CRITICAL: ADMIN_PASSWORD not set - cannot start in production mode")
+        raise ValueError("ADMIN_PASSWORD environment variable must be set for production")
+    
+    return users
+
+USERS = load_users_from_env()
 
 def generate_token(username, role):
     payload = {
@@ -58,13 +77,19 @@ def require_auth(f):
     wrapper.__name__ = f.__name__
     return wrapper
 
-# Web3 connection
+# Web3 connection with timeout
 def get_web3():
-    return Web3(Web3.HTTPProvider(ETHEREUM_RPC_URL))
+    # CRITICAL SECURITY FIX: Require explicit RPC URL configuration
+    if not ETHEREUM_RPC_URL:
+        raise ValueError("CRITICAL: ETHEREUM_RPC_URL must be configured")
+    return Web3(Web3.HTTPProvider(ETHEREUM_RPC_URL, request_kwargs={'timeout': 30}))
 
-# Circuit breaker state
+# Circuit breaker state with recovery support
 circuit_breaker_open = False
 failure_count = 0
+circuit_breaker_last_failure = None
+CIRCUIT_BREAKER_COOLDOWN = 300  # 5 minutes cooldown
+CIRCUIT_BREAKER_RECOVERY_THRESHOLD = 3  # Need 3 successful health checks to recover
 
 # Profit Engine State
 profit_engine_running = False

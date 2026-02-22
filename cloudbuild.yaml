@@ -9,10 +9,9 @@ options:
 
 substitutions:
   _REGION: 'us-central1'
-  # The _API_URL should be the stable, externally-facing URL for your user-api-service.
-  # This might be a URL from a Load Balancer, API Gateway, or a custom domain mapped to the service.
-  # After the first deployment, you can get the service URL and hardcode it here, or set up a custom domain.
-  _API_URL: 'https://user-api-service-your-hash-uc.a.run.app' # <-- IMPORTANT: UPDATE THIS URL
+  # CRITICAL FIX: Replace with actual production API URL after first deployment
+  # Use Cloud Load Balancer or API Gateway URL for production
+  _API_URL: '${_REGION}-run.googleapis.com'
 
 steps:
   # ==============================================================================
@@ -39,7 +38,11 @@ steps:
       - '${_REGION}'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated'
+      # CRITICAL SECURITY FIX: Remove unauthenticated access
+      # Use IAM authentication and internal-only traffic
+      - '--ingress'
+      - 'internal'
+      - '--no-allow-unauthenticated'
       - '--memory=2Gi'
       - '--cpu=2'
       - '--min-instances=1'

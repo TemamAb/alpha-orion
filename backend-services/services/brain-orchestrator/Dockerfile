@@ -1,20 +1,23 @@
-# Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
-# Set environment variables to sane defaults
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-ENV PORT 8080
-
-# Set the working directory in the container
 WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt .
+# Install system dependencies
+RUN apt-get update && apt-get install -y gcc python3-dev && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for caching
+COPY backend-services/services/brain-orchestrator/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code from the src directory
-COPY src/ .
+# Copy shared libraries from root (requires build context at project root)
+COPY benchmarking_tracker.py /app/benchmarking_tracker.py
+COPY router.py /app/router.py
 
-# Run the production web server
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
+# Copy service code
+COPY backend-services/services/brain-orchestrator/src /app/src
+
+# Set Python path to allow imports from root
+ENV PYTHONPATH=/app
+
+# Run Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--chdir", "/app/src", "main:app"]

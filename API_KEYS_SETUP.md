@@ -4,9 +4,7 @@
 
 ### 2. **Pimlico API Key** (For gasless transactions)
 **Status**: ✅ CONFIGURED
-```
-pim_TDJjCjeAJdArjep3usKXTu
-```
+**CRITICAL NOTE**: Do not commit real API keys to version control. Use placeholders and manage secrets in your deployment environment (e.g., Render Environment Groups).
 **Purpose**: ERC-4337 account abstraction, gasless transactions
 
 #### Where It's Used:
@@ -27,7 +25,7 @@ No environment variable is currently required for basic usage.
 ---
 
 ### 3. **Infura API Key** (RPC provider)
-**Status**: ⚠ PLACEHOLDER - `YOUR_INFURA_API_KEY_HERE`
+**Status**: ✅ CONFIGURED (Render Env Var)
 
 #### How to Get:
 1. Visit: https://infura.io/
@@ -47,7 +45,7 @@ export INFURA_API_KEY="your-infura-key"
 ---
 
 ### 4. **Etherscan API Key** (Block explorer)
-**Status**: ⚠ PLACEHOLDER - `YOUR_ETHERSCAN_API_KEY_HERE`
+**Status**: ✅ CONFIGURED (Render Env Var)
 
 #### How to Get:
 1. Visit: https://etherscan.io/
@@ -67,7 +65,7 @@ export ETHERSCAN_API_KEY="your-etherscan-key"
 ---
 
 ### 5. **Profit Destination Wallet**
-**Status**: ⚠ PLACEHOLDER - `0xYOUR_PROFIT_WALLET_ADDRESS_HERE`
+**Status**: ✅ CONFIGURED (Render Env Var)
 
 #### How to Set:
 ```bash
@@ -106,7 +104,7 @@ TRADING_BACKEND_URL=https://your-backend.com
 TRADING_BACKEND_API_KEY=your-backend-api-key
 
 # Pimlico (ERC-4337)
-PIMLICO_API_KEY=pim_TDJjCjeAJdArjep3usKXTu
+PIMLICO_API_KEY=your-pimlico-api-key
 
 # Google Cloud
 GCP_PROJECT_ID=alpha-orion
@@ -123,24 +121,14 @@ NODE_ENV=production
 
 ---
 
-## Cloud Deployment: GCP Secrets Manager
+## Cloud Deployment: Render Environment Groups
 
-### Automatic Setup via Terraform:
-```bash
-cd terraform
-terraform apply
-```
+Instead of managing secrets in individual files, use **Render Environment Groups** to share secrets across your microservices.
 
-### Manual Setup:
-```bash
-# Create secrets
-gcloud secrets create infura-api-key --data-file=- <<< "your-infura-key"
-gcloud secrets create etherscan-api-key --data-file=- <<< "your-etherscan-key"
-gcloud secrets create profit-wallet-address --data-file=- <<< "0x..."
-gcloud secrets create deployer-private-key --data-file=- <<< "0x..."
-
-# Grant Cloud Run service account access
-```
+1. Go to **Render Dashboard** > **Environment Groups**.
+2. Create a group named `alpha-orion-secrets`.
+3. Add the variables listed above (`INFURA_API_KEY`, `ETHERSCAN_API_KEY`, etc.).
+4. Link this group to your `user-api-service` and `brain-orchestrator` services in their **Settings** tab.
 
 ---
 

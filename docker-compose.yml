@@ -4,8 +4,8 @@ services:
   # 1. The User API Service (Node.js)
   api:
     build:
-      context: ./backend-services/services/user-api-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend-services/services/user-api-service/Dockerfile
     ports:
       - "8080:8080"
     depends_on:
@@ -18,9 +18,13 @@ services:
       - PORT=8080
       - NODE_ENV=development
       # Use a fixed secret for local development consistency.
-      - JWT_SECRET=local-dev-secret
+      - JWT_SECRET=local-dev-secret-for-testing-min-32-chars
       # Pass through other necessary API keys from your host machine's .env file.
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-test-key}
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - USER_USERNAME=user
+      - USER_PASSWORD=user123
       - ETHEREUM_RPC_URL=${ETHEREUM_RPC_URL}
     networks:
       - alpha-orion-net

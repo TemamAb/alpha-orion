@@ -6,7 +6,9 @@ module "pimlico-api-secret" {
   source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
   project_id  = "alpha-orion"
   name        = "pimlico-api-key"
-  secret_data = "pim_TDJjCjeAJdArjep3usKXTu"
+  # CRITICAL SECURITY FIX: Use Secret Manager to inject the actual secret value
+  # Do not hardcode secrets in Terraform
+  secret_data = var.pimlico_api_key
   automatic_replication = {
     kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
   }
@@ -44,7 +46,8 @@ module "db-secret" {
   source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
   project_id  = "alpha-orion"
   name        = "db-credentials"
-  secret_data = "YOUR_GENERATED_DB_PASSWORD_HERE"
+  # CRITICAL SECURITY FIX: Use Secret Manager reference
+  secret_data = var.db_password
   automatic_replication = {
     kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
   }
@@ -202,10 +205,24 @@ module "vertex-ai-apis" {
   activate_apis = ["aiplatform.googleapis.com"]
   depends_on    = [module.project-services-alpha-orion, module.project-services-billing-project]
 }
+# Dead Letter Queue for failed messages
+resource "google_pubsub_topic" "dead_letter" {
+  project = "alpha-orion"
+  name   = "dead-letter-queue"
+}
+
 module "scanner-output-topic" {
   source             = "github.com/terraform-google-modules/terraform-google-pubsub?ref=v8.3.2"
   project_id         = "alpha-orion"
   topic              = "raw-opportunities"
+  dead_letter_policy = {
+    dead_letter_topic = google_pubsub_topic.dead_letter.id
+    max_delivery_attempts = 5
+  }
+  retry_policy = {
+    minimum_backoff = "10s"
+    maximum_backoff = "600s"
+  }
   push_subscriptions = concat([{"name" = module.scanner-service-data-analysis.apphub_service_uri.service_id, "oidc_service_account_email" = module.scanner-service-data-analysis.service_account_id.email, "push_endpoint" = module.scanner-service-data-analysis.service_uri}], [{"oidc_service_account_email" = module.orchestrator-service.service_account_id.email, "push_endpoint" = module.orchestrator-service.service_uri, "name" = module.orchestrator-service.apphub_service_uri.service_id}])
   pull_subscriptions = concat([{"name" = module.scanner-service-data-analysis.service_name, "service_account" = module.scanner-service-data-analysis.service_account_id.email}], [{"service_account" = module.orchestrator-service.service_account_id.email, "name" = module.orchestrator-service.service_name}])
   depends_on         = [module.project-services-alpha-orion, module.project-services-billing-project]
@@ -214,6 +231,14 @@ module "execution-request-topic" {
   source     = "github.com/terraform-google-modules/terraform-google-pubsub?ref=v8.3.2"
   project_id = "alpha-orion"
   topic      = "flash-loan-execution-requests"
+  dead_letter_policy = {
+    dead_letter_topic = google_pubsub_topic.dead_letter.id
+    max_delivery_attempts = 3  # Fewer retries for financial transactions
+  }
+  retry_policy = {
+    minimum_backoff = "5s"
+    maximum_backoff = "300s"
+  }
   push_subscriptions = [{
     name                       = module.orchestrator-service.apphub_service_uri.service_id
     oidc_service_account_email = module.orchestrator-service.service_account_id.email
@@ -229,7 +254,8 @@ module "withdrawal-wallet-secret" {
   source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
   project_id  = "alpha-orion"
   name        = "withdrawal-wallet-keys"
-  secret_data = "YOUR_WITHDRAWAL_WALLET_KEYS_HERE"
+  # CRITICAL SECURITY FIX: Use Secret Manager reference
+  secret_data = var.db_password
   automatic_replication = {
     kms_key_name = "projects/alpha-orion/locations/us-central1/keyRings/flash-loan-keyring/cryptoKeys/flash-loan-key"
   }
@@ -376,7 +402,7 @@ module "pimlico-api-secret-eu" {
   source      = "github.com/GoogleCloudPlatform/terraform-google-secret-manager//modules/simple-secret?ref=v0.9.0"
   project_id  = "alpha-orion"
   name        = "pimlico-api-key-eu"
-  secret_data = "pim_TDJjCjeAJdArjep3usKXTu"
+  secret_data = var.pimlico_api_key
   automatic_replication = {
     kms_key_name = "projects/alpha-orion/locations/europe-west1/keyRings/flash-loan-keyring-eu/cryptoKeys/flash-loan-key-eu"
   }

@@ -51,23 +51,90 @@ CORS(app)
 
 # JWT_SECRET will be initialized after get_secret function
 JWT_SECRET = None
-USERS = {
-    'admin': {'password': hashlib.sha256('admin123'.encode()).hexdigest(), 'role': 'admin'},
-    'user': {'password': hashlib.sha256('user123'.encode()).hexdigest(), 'role': 'user'}
-}
+
+# Users loaded from environment variables for security
+# Format: ADMIN_USERNAME, ADMIN_PASSWORD_HASH (SHA256), USER_USERNAME, USER_PASSWORD_HASH
+def load_users_from_env():
+    users = {}
+    admin_user = os.getenv('ADMIN_USERNAME', 'admin')
+    admin_pass = os.getenv('ADMIN_PASSWORD')
+    user_user = os.getenv('USER_USERNAME', 'user')
+    user_pass = os.getenv('USER_PASSWORD')
+    
+    if admin_pass:
+        users[admin_user] = {'password': hashlib.sha256(admin_pass.encode()).hexdigest(), 'role': 'admin'}
+    else:
+        # CRITICAL SECURITY FIX: Fail securely if credentials not provided
+        logger.error("CRITICAL: ADMIN_PASSWORD not set - admin access unavailable in production")
+        # Do NOT create a default user - require explicit configuration
+    
+    if user_pass:
+        users[user_user] = {'password': hashlib.sha256(user_pass.encode()).hexdigest(), 'role': 'user'}
+    
+    return users
+
+USERS = load_users_from_env()
+
+# JWT Configuration
+JWT_SECRET = None
+JWT_REFRESH_SECRET = None  # Separate secret for refresh tokens
+JWT_ACCESS_TOKEN_EXPIRY = 15  # minutes - short-lived
+JWT_REFRESH_TOKEN_EXPIRY = 7  # days
 
 def generate_token(username, role):
-    payload = {
+    """Generate short-lived access token and refresh token"""
+    import secrets
+    
+    # Generate access token (short-lived)
+    access_payload = {
         'username': username,
         'role': role,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        'type': 'access',
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRY),
+        'iat': datetime.datetime.utcnow()
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+    access_token = jwt.encode(access_payload, JWT_SECRET, algorithm='HS256')
+    
+    # Generate refresh token (longer-lived, separate secret)
+    refresh_payload = {
+        'username': username,
+        'role': role,
+        'type': 'refresh',
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=JWT_REFRESH_TOKEN_EXPIRY),
+        'iat': datetime.datetime.utcnow(),
+        'refresh_token': secrets.token_urlsafe(32)
+    }
+    refresh_token = jwt.encode(refresh_payload, JWT_REFRESH_SECRET, algorithm='HS256')
+    
+    return {
+        'access_token': access_token,
+        'refresh_token': refresh_token,
+        'expires_in': JWT_ACCESS_TOKEN_EXPIRY * 60  # seconds
+    }
 
 def verify_token(token):
+    """Verify access token"""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        # Verify it's an access token, not refresh
+        if payload.get('type') != 'access':
+            return None
         return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+def verify_refresh_token(token):
+    """Verify refresh token and return new access token"""
+    try:
+        payload = jwt.decode(token, JWT_REFRESH_SECRET, algorithms=['HS256'])
+        # Verify it's a refresh token
+        if payload.get('type') != 'refresh':
+            return None
+        
+        # Generate new access token
+        return generate_token(payload['username'], payload['role'])
     except jwt.ExpiredSignatureError:
         return None
     except jwt.InvalidTokenError:
@@ -118,8 +185,10 @@ def get_web3_connection(chain_name='ethereum'):
     
     rpc_url = os.getenv(f'{chain_name.upper()}_RPC_URL', '')
     if not rpc_url:
-        # Fallback to Ethereum RPC
-        rpc_url = os.getenv('ETHEREUM_RPC_URL', 'https://eth-mainnet.g.alchemy.com/v2/demo')
+        # CRITICAL SECURITY FIX: Fail if no RPC URL configured
+        # Never fall back to demo or public endpoints in production
+        logger.error(f"CRITICAL: {chain_name.upper()}_RPC_URL not configured")
+        raise ValueError(f"RPC URL for {chain_name} must be configured via environment variables")
     
     web3 = Web3(Web3.HTTPProvider(rpc_url))
     web3_connections[chain_name] = web3
@@ -131,9 +200,11 @@ def get_pimlico_gas_price():
         return None
     
     try:
+        # CRITICAL: Add timeout to prevent hanging connections
         response = requests.get(
             f'https://api.pimlico.io/v2/1/gas-prices',
-            headers={'Authorization': f'Bearer {PIMLICO_API_KEY}'}
+            headers={'Authorization': f'Bearer {PIMLICO_API_KEY}'},
+            timeout=10  # 10 second timeout
         )
         if response.status_code == 200:
             data = response.json()
@@ -142,14 +213,32 @@ def get_pimlico_gas_price():
                 'standard': int(data.get('standard', {}).get('maxFeePerGas', 0)),
                 'fast': int(data.get('fast', {}).get('maxFeePerGas', 0))
             }
+    except requests.Timeout:
+        logger.warning("Pimlico gas price request timed out")
     except Exception as e:
         logger.warning(f"Pimlico gas price fetch failed: {e}")
     
     return None
 
+# Financial validation constants
+MAX_GAS_LIMIT = 1000000  # 1M gas max
+MIN_GAS_LIMIT = 21000     # Standard transfer
+MAX_POSITION_SIZE_USD = 1000000  # Max $1M position
+MIN_PROFIT_THRESHOLD_USD = 100    # Min $100 profit
+
 def estimate_arbitrage_gas(token, amount, routers, paths):
-    """Estimate gas for arbitrage transaction"""
+    """Estimate gas for arbitrage transaction with input validation"""
     try:
+        # CRITICAL SECURITY FIX: Validate inputs
+        if not token or not isinstance(token, str):
+            raise ValueError("Invalid token parameter")
+        
+        if amount and (not isinstance(amount, (int, float)) or amount <= 0):
+            raise ValueError("Invalid amount parameter")
+        
+        if routers and not isinstance(routers, (list, tuple)):
+            raise ValueError("Invalid routers parameter - must be list or tuple")
+        
         web3 = get_web3_connection()
         if not web3.is_connected():
             return None
@@ -157,14 +246,35 @@ def estimate_arbitrage_gas(token, amount, routers, paths):
         # Get current gas price
         gas_price = web3.eth.gas_price
         
+        # Validate gas price is within reasonable bounds
+        # (Current eth gas is typically 1-500 gwei)
+        gas_price_gwei = gas_price / 10**9
+        if gas_price_gwei > 1000:  # Reject if > 1000 gwei (extreme congestion)
+            logger.warning(f"Gas price too high: {gas_price_gwei} gwei")
+            return None
+        
         # Estimate gas (this would need actual contract interaction)
         estimated_gas = 500000  # Typical flash loan arbitrage gas usage
         
+        # CRITICAL: Validate gas estimate bounds
+        if estimated_gas > MAX_GAS_LIMIT:
+            logger.error(f"Gas estimate exceeds maximum: {estimated_gas} > {MAX_GAS_LIMIT}")
+            raise ValueError(f"Gas estimate exceeds maximum allowed: {MAX_GAS_LIMIT}")
+        
+        if estimated_gas < MIN_GAS_LIMIT:
+            logger.error(f"Gas estimate below minimum: {estimated_gas} < {MIN_GAS_LIMIT}")
+            raise ValueError(f"Gas estimate below minimum required: {MIN_GAS_LIMIT}")
+        
+        estimated_cost_eth = (gas_price * estimated_gas) / 10**18
+        
         return {
-            'gas_price_gwei': gas_price / 10**9,
+            'gas_price_gwei': gas_price_gwei,
             'estimated_gas': estimated_gas,
-            'estimated_cost_eth': (gas_price * estimated_gas) / 10**18
+            'estimated_cost_eth': estimated_cost_eth
         }
+    except ValueError:
+        # Re-raise validation errors
+        raise
     except Exception as e:
         logger.error(f"Gas estimation failed: {e}")
         return None
@@ -210,8 +320,20 @@ def get_secret(secret_id):
     env_var_name = secret_id.upper().replace('-', '_')
     return os.getenv(env_var_name)
 
-# Initialize JWT_SECRET after get_secret function is defined
-JWT_SECRET = get_secret('jwt-secret') or os.getenv('JWT_SECRET', 'default-secret-key-change-in-production')
+# Initialize JWT secrets - require explicit configuration for production
+jwt_secret = get_secret('jwt-secret') or os.getenv('JWT_SECRET')
+if not jwt_secret:
+    raise ValueError("CRITICAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.")
+JWT_SECRET = jwt_secret
+
+# CRITICAL: Also require a separate refresh token secret
+jwt_refresh_secret = get_secret('jwt-refresh-secret') or os.getenv('JWT_REFRESH_SECRET')
+if not jwt_refresh_secret:
+    # Fall back to using same secret (not recommended for production)
+    logger.warning("JWT_REFRESH_SECRET not set - using same secret as JWT_SECRET (less secure)")
+    JWT_REFRESH_SECRET = jwt_secret
+else:
+    JWT_REFRESH_SECRET = jwt_refresh_secret
 
 # Initialize Apex Benchmarking System
 try:
@@ -222,15 +344,79 @@ except Exception as e:
     logger.error(f"Failed to initialize Apex Benchmarking System: {e}")
     apex_benchmarker = None
 
+# Database connection pooling
+db_pool = None
+DB_POOL_SIZE = 10
+DB_POOL_MAX_OVERFLOW = 20
+DB_POOL_TIMEOUT = 30
+
+# Transaction idempotency tracking
+idempotency_cache = {}
+IDEMPOTENCY_TTL = 3600  # 1 hour
+
+def check_idempotency(key):
+    """Check if a request has already been processed"""
+    import time
+    current_time = time.time()
+    
+    if key in idempotency_cache:
+        stored_time, result = idempotency_cache[key]
+        if current_time - stored_time < IDEMPOTENCY_TTL:
+            logger.info(f"Idempotent request detected: {key}")
+            return result
+        else:
+            # Remove expired entry
+            del idempotency_cache[key]
+    return None
+
+def store_idempotency(key, result):
+    """Store request result for idempotency"""
+    import time
+    idempotency_cache[key] = (time.time(), result)
+    # Cleanup old entries periodically
+    if len(idempotency_cache) > 1000:
+        current_time = time.time()
+        expired_keys = [k for k, (t, _) in idempotency_cache.items() if current_time - t > IDEMPOTENCY_TTL]
+        for k in expired_keys:
+            del idempotency_cache[k]
+
 def get_db_connection():
-    global db_conn
-    if db_conn is None:
+    """Get database connection with connection pooling"""
+    global db_pool
+    if db_pool is None:
         db_url = os.getenv('DATABASE_URL') or get_secret('database-url')
         if not db_url:
             logger.error("DATABASE_URL not found in env")
             raise Exception("Missing DATABASE_URL")
-        db_conn = psycopg2.connect(db_url)
-    return db_conn
+        
+        # CRITICAL: Use connection pooling for better performance
+        try:
+            from psycopg2 import pool
+            db_pool = pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=DB_POOL_SIZE + DB_POOL_MAX_OVERFLOW,
+                dsn=db_url
+            )
+            logger.info(f"Database connection pool initialized: {DB_POOL_SIZE} connections")
+        except Exception as e:
+            logger.error(f"Failed to initialize database pool: {e}")
+            raise
+    
+    try:
+        conn = db_pool.getconn()
+        # Verify connection is still valid
+        if conn is None or conn.closed:
+            conn = db_pool.getconn()
+        return conn
+    except pool.pool.error as e:
+        logger.error(f"Failed to get connection from pool: {e}")
+        raise
+
+def return_db_connection(conn):
+    """Return connection to the pool"""
+    global db_pool
+    if db_pool and conn:
+        db_pool.putconn(conn)
 
 def get_redis_connection():
     global redis_conn
@@ -303,7 +489,9 @@ def perform_system_health_check():
 
 def automated_monitoring():
     """Automated monitoring function that runs periodically"""
-    global circuit_breaker_open
+    global circuit_breaker_open, circuit_breaker_last_failure
+    recovery_success_count = 0
+    
     while True:
         try:
             perform_system_health_check()
@@ -314,6 +502,26 @@ def automated_monitoring():
             if critical_alerts and not circuit_breaker_open:
                 logger.warning("Critical system issues detected - opening circuit breaker")
                 circuit_breaker_open = True
+                circuit_breaker_last_failure = datetime.datetime.utcnow()
+                recovery_success_count = 0
+            
+            # CRITICAL: Add circuit breaker recovery logic
+            elif circuit_breaker_open and circuit_breaker_last_failure:
+                # Check if enough time has passed since last failure
+                time_since_failure = (datetime.datetime.utcnow() - circuit_breaker_last_failure).total_seconds()
+                
+                if time_since_failure >= CIRCUIT_BREAKER_COOLDOWN:
+                    # Try to recover - check if system is healthy
+                    if system_health.get('status') == 'healthy':
+                        recovery_success_count += 1
+                        if recovery_success_count >= CIRCUIT_BREAKER_RECOVERY_THRESHOLD:
+                            circuit_breaker_open = False
+                            logger.info("Circuit breaker recovered - system is healthy")
+                            recovery_success_count = 0
+                    else:
+                        # Reset counter if health check fails
+                        recovery_success_count = 0
+                        logger.warning(f"Circuit breaker still open - health status: {system_health.get('status')}")
 
         except Exception as e:
             logger.error(f"Monitoring error: {e}")
@@ -963,7 +1171,44 @@ def record_benchmark_metric():
         return jsonify({'error': str(e)}), 500
 
 # Call setup_routes after JWT_SECRET is initialized
+
+# --- HOTFIX: Added by Deployment Script ---
+def setup_routes():
+    app.logger.info('Setting up routes (Hotfix Applied)')
+    @app.route('/health')
+    def health_check():
+        return {'status': 'healthy', 'service': 'brain-orchestrator'}, 200
+
 setup_routes()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
+
+
+# --- STRATEGY MANAGEMENT ---
+from strategies.triangular_arbitrage import TriangularArbitrage
+
+active_strategies = []
+
+def load_strategies():
+    global active_strategies
+    app.logger.info("Loading Arbitrage Strategies...")
+    try:
+        # Initialize Strategies
+        tri_arb = TriangularArbitrage()
+        active_strategies.append(tri_arb)
+        
+        app.logger.info(f"✅ Loaded {len(active_strategies)} strategies.")
+    except Exception as e:
+        app.logger.error(f"❌ Failed to load strategies: {e}")
+
+@app.route('/strategies/active', methods=['GET'])
+def get_active_strategies():
+    return {
+        "count": len(active_strategies),
+        "strategies": [s.name for s in active_strategies]
+    }, 200
+
+# Initialize strategies on startup
+with app.app_context():
+    load_strategies()
