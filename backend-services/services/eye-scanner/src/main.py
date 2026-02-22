@@ -280,9 +280,15 @@ def get_redis_connection():
     if redis_conn is None:
         redis_url = os.getenv('REDIS_URL') or get_secret('redis-url')
         if not redis_url:
-            logger.error("REDIS_URL not found in env or Secret Manager")
-            raise Exception("Missing REDIS_URL")
-        redis_conn = redis.from_url(redis_url)
+            logger.warning("REDIS_URL not found - Redis features disabled")
+            return None
+        try:
+            redis_conn = redis.from_url(redis_url)
+            redis_conn.ping()
+            logger.info("Connected to Redis")
+        except Exception as e:
+            logger.error(f"Failed to connect to Redis: {e}")
+            redis_conn = None
     return redis_conn
 
 def get_web3_connection(chain_name='ethereum'):

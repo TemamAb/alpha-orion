@@ -11,7 +11,13 @@ from web3 import Web3
 # --- Configuration ---
 load_dotenv()
 
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
+# Redis URL - MUST be provided via environment variable
+REDIS_URL = os.getenv('REDIS_URL')
+if not REDIS_URL:
+    print("[ERROR] REDIS_URL environment variable is not set!")
+    print("[INFO] Blockchain monitor requires REDIS_URL to be configured.")
+    # Don't exit - let the service try to start anyway and handle Redis errors gracefully
+
 # The cloudbuild.yaml specifies this RPC_URL, so we default to it.
 RPC_URL = os.getenv('RPC_URL', 'https://polygon-rpc.com')
 

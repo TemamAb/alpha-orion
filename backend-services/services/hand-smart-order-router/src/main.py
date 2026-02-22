@@ -38,7 +38,16 @@ def get_redis_connection():
     global redis_conn
     if redis_conn is None:
         redis_url = os.getenv('REDIS_URL')
-        redis_conn = redis.from_url(redis_url)
+        if not redis_url:
+            print("[WARNING] REDIS_URL not configured - Redis features disabled")
+            return None
+        try:
+            redis_conn = redis.from_url(redis_url)
+            redis_conn.ping()
+            print("[SUCCESS] Connected to Redis")
+        except Exception as e:
+            print(f"[ERROR] Failed to connect to Redis: {e}")
+            redis_conn = None
     return redis_conn
 
 def get_openocean_quote(from_token, to_token, amount, slippage=0.5):

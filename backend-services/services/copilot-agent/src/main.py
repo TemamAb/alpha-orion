@@ -111,14 +111,17 @@ def get_redis_connection():
     global redis_conn
     if redis_conn is None:
         redis_url = os.getenv('REDIS_URL', os.getenv('REDIS_CONNECTION_STRING', ''))
-        if redis_url:
-            try:
-                redis_conn = redis.from_url(redis_url)
-                redis_conn.ping()
-                add_deployment_log('info', 'Connected to Redis')
-            except Exception as e:
-                logger.warning(f"Redis connection failed: {e}")
-                redis_conn = None
+        if not redis_url:
+            logger.warning("REDIS_URL not configured - Redis features disabled")
+            return None
+        try:
+            redis_conn = redis.from_url(redis_url)
+            redis_conn.ping()
+            add_deployment_log('info', 'Connected to Redis')
+            logger.info("Connected to Redis")
+        except Exception as e:
+            logger.warning(f"Redis connection failed: {e}")
+            redis_conn = None
     return redis_conn
 
 

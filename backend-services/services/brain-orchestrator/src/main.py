@@ -442,16 +442,45 @@ def get_redis_connection():
     global redis_conn
     if redis_conn is None:
         redis_url = os.getenv('REDIS_URL') or get_secret('redis-url')
+        
+        # DEBUG: Log Redis connection details for diagnosis
+        print(f"[DEBUG] Redis connection attempt:")
+        print(f"  REDIS_URL env var: {os.getenv('REDIS_URL')}")
+        print(f"  Secret redis-url: {get_secret('redis-url')}")
+        print(f"  Final redis_url value: {redis_url}")
+        
         if not redis_url:
             logger.error("REDIS_URL not found in env")
-            raise Exception("Missing REDIS_URL")
-        redis_conn = redis.from_url(redis_url)
+            print("[WARNING] REDIS_URL not configured - Redis features will be disabled")
+            return None
+        
+        # Validate URL is not localhost
+        if 'localhost' in redis_url or '127.0.0.1' in redis_url:
+            logger.warning(f"Redis URL points to localhost: {redis_url}. This will not work in production!")
+            print("[WARNING] Redis URL points to localhost - this won't work in production!")
+        
+        try:
+            redis_conn = redis.from_url(redis_url)
+            redis_conn.ping()  # Test connection
+            logger.info(f"Successfully connected to Redis")
+            print("[SUCCESS] Connected to Redis")
+        except Exception as e:
+            logger.error(f"Failed to connect to Redis: {e}")
+            print(f"[ERROR] Failed to connect to Redis: {e}")
+            print("[INFO] Continuing without Redis - some features may be limited")
+            redis_conn = None
     return redis_conn
 
 def get_system_mode():
-    redis_conn = get_redis_connection()
-    mode = redis_conn.get('system_mode')
-    return mode.decode('utf-8') if mode else 'live'  # default to live for production
+    try:
+        redis_conn = get_redis_connection()
+        if redis_conn is None:
+            return 'sim'  # Default to simulation mode when Redis unavailable
+        mode = redis_conn.get('system_mode')
+        return mode.decode('utf-8') if mode else 'live'  # default to live for production
+    except Exception as e:
+        logger.warning(f"Failed to get system mode from Redis: {e}")
+        return 'sim'  # Default to simulation mode on error
 
 def perform_system_health_check():
     """Perform comprehensive system health check"""

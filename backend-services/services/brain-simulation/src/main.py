@@ -37,13 +37,27 @@ def get_redis_connection():
     global redis_conn
     if redis_conn is None:
         redis_url = os.getenv('REDIS_URL')
-        redis_conn = redis.from_url(redis_url)
+        if not redis_url:
+            print("[WARNING] REDIS_URL not configured - Redis features disabled")
+            return None
+        try:
+            redis_conn = redis.from_url(redis_url)
+            redis_conn.ping()
+            print("[SUCCESS] Connected to Redis")
+        except Exception as e:
+            print(f"[ERROR] Failed to connect to Redis: {e}")
+            redis_conn = None
     return redis_conn
 
 def get_system_mode():
-    redis_conn = get_redis_connection()
-    mode = redis_conn.get('system_mode')
-    return mode.decode('utf-8') if mode else 'sim'  # default to sim
+    try:
+        redis_conn = get_redis_connection()
+        if redis_conn is None:
+            return 'sim'
+        mode = redis_conn.get('system_mode')
+        return mode.decode('utf-8') if mode else 'sim'
+    except Exception:
+        return 'sim'
 
 @app.route('/simulate', methods=['GET'])
 def simulate():
