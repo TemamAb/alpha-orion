@@ -1,0 +1,1 @@
+{ "name": "alpha-orion", "version": "2.1.0", "description": "Alpha-Orion", "private": true, "scripts": { "install": "echo Root install - delegated to services", "build": "echo Build delegated to render.yaml", "start": "echo Start delegated" } } 
