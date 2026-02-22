@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from '../services/api'; // Assuming API client is here
+import { alphaOrionAPI } from '../services/api';
 
-// Define TypeScript interfaces for our data
 interface Wallet {
   id: string;
   name: string;
@@ -27,8 +26,8 @@ const WalletManagement = () => {
     const fetchWallets = async () => {
       try {
         setIsLoading(true);
-        // The real API client should handle auth headers automatically
-        const response = await api.get<Wallet[]>('/api/wallets');
+        const client = alphaOrionAPI.getClient();
+        const response = await client.get<Wallet[]>('/api/wallets');
         setWallets(response.data || []);
         setError(null);
       } catch (err) {
@@ -54,11 +53,11 @@ const WalletManagement = () => {
       return;
     }
     try {
-      const response = await api.post<{ status: string; wallet: Wallet }>('/api/wallets', newWallet);
+      const client = alphaOrionAPI.getClient();
+      const response = await client.post<{ status: string; wallet: Wallet }>('/api/wallets', newWallet);
       if (response.data.status === 'success') {
-        // The API returns the new wallet, let's add it to our state
         setWallets(prev => [...prev, response.data.wallet]);
-        setNewWallet({ name: '', address: '', chain: 'Ethereum' }); // Reset form
+        setNewWallet({ name: '', address: '', chain: 'Ethereum' });
       }
     } catch (err) {
       setError('Failed to add wallet.');

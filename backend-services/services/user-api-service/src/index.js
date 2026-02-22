@@ -8,6 +8,7 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-not-for-produ
 console.log('Starting Alpha-Orion API Service...');
 
 const express = require('express');
+const path = require('path');
 const http = require('http');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
@@ -261,10 +262,15 @@ app.post('/api/config', authenticateToken, async (req, res) => {
 });
 
 // --- Wallet Management System ---
+let inMemoryWallets = [];
+
 app.get('/api/wallets', authenticateToken, async (req, res) => {
   try {
-    const wallets = await redisClient.get('wallets_data');
-    res.json(JSON.parse(wallets || '[]'));
+    if (redisClient && redisClient.isOpen) {
+      const wallets = await redisClient.get('wallets_data');
+      return res.json(JSON.parse(wallets || '[]'));
+    }
+    res.json(inMemoryWallets);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch wallets' });
   }
@@ -273,13 +279,14 @@ app.get('/api/wallets', authenticateToken, async (req, res) => {
 app.post('/api/wallets', authenticateToken, async (req, res) => {
   try {
     const newWallet = req.body;
-    // In production, a background job should validate the address and update its status.
-    // For now, we add it with a 'pending' status.
-    const wallets = JSON.parse(await redisClient.get('wallets_data') || '[]');
     const walletToAdd = { ...newWallet, id: Date.now().toString(), status: 'pending' };
-    wallets.push(walletToAdd);
-    await redisClient.set('wallets_data', JSON.stringify(wallets));
-    // Return the full wallet object including the generated ID and status
+    if (redisClient && redisClient.isOpen) {
+      const wallets = JSON.parse(await redisClient.get('wallets_data') || '[]');
+      wallets.push(walletToAdd);
+      await redisClient.set('wallets_data', JSON.stringify(wallets));
+    } else {
+      inMemoryWallets.push(walletToAdd);
+    }
     res.status(201).json({ status: 'success', wallet: walletToAdd });
   } catch (error) {
     res.status(500).json({ error: 'Failed to add wallet' });
@@ -336,15 +343,33 @@ function getFallbackResponse(userInput) {
   return `System is running in **LIVE PRODUCTION MODE**. How can I assist you with the active deployment?`;
 }
 
+const dashboardDistPath = path.join(__dirname, '..', '..', '..', '..', 'dashboard', 'dist');
+const fs = require('fs');
+if (fs.existsSync(dashboardDistPath)) {
+  app.use(express.static(dashboardDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    if (req.headers.accept && !req.headers.accept.includes('text/html')) return next();
+    const indexPath = path.join(dashboardDistPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      next();
+    }
+  });
+}
+
 // Start Server
 const start = async () => {
   try {
-    await connectRedis();
+    const redisConnected = await connectRedis();
 
-    await redisSubscriber.subscribe('blockchain_stream', (message) => {
-      logger.info({ channel: 'blockchain_stream', message }, 'Received message from Redis Pub/Sub');
-      broadcast(message); // Forward message to all connected WebSocket clients
-    });
+    if (redisConnected && redisSubscriber) {
+      await redisSubscriber.subscribe('blockchain_stream', (message) => {
+        logger.info({ channel: 'blockchain_stream', message }, 'Received message from Redis Pub/Sub');
+        broadcast(message);
+      });
+    }
 
     // Try connecting to PG (non-blocking)
     await connectToDB();

@@ -20,10 +20,8 @@ class AlphaOrionAPI {
     // Use environment variable or fallback to Cloud Run URL or localhost
     // In production, set REACT_APP_API_URL to the Cloud Run service URL
     const envAPIUrl = typeof process !== 'undefined' ? process.env.REACT_APP_API_URL : '';
-    const cloudRunURL = 'https://alpha-orion-core-380955632798.us-central1.run.app';
-    const localhostURL = 'http://localhost:8080';
     
-    this.baseURL = baseURL || envAPIUrl || cloudRunURL || localhostURL;
+    this.baseURL = baseURL || envAPIUrl || '';
     
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -219,6 +217,10 @@ class AlphaOrionAPI {
 
   getBaseURL(): string {
     return this.baseURL;
+  }
+
+  getClient() {
+    return this.client;
   }
 }
 
