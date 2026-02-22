@@ -1,0 +1,1 @@
+{ "name": "alpha-orion", "version": "2.1.0", "description": "Alpha-Orion Trading Platform - 16 Strategies", "private": true, "scripts": { "start": "cd backend-services/services/user-api-service && npm start", "build": "echo No build needed" }, "workspaces": [] } 
