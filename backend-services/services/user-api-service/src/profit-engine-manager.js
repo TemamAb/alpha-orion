@@ -13,9 +13,33 @@ function safeRequire(modulePath, fallbackName) {
   try {
     return require(modulePath);
   } catch (err) {
-    console.warn(`[ProfitEngineManager] ${fallbackName} not available: ${err.message}`);
+    console.warn('[ProfitEngineManager] ' + fallbackName + ' not available: ' + err.message);
     return null;
   }
+}
+
+// Helper function to get an instance from a module that may export a class or an instance
+function getInstance(moduleExport, className, fallbackClass) {
+  if (!moduleExport) {
+    return new fallbackClass();
+  }
+  
+  // Check if it is already an instantiated object
+  if (typeof moduleExport === 'object' && typeof moduleExport.constructor === 'function') {
+    if (moduleExport.calculateVaR || moduleExport.calculateSharpeRatio || moduleExport.updateRiskMetrics) {
+      console.log('[ProfitEngineManager] Using provided instance for ' + className);
+      return moduleExport;
+    }
+  }
+  
+  // Check if it is a class constructor
+  if (typeof moduleExport === 'function' && moduleExport.prototype) {
+    console.log('[ProfitEngineManager] Instantiating ' + className + ' from class');
+    return new moduleExport();
+  }
+  
+  console.log('[ProfitEngineManager] Using fallback for ' + className);
+  return new fallbackClass();
 }
 
 // Try to load optional dependencies with graceful fallbacks
@@ -55,13 +79,11 @@ if (!MEVRouter) {
   };
 }
 
-if (!InstitutionalRiskEngine) {
-  InstitutionalRiskEngine = class InstitutionalRiskEngine {
-    constructor() {
-      console.log('[ProfitEngineManager] Using mock InstitutionalRiskEngine');
-    }
-  };
-}
+const MockInstitutionalRiskEngine = class InstitutionalRiskEngine {
+  constructor() {
+    console.log('[ProfitEngineManager] Using mock InstitutionalRiskEngine');
+  }
+};
 
 let profitEngineInstance = null;
 
@@ -73,10 +95,10 @@ function getProfitEngine() {
   if (!profitEngineInstance) {
     console.log('[ProfitEngineManager] Initializing EnterpriseProfitEngine...');
 
-    // 1. Instantiate Dependencies
-    const multiChainEngine = new MultiChainArbitrageEngine();
-    const mevRouter = new MEVRouter();
-    const riskEngine = new InstitutionalRiskEngine();
+    // 1. Instantiate Dependencies (handle both class and instance exports)
+    const multiChainEngine = getInstance(MultiChainArbitrageEngine, 'MultiChainArbitrageEngine', MultiChainArbitrageEngine);
+    const mevRouter = getInstance(MEVRouter, 'MEVRouter', MEVRouter);
+    const riskEngine = getInstance(InstitutionalRiskEngine, 'InstitutionalRiskEngine', MockInstitutionalRiskEngine);
 
     // 2. Instantiate the Enterprise Profit Engine
     const engine = new EnterpriseProfitEngine(multiChainEngine, mevRouter);

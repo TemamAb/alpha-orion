@@ -1,3 +1,9 @@
+/**
+ * Risk Engine
+ * 
+ * Provides risk management calculations including VaR, Sharpe Ratio, and Max Drawdown.
+ */
+
 const { redisClient } = require('./redis-client');
 const logger = require('./logger');
 
@@ -107,4 +113,5 @@ class RiskEngine {
   }
 }
 
-module.exports = new RiskEngine();
+// Export the class itself (not an instance) so it can be instantiated
+module.exports = RiskEngine;
