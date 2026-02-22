@@ -1,24 +1,45 @@
 const { createClient } = require('redis');
 const logger = require('./logger');
 
-const redisClient = createClient({
-  url: process.env.REDIS_URL
-});
+// Check if REDIS_URL is configured
+const REDIS_URL = process.env.REDIS_URL;
+if (!REDIS_URL) {
+  logger.warn('REDIS_URL not configured - Redis features will be disabled');
+}
 
-// A separate client is needed for pub/sub mode
-const redisSubscriber = redisClient.duplicate();
+// Only create Redis client if URL is configured
+let redisClient = null;
+let redisSubscriber = null;
 
-redisClient.on('error', (err) => logger.error({ err }, 'Redis Client Error'));
-redisSubscriber.on('error', (err) => logger.error({ err }, 'Redis Subscriber Error'));
+if (REDIS_URL) {
+  redisClient = createClient({
+    url: REDIS_URL
+  });
+
+  // A separate client is needed for pub/sub mode
+  redisSubscriber = redisClient.duplicate();
+
+  redisClient.on('error', (err) => logger.error({ err }, 'Redis Client Error'));
+  redisSubscriber.on('error', (err) => logger.error({ err }, 'Redis Subscriber Error'));
+}
 
 const connectRedis = async () => {
+  if (!REDIS_URL) {
+    logger.info('Skipping Redis connection - REDIS_URL not configured');
+    return false;
+  }
+  
   try {
-    if (!redisClient.isOpen) await redisClient.connect();
-    if (!redisSubscriber.isOpen) await redisSubscriber.connect();
+    if (redisClient && !redisClient.isOpen) await redisClient.connect();
+    if (redisSubscriber && !redisSubscriber.isOpen) await redisSubscriber.connect();
     logger.info('Successfully connected to Redis');
+    return true;
   } catch (e) {
-    logger.error({ err: e }, 'Failed to connect to Redis');
-    throw e;
+    logger.error({ err: e }, 'Failed to connect to Redis - continuing without Redis');
+    // Don't throw - continue without Redis
+    redisClient = null;
+    redisSubscriber = null;
+    return false;
   }
 };
 

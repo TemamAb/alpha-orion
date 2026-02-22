@@ -8,7 +8,12 @@ const winston = require('winston');
 // --- Configuration ---
 const PORT = process.env.PORT || 8080;
 const RPC_URL = process.env.RPC_URL || 'https://eth-mainnet.g.alchemy.com/v2/demo';
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+
+// Redis URL - MUST be provided via environment variable
+const REDIS_URL = process.env.REDIS_URL;
+if (!REDIS_URL) {
+  console.error('[ERROR] REDIS_URL environment variable is not set!');
+}
 
 // --- Logging ---
 const logger = winston.createLogger({
@@ -26,15 +31,23 @@ const gasPriceGauge = new client.Gauge({ name: 'blockchain_gas_price_gwei', help
 const eventCounter = new client.Counter({ name: 'blockchain_events_detected', help: 'Number of relevant events detected' });
 
 // --- Redis Setup ---
-const redisPublisher = createClient({ url: REDIS_URL });
-redisPublisher.on('error', (err) => logger.error('Redis Client Error', err));
+let redisPublisher = null;
+
+if (REDIS_URL) {
+  redisPublisher = createClient({ url: REDIS_URL });
+  redisPublisher.on('error', (err) => logger.error('Redis Client Error', err));
+}
 
 // --- Blockchain Monitor Logic ---
 
 async function startMonitor() {
   try {
-    await redisPublisher.connect();
-    logger.info('Connected to Redis');
+    if (redisPublisher) {
+      await redisPublisher.connect();
+      logger.info('Connected to Redis');
+    } else {
+      logger.warn('Redis not configured - blockchain monitoring will run without Redis');
+    }
 
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     logger.info(`Connected to RPC: ${RPC_URL}`);
@@ -58,11 +71,15 @@ async function startMonitor() {
           timestamp: Date.now()
         };
 
-        // Publish to Orchestrator and Dashboard
-        await redisPublisher.publish('blockchain_updates', JSON.stringify(update));
-        
-        // Store latest gas price for quick access
-        await redisPublisher.set('latest_gas_price', gasPriceGwei);
+        // Publish to Orchestrator and Dashboard (if Redis available)
+        if (redisPublisher) {
+          try {
+            await redisPublisher.publish('blockchain_updates', JSON.stringify(update));
+            await redisPublisher.set('latest_gas_price', gasPriceGwei);
+          } catch (err) {
+            logger.error('Redis publish error', err);
+          }
+        }
         
         logger.info(`Block ${blockNumber} | Gas: ${gasPriceGwei} Gwei`);
       } catch (err) {
@@ -92,10 +109,16 @@ async function startMonitor() {
         };
 
         logger.info('Arbitrage Event Detected', eventData);
-        redisPublisher.publish('arbitrage_events', JSON.stringify(eventData));
         
-        // Update stats
-        redisPublisher.incr('total_trades');
+        // Publish to Redis if available (fire and forget)
+        if (redisPublisher) {
+          redisPublisher.publish('arbitrage_events', JSON.stringify(eventData)).catch(err => 
+            logger.error('Redis publish error', err)
+          );
+          redisPublisher.incr('total_trades').catch(err => 
+            logger.error('Redis incr error', err)
+          );
+        }
         // Note: Profit summation would require token price normalization, handled by Orchestrator
       });
       
@@ -134,6 +157,8 @@ app.listen(PORT, () => {
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received. Shutting down...');
-  await redisPublisher.disconnect();
+  if (redisPublisher) {
+    await redisPublisher.disconnect();
+  }
   process.exit(0);
 });
