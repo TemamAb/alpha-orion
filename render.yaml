@@ -7,15 +7,22 @@ services:
   # DASHBOARD (React Frontend) - PRIMARY SERVICE
   # This serves at the main URL: alpha-orion.onrender.com
   # ============================================================
+  # ============================================================
+  # DASHBOARD (React Frontend) - PRIMARY SERVICE
+  # This serves at the main URL: alpha-orion.onrender.com
+  # ============================================================
   - type: web
     name: alpha-orion
+    root: dashboard
     env: node
     nodeVersion: 18
-    buildCommand: cd dashboard && npm install && npm run build
+    buildCommand: npm install && npm run build
     startCommand: npx serve -s dist -l $PORT
     envVars:
       - key: NODE_VERSION
         value: "18"
+      - key: NODE_ENV
+        value: production
       - key: VITE_API_URL
         sync: false
       - key: VITE_WS_URL
@@ -32,10 +39,11 @@ services:
   # ============================================================
   - type: web
     name: alpha-orion-api
+    root: backend-services/services/user-api-service
     env: node
     nodeVersion: 18
-    buildCommand: cd backend-services/services/user-api-service && npm install
-    startCommand: cd backend-services/services/user-api-service && npm start
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
       - key: PORT
         value: 8080
