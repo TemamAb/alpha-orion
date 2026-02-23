@@ -1,15 +1,14 @@
 # Alpha-Orion Complete Render Deployment Configuration
-# Includes all 16 trading strategies and supporting services
-# Version: 2.1 - PRODUCTION READY - February 2026
+# Version: 2.1 - February 2026
+# NOTE: This file uses Render's native buildpacks (Node.js/Python)
+# The root Dockerfile exists for reference but native builds work better
 
 services:
   # ============================================================
-  # CORE API SERVICES
+  # USER API SERVICE (Node.js)
   # ============================================================
-  
-  # --- User API Service ---
   - type: web
-    name: user-api-service
+    name: alpha-orion-api
     env: node
     nodeVersion: 18
     buildCommand: cd backend-services/services/user-api-service && npm install
@@ -42,295 +41,9 @@ services:
     domains:
       - alpha-orion-api.onrender.com
 
-  # --- Brain Orchestrator ---
-  - type: web
-    name: brain-orchestrator
-    env: python
-    buildCommand: cd backend-services/services/brain-orchestrator && pip install -r requirements.txt
-    startCommand: gunicorn --chdir src main:app --workers 4 --bind 0.0.0.0:$PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: DATABASE_URL
-        fromDatabase:
-          name: alpha-orion-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: alpha-orion-redis
-          property: connectionString
-      - key: INFURA_API_KEY
-        sync: false
-      - key: ETHERSCAN_API_KEY
-        sync: false
-      - key: PIMLICO_API_KEY
-        sync: false
-      - key: DEPLOYER_PRIVATE_KEY
-        sync: false
-      - key: PROFIT_WALLET_ADDRESS
-        sync: false
-      - key: ETHEREUM_RPC_URL
-        sync: false
-    healthCheckPath: /health
-    autoscaling:
-      enabled: true
-      minInstances: 1
-      maxInstances: 10
-    domains:
-      - alpha-orion-brain.onrender.com
-
-  # --- Copilot Agent ---
-  - type: web
-    name: copilot-agent
-    env: python
-    buildCommand: cd backend-services/services/copilot-agent && pip install -r requirements.txt
-    startCommand: gunicorn --chdir src main:app --workers 2 --bind 0.0.0.0:$PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: BRAIN_ORCHESTRATOR_URL
-        fromService:
-          type: web
-          name: brain-orchestrator
-          property: url
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: RENDER_API_KEY
-        sync: false
-    healthCheckPath: /health
-    autoscaling:
-      enabled: true
-      minInstances: 1
-      maxInstances: 5
-    domains:
-      - alpha-orion-copilot.onrender.com
-
   # ============================================================
-  # BRAIN AI OPTIMIZATION ORCHESTRATOR
-  # Advanced AI/ML Trading Strategies (11-16)
+  # DASHBOARD (React Frontend)
   # ============================================================
-  
-  - type: web
-    name: brain-ai-optimizer
-    env: python
-    buildCommand: cd backend-services/services/brain-ai-optimization-orchestrator/src && pip install -r requirements.txt
-    startCommand: gunicorn main:app --workers 4 --bind 0.0.0.0:$PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: PORT
-        value: 8080
-      - key: DATABASE_URL
-        fromDatabase:
-          name: alpha-orion-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: alpha-orion-redis
-          property: connectionString
-      - key: ENABLE_ML_PIPELINE
-        value: "true"
-      - key: SCAN_INTERVAL
-        value: "5"
-      - key: PROJECT_ID
-        value: alpha-orion
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ETHEREUM_RPC_URL
-        sync: false
-      - key: ARBITRUM_RPC_URL
-        sync: false
-      - key: OPTIMISM_RPC_URL
-        sync: false
-      - key: POLYGON_ZKEVM_RPC_URL
-        sync: false
-      - key: ONEINCH_API_KEY
-        sync: false
-      - key: OPYN_API_KEY
-        sync: false
-      - key: DYDX_API_KEY
-        sync: false
-      - key: GMX_API_KEY
-        sync: false
-    healthCheckPath: /health
-    autoscaling:
-      enabled: true
-      minInstances: 1
-      maxInstances: 10
-    domains:
-      - alpha-orion-ai.onrender.com
-
-  # ============================================================
-  # STRATEGIES ORCHESTRATOR
-  # All 16 Trading Strategies Service
-  # ============================================================
-  
-  - type: web
-    name: strategies-orchestrator
-    env: python
-    buildCommand: cd backend-services/services/brain-orchestrator && pip install -r src/requirements.txt
-    startCommand: gunicorn --chdir src main:app --workers 4 --bind 0.0.0.0:$PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: PORT
-        value: 8080
-      - key: CONFIG_PATH
-        value: strategies/config/production_config.yaml
-      - key: DATABASE_URL
-        fromDatabase:
-          name: alpha-orion-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: alpha-orion-redis
-          property: connectionString
-      - key: BRAIN_ORCHESTRATOR_URL
-        fromService:
-          type: web
-          name: brain-orchestrator
-          property: url
-      - key: BRAIN_AI_OPTIMIZER_URL
-        fromService:
-          type: web
-          name: brain-ai-optimizer
-          property: url
-      - key: ETHEREUM_RPC_URL
-        sync: false
-      - key: ARBITRUM_RPC_URL
-        sync: false
-      - key: OPTIMISM_RPC_URL
-        sync: false
-      - key: POLYGON_ZKEVM_RPC_URL
-        sync: false
-      - key: ONEINCH_API_KEY
-        sync: false
-    healthCheckPath: /health
-    autoscaling:
-      enabled: true
-      minInstances: 1
-      maxInstances: 10
-    domains:
-      - alpha-orion-strategies.onrender.com
-
-  # ============================================================
-  # COMPLIANCE SERVICE
-  # ============================================================
-  
-  - type: web
-    name: compliance-service
-    env: python
-    buildCommand: cd backend-services/services/compliance-service && pip install -r src/requirements.txt
-    startCommand: gunicorn --chdir src main:app --workers 2 --bind 0.0.0.0:$PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: DATABASE_URL
-        fromDatabase:
-          name: alpha-orion-db
-          property: connectionString
-    healthCheckPath: /health
-    autoscaling:
-      enabled: true
-      minInstances: 1
-      maxInstances: 5
-    domains:
-      - alpha-orion-compliance.onrender.com
-
-  # ============================================================
-  # BLOCKCHAIN MONITOR
-  # ============================================================
-  
-  - type: web
-    name: blockchain-monitor
-    env: node
-    buildCommand: cd backend-services/services/blockchain-monitor && npm install
-    startCommand: cd src && node index.js
-    envVars:
-      - key: PORT
-        value: 8080
-      - key: ETHEREUM_RPC_URL
-        sync: false
-      - key: ARBITRUM_RPC_URL
-        sync: false
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: alpha-orion-redis
-          property: connectionString
-    healthCheckPath: /health
-    autoscaling:
-      enabled: true
-      minInstances: 1
-      maxInstances: 5
-    domains:
-      - alpha-orion-monitor.onrender.com
-
-  # ============================================================
-  # FINANCIAL RECONCILIATION
-  # ============================================================
-  
-  - type: web
-    name: financial-reconciliation
-    env: python
-    buildCommand: cd backend-services/services/financial-reconciliation && pip install -r src/requirements.txt
-    startCommand: gunicorn --chdir src main:app --workers 2 --bind 0.0.0.0:$PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: DATABASE_URL
-        fromDatabase:
-          name: alpha-orion-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: alpha-orion-redis
-          property: connectionString
-    healthCheckPath: /health
-    autoscaling:
-      enabled: true
-      minInstances: 1
-      maxInstances: 5
-    domains:
-      - alpha-orion-finance.onrender.com
-
-  # ============================================================
-  # BACKTESTING SERVICE
-  # ============================================================
-  
-  - type: web
-    name: backtesting-service
-    env: python
-    buildCommand: cd backend-services/services/backtesting && pip install -r src/requirements.txt
-    startCommand: gunicorn --chdir src main:app --workers 2 --bind 0.0.0.0:$PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: DATABASE_URL
-        fromDatabase:
-          name: alpha-orion-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: alpha-orion-redis
-          property: connectionString
-    healthCheckPath: /health
-    autoscaling:
-      enabled: true
-      minInstances: 1
-      maxInstances: 5
-    domains:
-      - alpha-orion-backtest.onrender.com
-
-  # ============================================================
-  # DASHBOARD - FRONTEND (Vite + React 19)
-  # ============================================================
-  
   - type: web
     name: alpha-orion-dashboard
     env: node
@@ -343,12 +56,12 @@ services:
       - key: VITE_API_URL
         fromService:
           type: web
-          name: user-api-service
+          name: alpha-orion-api
           property: url
       - key: VITE_WS_URL
         fromService:
           type: web
-          name: user-api-service
+          name: alpha-orion-api
           property: url
     healthCheckPath: /
     autoscaling:
@@ -359,69 +72,42 @@ services:
       - alpha-orion-dashboard.onrender.com
 
 # ============================================================
-# DATABASES - PRODUCTION PLANS
+# DATABASES
 # ============================================================
 
 databases:
   - name: alpha-orion-db
     databaseName: alphaorion
     user: alpha_user
-    plan: pro  # UPGRADED: 2 vCPU, 8GB RAM for production
+    plan: starter
     postgresVersion: "15"
 
 # ============================================================
-# REDIS - PRODUCTION PLAN
+# REDIS
 # ============================================================
 
 redis:
   - name: alpha-orion-redis
-    ipAllowList: []  # Only allow internal connections
-    plan: pro  # UPGRADED: 1GB for production
-    maxMemory: 1gb  # UPGRADED from 256mb
+    ipAllowList: []
+    plan: starter
 
 # ============================================================
-# ENVIRONMENT GROUPS (Shared Environment Variables)
+# ENVIRONMENT GROUPS
 # ============================================================
 
 envVarGroups:
-  - name: strategy-global-config
+  - name: alpha-orion-config
     envVars:
       - key: ENVIRONMENT
         value: production
       - key: LOG_LEVEL
         value: INFO
-      - key: ENABLE_ALL_STRATEGIES
-        value: "true"
-      - key: RISK_MANAGEMENT_ENABLED
-        value: "true"
-      - key: MEV_PROTECTION_ENABLED
-        value: "true"
-      - key: CIRCUIT_BREAKER_ENABLED
-        value: "true"
-      
+
   - name: alpha-orion-secrets
-    # CRITICAL: All secrets must be set in Render Dashboard
-    # DO NOT commit real secrets to this file
     envVars:
       - key: OPENAI_API_KEY
         sync: false
       - key: ETHEREUM_RPC_URL
         sync: false
-      - key: ARBITRUM_RPC_URL
-        sync: false
-      - key: OPTIMISM_RPC_URL
-        sync: false
-      - key: POLYGON_ZKEVM_RPC_URL
-        sync: false
-      - key: BASE_RPC_URL
-        sync: false
-      - key: ONEINCH_API_KEY
-        sync: false
-      - key: OPYN_API_KEY
-        sync: false
-      - key: DYDX_API_KEY
-        sync: false
-      - key: DYDX_API_SECRET
-        sync: false
-      - key: GMX_API_KEY
+      - key: JWT_SECRET
         sync: false
