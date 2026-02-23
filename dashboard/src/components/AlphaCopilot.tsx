@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Bot, 
-  Zap, 
+import {
+  Bot,
+  Zap,
   Send,
   Sparkles,
   MoreVertical,
@@ -59,7 +59,6 @@ How can I assist you today?`,
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
-  const [showDeployPanel, setShowDeployPanel] = useState(false);
   const [deploymentStatus, setDeploymentStatus] = useState<DeploymentStatus | null>(null);
   const [profitStatus, setProfitStatus] = useState<ProfitStatus | null>(null);
   const [isEngineRunning, setIsEngineRunning] = useState(false);
@@ -108,7 +107,7 @@ How can I assist you today?`,
       if (action === 'status' || action === '') {
         const status = deploymentStatus;
         if (!status) return '🔄 Loading deployment status...';
-        
+
         const phaseIcons: Record<string, string> = {
           idle: '⏸️', detecting: '🔍', deploying: '🚀', healing: '💚', running: '✅', error: '❌'
         };
@@ -127,7 +126,7 @@ How can I assist you today?`,
 
 _Updated: ${new Date(status.lastUpdate).toLocaleString()}_`;
       }
-      
+
       if (action === 'restart') {
         await copilotEngine.triggerDeployment();
         return '🚀 **Deployment Triggered**\n\nI\'ve initiated a deployment restart. This may take a few minutes.';
@@ -152,7 +151,7 @@ _Updated: ${new Date(status.lastUpdate).toLocaleString()}_`;
       if (action === 'status' || action === '') {
         const profit = profitStatus;
         if (!profit) return '🔄 Loading profit status...';
-        
+
         return `💰 **Profit Status**
 
 **Mode:** ${profit.mode.toUpperCase()}
@@ -237,7 +236,7 @@ ${profit.mode === 'profitable' ? '\n🎉 **System is generating profit!**' : ''}
   const handleQuickAction = async (action: QuickAction) => {
     setInputValue(action.prompt);
     setShowQuickActions(false);
-    
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -301,12 +300,77 @@ ${profit.mode === 'profitable' ? '\n🎉 **System is generating profit!**' : ''}
 
   return (
     <div className="h-full flex flex-col bg-slate-950/95">
-                </span>
+      {/* Header */}
+      <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-900/50">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg shadow-lg shadow-purple-500/20">
+            <Bot size={18} className="text-white" />
+          </div>
+          <div>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">Alpha-Copilot</h3>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${isEngineRunning ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                {isEngineRunning ? 'Neural Core Online' : 'Core Offline'}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="p-2 text-slate-400 hover:text-white transition-colors">
+            <RefreshCw size={14} />
+          </button>
+          <button className="p-2 text-slate-400 hover:text-white transition-colors">
+            <MoreVertical size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Mini Status Bar */}
+      <div className="px-4 py-2 border-b border-white/5 bg-slate-900/30 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <div className={`flex-shrink-0 w-2 h-2 rounded-full ${deploymentStatus ? getPhaseColor(deploymentStatus.phase) : 'bg-slate-600'}`} />
+          <span className="text-[10px] font-bold text-slate-300 uppercase truncate tracking-tight">
+            {deploymentStatus ? `Phase: ${deploymentStatus.phase}` : 'Initializing...'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 overflow-hidden border-l border-white/10 pl-4">
+          <div className="text-emerald-400">
+            {profitStatus ? getProfitIcon(profitStatus.mode) : <Loader2 size={12} className="animate-spin" />}
+          </div>
+          <span className="text-[10px] font-bold text-slate-300 uppercase truncate tracking-tight">
+            {profitStatus ? `$${profitStatus.totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '$0.00'}
+          </span>
+        </div>
+      </div>
+
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+          >
+            <div className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-lg ${message.role === 'user'
+                  ? 'bg-slate-700'
+                  : 'bg-gradient-to-br from-purple-600 to-blue-600 shadow-purple-500/20'
+                }`}>
+                {message.role === 'user' ? <Wallet size={14} className="text-slate-300" /> : <Bot size={14} className="text-white" />}
+              </div>
+              <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xl ${message.role === 'user'
+                  ? 'bg-blue-600 text-white rounded-tr-none'
+                  : 'bg-slate-800 text-slate-100 rounded-tl-none border border-white/5'
+                }`}>
+                <div className="whitespace-pre-wrap font-medium">{message.content}</div>
+                <div className={`mt-2 text-[10px] ${message.role === 'user' ? 'text-blue-100/60' : 'text-slate-500'} font-bold uppercase tracking-widest`}>
+                  {formatTime(message.timestamp)}
+                </div>
               </div>
             </div>
           </div>
         ))}
-        
+
         {/* Typing Indicator */}
         {isTyping && (
           <div className="flex justify-start">
@@ -324,7 +388,7 @@ ${profit.mode === 'profitable' ? '\n🎉 **System is generating profit!**' : ''}
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
