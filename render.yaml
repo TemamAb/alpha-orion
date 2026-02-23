@@ -326,6 +326,36 @@ services:
     domains:
       - alpha-orion-backtest.onrender.com
 
+  # ============================================================
+  # DASHBOARD - FRONTEND (Vite + React 19)
+  # ============================================================
+  
+  - type: web
+    name: alpha-orion-dashboard
+    env: node
+    buildCommand: cd dashboard && npm install && npm run build
+    startCommand: npx serve -s dist -l $PORT
+    envVars:
+      - key: NODE_VERSION
+        value: "18"
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: user-api-service
+          property: url
+      - key: VITE_WS_URL
+        fromService:
+          type: web
+          name: user-api-service
+          property: url
+    healthCheckPath: /
+    autoscaling:
+      enabled: true
+      minInstances: 1
+      maxInstances: 3
+    domains:
+      - alpha-orion-dashboard.onrender.com
+
 # ============================================================
 # DATABASES - PRODUCTION PLANS
 # ============================================================
