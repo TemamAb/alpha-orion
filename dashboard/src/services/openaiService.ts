@@ -17,7 +17,7 @@ const getEnv = (key: string, fallback: string): string => {
 };
 
 const OPENAI_API_KEY = getEnv('OPENAI_API_KEY', '');
-const API_BASE_URL = getEnv('API_URL', 'http://localhost:3001');
+const API_BASE_URL = getEnv('VITE_API_URL', ''); // Use Vite env var
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';

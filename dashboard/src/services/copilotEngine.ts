@@ -56,8 +56,8 @@ class CopilotEngine {
   private static instance: CopilotEngine;
   private deploymentStatus: DeploymentStatus;
   private profitStatus: ProfitStatus;
-  private pollIntervalId: NodeJS.Timeout | null = null;
-  private profitIntervalId: NodeJS.Timeout | null = null;
+  private pollIntervalId: ReturnType<typeof setInterval> | null = null;
+  private profitIntervalId: ReturnType<typeof setInterval> | null = null;
   private isInitialized: boolean = false;
   private listeners: Set<(status: DeploymentStatus) => void> = new Set();
 
@@ -147,8 +147,8 @@ class CopilotEngine {
         return 'gcp';
       }
 
-      // Check localhost
-      const localCheck = await fetch('http://localhost:8080/health', {
+      // Check relative path (works in both local and production)
+      const localCheck = await fetch('/health', {
         method: 'HEAD',
         signal: AbortSignal.timeout(3000)
       }).catch(() => null);
@@ -176,7 +176,8 @@ class CopilotEngine {
     const endpoints = [
       { key: 'dashboard', url: '/', name: 'Dashboard' },
       { key: 'userApi', url: '/health', name: 'User API' },
-      { key: 'brainOrchestrator', url: 'http://localhost:8081/services', name: 'Brain Orchestrator' },
+      // Use relative path for brain orchestrator - proxied by backend
+      { key: 'brainOrchestrator', url: '/services', name: 'Brain Orchestrator' },
     ];
 
     for (const endpoint of endpoints) {
@@ -285,8 +286,10 @@ class CopilotEngine {
 
   async checkProfitStatus(): Promise<ProfitStatus> {
     try {
-      // Fetch profit data from brain orchestrator
-      const response = await fetch('http://localhost:8081/profit/real-time', {
+      // Fetch profit data from brain orchestrator (use relative path for production)
+      const apiBase = import.meta.env.VITE_API_URL || '';
+      const profitUrl = apiBase ? `${apiBase}/profit/real-time` : '/profit/real-time';
+      const response = await fetch(profitUrl, {
         signal: AbortSignal.timeout(10000),
       }).catch(() => null);
 
