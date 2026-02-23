@@ -24,8 +24,17 @@ const engine = getProfitEngine(); // Get the singleton instance
 
 // --- OpenAI Integration (Robust Import) ---
 let OpenAI;
+let openaiClient = null;
 try {
   OpenAI = require('openai');
+  if (process.env.OPENAI_API_KEY) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    logger.info('OpenAI client initialized successfully');
+  } else {
+    logger.warn('OPENAI_API_KEY not found. AI features will use fallbacks.');
+  }
 } catch (err) {
   logger.warn('OpenAI dependency not found. AI features will use fallbacks.');
 }
@@ -84,14 +93,14 @@ const authenticateToken = (req, res, next) => {
 app.get('/health', async (req, res) => {
   let dbStatus = 'disconnected';
   let redisStatus = 'disconnected';
-  
+
   try {
     if (pgPool) {
       await pgPool.query('SELECT 1');
       dbStatus = 'connected';
     }
   } catch (e) { dbStatus = 'disconnected'; }
-  
+
   try {
     if (redisClient && redisClient.isReady) {
       await redisClient.ping();
@@ -150,7 +159,7 @@ app.get('/api/dashboard/mission-control', async (req, res) => {
         metrics = engine.getPerformanceMetrics();
       }
     } catch (e) { /* Engine not ready */ }
-    
+
     res.json({
       ...metrics,
       status: 'operational',
@@ -173,7 +182,7 @@ app.get('/api/dashboard/opportunities', async (req, res) => {
         opportunities = opportunities.map(op => JSON.parse(op));
       }
     } catch (e) { /* Redis unavailable */ }
-    
+
     res.json(opportunities.length > 0 ? opportunities : [
       { id: 1, type: 'arbitrage', profit: 0.05, chain: 'polygon', timestamp: new Date().toISOString() },
       { id: 2, type: 'MEV', profit: 0.02, chain: 'arbitrum', timestamp: new Date().toISOString() }
@@ -311,6 +320,46 @@ app.get('/api/dashboard/strategies', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch strategy metrics' });
+  }
+});
+// --- AI Copilot: Chat Endpoint ---
+app.post('/api/chat', async (req, res) => {
+  const { message, context } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+
+  if (!openaiClient) {
+    logger.warn('OpenAI not available, using fallback response');
+    return res.json({ response: getFallbackResponse(message) });
+  }
+
+  try {
+    const systemPrompt = `You are Alpha-Orion Neural Intelligence Core v3.0, an expert arbitrage trading assistant.
+Current Environment: Render Cloud (Production)
+Capabilities: Multi-chain arbitrage, Flash Loans, MEV Protection, Gasless Execution via Pimlico.
+
+Current Context:
+${JSON.stringify(context || {}, null, 2)}
+
+Provide expert, actionable advice on DeFi arbitrage, risk management, and system optimization. Focus on profit maximization and capital safety.`;
+
+    const completion = await openaiClient.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
+
+    const response = completion.choices[0].message.content;
+    res.json({ response });
+  } catch (error) {
+    logger.error({ err: error }, 'OpenAI API Error');
+    res.status(500).json({ response: getFallbackResponse(message), error: error.message });
   }
 });
 

@@ -63,7 +63,17 @@ class LVRRebalancingStrategy {
 
   async getLiquidityPools(chainKey) {
     // In production, this would query a subgraph or a DEX SDK
-    return []; 
+    // For now, we return a list of major high-liquidity pools on Polygon/Mainnet
+    const majorPools = {
+      polygon: [
+        { address: '0xA374094527e1673A86dE625aa59517c5dE346d32', token0_symbol: 'USDC', token1_symbol: 'WETH', fee: 500 }, // 0.05%
+        { address: '0x50eaEDB835021E4A108B7290636d62E9765cc6d7', token0_symbol: 'WBTC', token1_symbol: 'WETH', fee: 3000 }, // 0.3%
+      ],
+      ethereum: [
+        { address: '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640', token0_symbol: 'USDC', token1_symbol: 'WETH', fee: 500 },
+      ]
+    };
+    return majorPools[chainKey] || [];
   }
 
   async getRealTimeCEXPrice(token0Symbol, token1Symbol) {
@@ -80,11 +90,31 @@ class LVRRebalancingStrategy {
     return null;
   }
 
-  async getPoolPrice(chainKey, pool) { 
-    // In production, this would use ethers.js to get reserves and calculate the spot price
-    return null; 
+  async getPoolPrice(chainKey, pool) {
+    try {
+      const provider = this.multiChainEngine.providers[chainKey];
+      if (!provider) return null;
+
+      // Uniswap V3 Pool interface for slot0 (price)
+      const poolContract = new ethers.Contract(pool.address, [
+        'function slot0() external view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)'
+      ], provider);
+
+      const [sqrtPriceX96] = await poolContract.slot0();
+
+      // Calculate price: price = (sqrtPriceX96 / 2^96)^2
+      const price = (Number(sqrtPriceX96) / Math.pow(2, 96)) ** 2;
+
+      // Adjust for decimals (USDC/WETH: 6 vs 18)
+      const decimalAdjustment = Math.pow(10, 18 - 6);
+      return 1 / (price * decimalAdjustment); // Returns ETH/USDC or similar
+
+    } catch (error) {
+      // console.warn(`Error fetching pool price for ${pool.address} on ${chainKey}: ${error.message}`);
+      return null;
+    }
   }
-  
+
   async calculateLVRProfit(chain, pool, cexPrice, dexPrice) {
     // Live calculation based on divergence, trade size, and gas costs
     const tradeSize = 10000; // Example trade size in USD
@@ -131,13 +161,31 @@ class OracleLatencyStrategy {
   }
 
   async getOnChainOraclePrice(asset, chainKey = 'ethereum') {
-    // In production, this would use a map of oracle addresses
-    // const ORACLE_ADDRESS = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419'; // ETH/USD
-    // const provider = this.multiChainEngine.providers[chainKey];
-    // const oracleContract = new ethers.Contract(ORACLE_ADDRESS, ['function latestRoundData() view returns (...)'], provider);
-    // const roundData = await oracleContract.latestRoundData();
-    // return parseFloat(ethers.utils.formatUnits(roundData.answer, 8));
-    return null;
+    try {
+      const provider = this.multiChainEngine && this.multiChainEngine.providers ? this.multiChainEngine.providers[chainKey] : null;
+      if (!provider) return null;
+
+      // Chainlink aggregator interface
+      const chainlinkAddresses = {
+        WETH: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // Mainnet ETH/USD
+        stETH: '0xcfe27e53c3518f098e211361ba91d9450373ad23', // Mainnet stETH/USD
+        WBTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c', // Mainnet BTC/USD
+        USDC: '0x8fFf306930419A624aef6316279f71c4c9A64560', // Mainnet USDC/USD
+      };
+
+      const addr = chainlinkAddresses[asset];
+      if (!addr) return null;
+
+      const oracle = new ethers.Contract(addr, [
+        'function latestRoundData() external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)'
+      ], provider);
+
+      const roundData = await oracle.latestRoundData();
+      return Number(roundData.answer) / 1e8; // Aggregators have 8 decimals
+
+    } catch (error) {
+      return null;
+    }
   }
 
   async getCEXPrice(asset) {
@@ -189,7 +237,7 @@ class JITLiquidityStrategy {
 
   async analyzeMempool(chainKey) {
     // In production, this would connect to a mempool service like Blocknative or Alchemy
-    return []; 
+    return [];
   }
   async predictTxSlippage(tx) {
     // This is a complex ML-dependent function.
@@ -229,8 +277,8 @@ class TriangularArbitrageStrategy {
             if (baseToken.address === intermediateToken.address) continue;
 
             for (const finalToken of tokenPairs) {
-              if (finalToken.address === intermediateToken.address || 
-                  finalToken.address === baseToken.address) continue;
+              if (finalToken.address === intermediateToken.address ||
+                finalToken.address === baseToken.address) continue;
 
               const opportunity = await this.evaluateTriangularPath(
                 chainKey, baseToken, intermediateToken, finalToken
@@ -338,15 +386,15 @@ class CrossDexArbitrageStrategy {
     return opportunities;
   }
 
-  async getTokenPairsForChain(chainKey) { 
+  async getTokenPairsForChain(chainKey) {
     // In production, this would come from a token list or be dynamically discovered
-    return []; 
+    return [];
   }
-  async getDexPrice(chainKey, dex, baseToken, quoteToken) { 
+  async getDexPrice(chainKey, dex, baseToken, quoteToken) {
     // In production, this would use an aggregator like 1inch or ParaSwap API
-    return null; 
+    return null;
   }
-  async calculateCrossDexProfit(chainKey, bestBid, bestAsk, tokenPair) { 
+  async calculateCrossDexProfit(chainKey, bestBid, bestAsk, tokenPair) {
     // Live calculation: (sellPrice - buyPrice) * tradeAmount - gasCost
     const tradeAmount = ethers.utils.parseUnits('1', 18); // 1 ETH
     const profitInQuote = tradeAmount.mul(bestAsk.price - bestBid.price);
@@ -434,7 +482,7 @@ class CrossChainArbitrageStrategy {
       if (response.data && response.data.price) {
         return { price: parseFloat(response.data.price), liquidity: 1000000, volatility: 0.02 };
       }
-    } catch (error) {}
+    } catch (error) { }
     return null;
   }
   async calculateCrossChainProfit(fromChain, toChain, asset) {
@@ -500,15 +548,15 @@ class LiquidityPoolArbitrageStrategy {
     return opportunities;
   }
 
-  async getLiquidityPools(chainKey) { 
+  async getLiquidityPools(chainKey) {
     // In production, query a DEX subgraph
-    return []; 
+    return [];
   }
-  async getPoolPrice(chainKey, pool) { 
+  async getPoolPrice(chainKey, pool) {
     // In production, use ethers.js to get reserves and calculate price
-    return null; 
+    return null;
   }
-  async getMarketPrice(chainKey, token0, token1) { 
+  async getMarketPrice(chainKey, token0, token1) {
     // Use a CEX price as the market reference
     return this.getRealTimeCEXPrice(token0.symbol, token1.symbol);
   }
@@ -561,13 +609,13 @@ class MEVExtractionStrategy {
     return opportunities;
   }
 
-  async analyzeMempool(chainKey) { 
+  async analyzeMempool(chainKey) {
     // In production, connect to a mempool service like Blocknative or Alchemy
-    return []; 
+    return [];
   }
-  async evaluateMEVOpportunity(chainKey, tx) { 
+  async evaluateMEVOpportunity(chainKey, tx) {
     // In production, this would use a simulation service like Tenderly or Flashbots simulate
-    return null; 
+    return null;
   }
 }
 
@@ -638,7 +686,7 @@ class StatisticalArbitrageStrategy {
       return [];
     }
   }
-  async calculateStatArbProfit(pairConfig, zScore, stdDev) { 
+  async calculateStatArbProfit(pairConfig, zScore, stdDev) {
     return 0; // Requires portfolio risk model
   }
 }
@@ -695,13 +743,13 @@ class OrderFlowArbitrageStrategy {
     return opportunities;
   }
 
-  async getOrderBook(pair, chainKey) { 
+  async getOrderBook(pair, chainKey) {
     // In production, connect to a CEX WebSocket feed or a DEX order book API (e.g., 0x)
-    return null; 
+    return null;
   }
-  async calculateOrderFlowProfit(pair, imbalance, orderBook) { 
+  async calculateOrderFlowProfit(pair, imbalance, orderBook) {
     // Live calculation based on expected price movement from imbalance
-    return 0; 
+    return 0;
   }
 }
 
@@ -877,7 +925,7 @@ class EnterpriseProfitEngine {
       LVR_REBALANCING: new LVRRebalancingStrategy(multiChainEngine),
       ORACLE_LATENCY: new OracleLatencyStrategy(),
       JIT_LIQUIDITY: new JITLiquidityStrategy(),
-      
+
       // Core Strategies
       TRIANGULAR_ARBITRAGE: new TriangularArbitrageStrategy(multiChainEngine),
       CROSS_DEX_ARBITRAGE: new CrossDexArbitrageStrategy(multiChainEngine),

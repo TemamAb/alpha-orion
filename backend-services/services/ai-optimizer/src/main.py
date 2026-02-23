@@ -133,79 +133,93 @@ def get_market_data_context():
         }
 
 def generate_ai_optimization(prompt, market_context):
-    """Generate AI-powered optimization using Gemini"""
-    if not gemini_available or not model:
-        return generate_fallback_optimization(prompt, market_context)
+    """Generate AI-powered optimization using OpenAI (preferred) or Gemini"""
+    
+    full_prompt = f"""
+    You are an expert quantitative trader specializing in DeFi arbitrage strategies.
+    Analyze the following arbitrage opportunity and provide optimization recommendations:
 
-    try:
-        # Create comprehensive prompt for arbitrage optimization
-        full_prompt = f"""
-        You are an expert quantitative trader specializing in DeFi arbitrage strategies.
-        Analyze the following arbitrage opportunity and provide optimization recommendations:
+    User Query: {prompt}
 
-        User Query: {prompt}
+    Market Context:
+    - Current Opportunities: {market_context.get('opportunities_count', 0)}
+    - Gas Price: {market_context.get('gas_price', 50)} gwei
+    - Market Risk (VaR 95%): {market_context.get('risk_metrics', {}).get('var_95', 0.05)*100}%
+    - Market Volatility: {market_context.get('volatility', 0.02)*100}%
+    - Market Condition: {market_context.get('market_condition', 'normal')}
 
-        Market Context:
-        - Current Opportunities: {market_context['opportunities_count']}
-        - Gas Price: {market_context['gas_price']} gwei
-        - Market Risk (VaR 95%): {market_context['risk_metrics']['var_95']*100}%
-        - Market Volatility: {market_context['volatility']*100}%
-        - Market Condition: {market_context['market_condition']}
+    Please provide:
+    1. Optimal arbitrage strategy (triangular, cross-DEX, statistical)
+    2. Recommended parameters (leverage, slippage, position size)
+    3. Risk assessment and mitigation strategies
+    4. Expected profit potential
+    5. Execution timing recommendations
 
-        Please provide:
-        1. Optimal arbitrage strategy (triangular, cross-DEX, statistical)
-        2. Recommended parameters (leverage, slippage, position size)
-        3. Risk assessment and mitigation strategies
-        4. Expected profit potential
-        5. Execution timing recommendations
+    Format your response as a JSON object with keys: strategy, parameters, riskAssessment, expectedProfit, executionAdvice
+    """
 
-        Format your response as a JSON object with keys: strategy, parameters, riskAssessment, expectedProfit, executionAdvice
-        """
-
-        response = model.generate_content(full_prompt)
-        response_text = response.text.strip()
-
-        # Try to parse JSON response
+    if ai_client == 'openai' and OPENAI_AVAILABLE:
         try:
-            # Clean up response if it has markdown formatting
-            if response_text.startswith('```json'):
-                response_text = response_text[7:]
-            if response_text.endswith('```'):
-                response_text = response_text[:-3]
-
-            ai_result = json.loads(response_text)
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a DeFi arbitrage optimization expert. Return only JSON."},
+                    {"role": "user", "content": full_prompt}
+                ],
+                temperature=0.7,
+                response_format={ "type": "json_object" }
+            )
+            ai_result = json.loads(response.choices[0].message.content)
             return {
                 'suggestion': ai_result.get('strategy', 'Triangular Arbitrage'),
-                'confidence': 0.85,  # AI confidence score
+                'confidence': 0.92,
                 'expectedProfit': ai_result.get('expectedProfit', 2.5),
-                'parameters': ai_result.get('parameters', {
-                    'leverage': 1.5,
-                    'maxSlippage': 0.005,
-                    'positionSize': 0.1
-                }),
+                'parameters': ai_result.get('parameters', {}),
                 'aiPowered': True,
-                'riskAssessment': ai_result.get('riskAssessment', 'Medium'),
-                'executionAdvice': ai_result.get('executionAdvice', 'Execute during low volatility')
+                'riskAssessment': ai_result.get('riskAssessment', 'Low'),
+                'executionAdvice': ai_result.get('executionAdvice', 'Immediate execution recommended')
             }
-        except json.JSONDecodeError:
-            # If JSON parsing fails, extract key information
-            return {
-                'suggestion': 'AI-Optimized Arbitrage Strategy',
-                'confidence': 0.8,
-                'expectedProfit': 2.0,
-                'parameters': {
-                    'leverage': 1.5,
-                    'maxSlippage': 0.003,
-                    'positionSize': 0.15
-                },
-                'aiPowered': True,
-                'riskAssessment': 'Medium',
-                'executionAdvice': response_text[:200] + '...'
-            }
+        except Exception as e:
+            print(f"OpenAI API error: {e}")
+            return generate_fallback_optimization(prompt, market_context)
 
-    except Exception as e:
-        print(f"Gemini API error: {e}")
-        return generate_fallback_optimization(prompt, market_context)
+    elif ai_client == 'gemini':
+        try:
+            response = model.generate_content(full_prompt)
+            response_text = response.text.strip()
+
+            # Try to parse JSON response
+            try:
+                if response_text.startswith('```json'):
+                    response_text = response_text[7:]
+                if response_text.endswith('```'):
+                    response_text = response_text[:-3]
+
+                ai_result = json.loads(response_text)
+                return {
+                    'suggestion': ai_result.get('strategy', 'Triangular Arbitrage'),
+                    'confidence': 0.85,
+                    'expectedProfit': ai_result.get('expectedProfit', 2.5),
+                    'parameters': ai_result.get('parameters', {}),
+                    'aiPowered': True,
+                    'riskAssessment': ai_result.get('riskAssessment', 'Medium'),
+                    'executionAdvice': ai_result.get('executionAdvice', 'Execute during low volatility')
+                }
+            except json.JSONDecodeError:
+                return {
+                    'suggestion': 'AI-Optimized Arbitrage Strategy',
+                    'confidence': 0.8,
+                    'expectedProfit': 2.0,
+                    'parameters': {'leverage': 1.5, 'maxSlippage': 0.003, 'positionSize': 0.15},
+                    'aiPowered': True,
+                    'riskAssessment': 'Medium',
+                    'executionAdvice': response_text[:200] + '...'
+                }
+        except Exception as e:
+            print(f"Gemini API error: {e}")
+            return generate_fallback_optimization(prompt, market_context)
+
+    return generate_fallback_optimization(prompt, market_context)
 
 def generate_fallback_optimization(prompt, market_context):
     """Fallback optimization when AI is unavailable"""
