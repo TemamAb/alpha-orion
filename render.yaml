@@ -1,51 +1,14 @@
 # Alpha-Orion Complete Render Deployment Configuration
-# Version: 2.1 - February 2026
-# NOTE: This file uses Render's native buildpacks (Node.js/Python)
-# The root Dockerfile exists for reference but native builds work better
+# Version: 3.0 - DASHBOARD AS PRIMARY SERVICE
+# The main URL will serve the dashboard frontend
 
 services:
   # ============================================================
-  # USER API SERVICE (Node.js)
+  # DASHBOARD (React Frontend) - PRIMARY SERVICE
+  # This serves at the main URL: alpha-orion.onrender.com
   # ============================================================
   - type: web
-    name: alpha-orion-api
-    env: node
-    nodeVersion: 18
-    buildCommand: cd backend-services/services/user-api-service && npm install
-    startCommand: cd backend-services/services/user-api-service && npm start
-    envVars:
-      - key: PORT
-        value: 8080
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: alpha-orion-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: alpha-orion-redis
-          property: connectionString
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: JWT_SECRET
-        sync: false
-      - key: ETHEREUM_RPC_URL
-        sync: false
-    healthCheckPath: /health
-    autoscaling:
-      enabled: true
-      minInstances: 1
-      maxInstances: 10
-    domains:
-      - alpha-orion-api.onrender.com
-
-  # ============================================================
-  # DASHBOARD (React Frontend)
-  # ============================================================
-  - type: web
-    name: alpha-orion-dashboard
+    name: alpha-orion
     env: node
     nodeVersion: 18
     buildCommand: cd dashboard && npm install && npm run build
@@ -54,42 +17,59 @@ services:
       - key: NODE_VERSION
         value: "18"
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: alpha-orion-api
-          property: url
+        sync: false
       - key: VITE_WS_URL
-        fromService:
-          type: web
-          name: alpha-orion-api
-          property: url
+        sync: false
     healthCheckPath: /
     autoscaling:
       enabled: true
       minInstances: 1
       maxInstances: 3
-    domains:
-      - alpha-orion-dashboard.onrender.com
+
+  # ============================================================
+  # OPTIONAL: BACKEND API SERVICE
+  # Uncomment if you need backend API for profit generation
+  # ============================================================
+  # - type: web
+  #   name: alpha-orion-api
+  #   env: node
+  #   nodeVersion: 18
+  #   buildCommand: cd backend-services/services/user-api-service && npm install
+  #   startCommand: cd backend-services/services/user-api-service && npm start
+  #   envVars:
+  #     - key: PORT
+  #       value: 8080
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: alpha-orion-db
+  #         property: connectionString
+  #     - key: REDIS_URL
+  #       fromService:
+  #         type: redis
+  #         name: alpha-orion-redis
+  #         property: connectionString
+  #     - key: OPENAI_API_KEY
+  #       sync: false
+  #   healthCheckPath: /health
 
 # ============================================================
-# DATABASES
+# DATABASES (Optional - only needed if using backend)
 # ============================================================
 
-databases:
-  - name: alpha-orion-db
-    databaseName: alphaorion
-    user: alpha_user
-    plan: starter
-    postgresVersion: "15"
+# databases:
+#   - name: alpha-orion-db
+#     databaseName: alphaorion
+#     user: alpha_user
+#     plan: starter
 
 # ============================================================
-# REDIS
+# REDIS (Optional - only needed if using backend)
 # ============================================================
 
-redis:
-  - name: alpha-orion-redis
-    ipAllowList: []
-    plan: starter
+# redis:
+#   - name: alpha-orion-redis
+#     ipAllowList: []
+#     plan: starter
 
 # ============================================================
 # ENVIRONMENT GROUPS
@@ -105,9 +85,7 @@ envVarGroups:
 
   - name: alpha-orion-secrets
     envVars:
+      - key: VITE_API_URL
+        sync: false
       - key: OPENAI_API_KEY
-        sync: false
-      - key: ETHEREUM_RPC_URL
-        sync: false
-      - key: JWT_SECRET
         sync: false
