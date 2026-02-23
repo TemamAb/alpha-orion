@@ -11,6 +11,7 @@ services:
   - type: web
     name: user-api-service
     env: node
+    nodeVersion: 18
     buildCommand: cd backend-services/services/user-api-service && npm install
     startCommand: cd backend-services/services/user-api-service && npm start
     envVars:
@@ -333,6 +334,7 @@ services:
   - type: web
     name: alpha-orion-dashboard
     env: node
+    nodeVersion: 18
     buildCommand: cd dashboard && npm install && npm run build
     startCommand: npx serve -s dist -l $PORT
     envVars:
