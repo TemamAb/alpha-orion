@@ -17,11 +17,14 @@ class AlphaOrionAPI {
   private baseURL: string;
 
   constructor(baseURL: string = '') {
-    // Use environment variable or fallback to Cloud Run URL or localhost
-    // In production, set REACT_APP_API_URL to the Cloud Run service URL
-    const envAPIUrl = typeof process !== 'undefined' ? process.env.REACT_APP_API_URL : '';
+    // Use Vite environment variable or fallback
+    // In production (Render), use VITE_API_URL from environment
+    // In development, use proxy (empty string = relative URL)
+    const envAPIUrl = import.meta.env.VITE_API_URL || '';
     
-    this.baseURL = baseURL || envAPIUrl || '';
+    // If baseURL is explicitly provided, use it; otherwise use env var
+    // In production, this should be the user-api-service URL from Render
+    this.baseURL = baseURL || (envAPIUrl ? envAPIUrl : '');
     
     this.client = axios.create({
       baseURL: this.baseURL,

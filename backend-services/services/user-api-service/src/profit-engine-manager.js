@@ -43,7 +43,7 @@ function getInstance(moduleExport, className, fallbackClass) {
 }
 
 // Try to load optional dependencies with graceful fallbacks
-let EnterpriseProfitEngine = safeRequire('../../../strategies/enterprise', 'EnterpriseProfitEngine');
+let EnterpriseProfitEngine = safeRequire('../strategies/enterprise', 'EnterpriseProfitEngine');
 let MultiChainArbitrageEngine = safeRequire('./multi-chain-arbitrage-engine', 'MultiChainArbitrageEngine');
 let MEVRouter = safeRequire('./mev-router', 'MEVRouter');
 let InstitutionalRiskEngine = safeRequire('./risk-engine', 'InstitutionalRiskEngine');
