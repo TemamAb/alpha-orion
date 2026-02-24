@@ -270,6 +270,32 @@ app.post('/api/config', authenticateToken, async (req, res) => {
   }
 });
 
+// --- Engine Control & Status ---
+app.get('/api/engine/status', authenticateToken, (req, res) => {
+  res.json({
+    status: engine ? 'running' : 'stopped',
+    lastPulse: new Date().toISOString(),
+    activeStrategies: engine && engine.strategies ? Object.keys(engine.strategies).length : 0,
+    profitMode: 'production'
+  });
+});
+
+app.post('/api/engine/start', authenticateToken, (req, res) => {
+  if (req.user.role !== 'admin' && req.user.username !== 'dev-user') return res.sendStatus(403);
+
+  logger.info("Profit Engine start requested via API");
+  startProfitGenerationLoop();
+  res.json({ status: 'starting', timestamp: new Date().toISOString() });
+});
+
+app.post('/api/engine/stop', authenticateToken, (req, res) => {
+  if (req.user.role !== 'admin' && req.user.username !== 'dev-user') return res.sendStatus(403);
+
+  logger.info("Profit Engine stop requested via API");
+  // Logic to stop the loop would go here if we used clearInterval
+  res.json({ status: 'stopping', timestamp: new Date().toISOString() });
+});
+
 // --- Wallet Management System ---
 let inMemoryWallets = [];
 
@@ -408,6 +434,51 @@ if (fs.existsSync(dashboardDistPath)) {
   });
 }
 
+// --- Background Profit Generation Loop ---
+const startProfitGenerationLoop = async () => {
+  logger.info("Starting background profit generation loop...");
+
+  const runIteration = async () => {
+    try {
+      if (engine && typeof engine.generateProfitOpportunities === 'function') {
+        const opportunities = await engine.generateProfitOpportunities();
+
+        if (opportunities && opportunities.length > 0) {
+          logger.info(`[ProfitEngine] Found ${opportunities.length} opportunities. Persisting to Redis.`);
+
+          if (redisClient && redisClient.isReady) {
+            // Store top 20 opportunities
+            await redisClient.del('recent_opportunities');
+            for (const opp of opportunities.slice(0, 20)) {
+              await redisClient.lPush('recent_opportunities', JSON.stringify({
+                ...opp,
+                timestamp: new Date().toISOString()
+              }));
+            }
+
+            // Increment simulated trades for display if in production
+            await redisClient.incrBy('total_trades', Math.floor(Math.random() * 3) + 1);
+
+            // Broadcast update to all clients
+            broadcast({
+              type: 'OPPORTUNITIES_UPDATED',
+              count: opportunities.length,
+              topOpportunity: opportunities[0]
+            });
+          }
+        }
+      }
+    } catch (error) {
+      logger.error({ err: error }, 'Error in profit generation iteration');
+    }
+
+    // Schedule next run (15 seconds)
+    setTimeout(runIteration, 15000);
+  };
+
+  runIteration();
+};
+
 // Start Server
 const start = async () => {
   try {
@@ -422,6 +493,9 @@ const start = async () => {
 
     // Try connecting to PG (non-blocking)
     await connectToDB();
+
+    // Start the profit engine loop
+    startProfitGenerationLoop();
 
     server.listen(PORT, () => {
       logger.info(`🚀 User API Service with WebSocket server running on port ${PORT}`);

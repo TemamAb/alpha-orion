@@ -45,6 +45,7 @@ interface AlphaOrionState {
   lastUpdate: Date | null;
   refreshInterval: number;
   currency: 'ETH' | 'USD';
+  isEngineRunning: boolean;
 
   // Actions
   setProfitData: (data: ProfitData | null) => void;
@@ -65,12 +66,16 @@ interface AlphaOrionState {
   setCurrency: (currency: 'ETH' | 'USD') => void;
   setDepositMode: (mode: 'auto' | 'manual') => void;
   setDepositThreshold: (threshold: number) => void;
+  setEngineRunning: (running: boolean) => void;
+  activateProductionEngine: () => Promise<boolean>;
 
   // Computed values
   getTotalProfit: () => number;
   getActiveOpportunities: () => Opportunity[];
   getRecentTrades: (limit?: number) => Trade[];
   getSystemStatus: () => 'healthy' | 'warning' | 'critical' | 'unknown';
+  getTotalWalletBalance: () => number;
+  getWalletCount: () => number;
 }
 
 export const useAlphaOrionStore = create<AlphaOrionState>()(
@@ -105,6 +110,7 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
     currency: 'USD',
     depositMode: 'manual',
     depositThreshold: 1000,
+    isEngineRunning: false,
 
     // Actions
     setProfitData: (data) => set({ profitData: data }),
@@ -131,6 +137,28 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
     setCurrency: (currency) => set({ currency }),
     setDepositMode: (depositMode) => set({ depositMode }),
     setDepositThreshold: (depositThreshold) => set({ depositThreshold: Math.max(100, Math.min(10000, depositThreshold)) }),
+    setEngineRunning: (isEngineRunning) => set({ isEngineRunning }),
+
+    activateProductionEngine: async () => {
+      try {
+        set({ isLoading: { ...get().isLoading, health: true } });
+        // Use fetch directly for simplicity as we established the endpoints
+        const response = await fetch('/api/engine/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (response.ok) {
+          set({ isEngineRunning: true });
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Failed to activate production engine:', error);
+        return false;
+      } finally {
+        set({ isLoading: { ...get().isLoading, health: false } });
+      }
+    },
 
     // Computed values
     getTotalProfit: () => {
@@ -155,6 +183,16 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
       if (systemHealth.status === 'warning') return 'warning';
       return 'healthy';
     },
+
+    getTotalWalletBalance: () => {
+      const { wallets } = get();
+      return wallets.reduce((sum, w) => sum + w.balance, 0);
+    },
+
+    getWalletCount: () => {
+      const { wallets } = get();
+      return wallets.length;
+    },
   }))
 );
 
@@ -178,4 +216,6 @@ export const useDepositThreshold = () => useAlphaOrionStore((state) => state.dep
 export const useTotalProfit = () => useAlphaOrionStore((state) => state.getTotalProfit());
 export const useActiveOpportunities = () => useAlphaOrionStore((state) => state.getActiveOpportunities());
 export const useRecentTrades = (limit?: number) => useAlphaOrionStore((state) => state.getRecentTrades(limit));
-export const useSystemStatus = () => useAlphaOrionStore((state) => state.getSystemStatus());
+export const useTotalWalletBalance = () => useAlphaOrionStore((state) => state.getTotalWalletBalance());
+export const useWalletCount = () => useAlphaOrionStore((state) => state.getWalletCount());
+export const useIsEngineRunning = () => useAlphaOrionStore((state) => state.isEngineRunning);

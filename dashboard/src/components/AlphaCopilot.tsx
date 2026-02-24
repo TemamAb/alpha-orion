@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { sendChatMessage, getSimulatedResponse } from '../services/openaiService';
 import { copilotEngine, DeploymentStatus, ProfitStatus } from '../services/copilotEngine';
+import { useAlphaOrionStore, useIsEngineRunning } from '../hooks/useAlphaOrionStore';
 
 interface ChatMessage {
   id: string;
@@ -34,6 +35,9 @@ interface QuickAction {
 }
 
 const AlphaCopilot: React.FC = () => {
+  const { profitData, opportunities, systemHealth, pimlicoStatus } = useAlphaOrionStore();
+  const isEngineRunning = useIsEngineRunning();
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
@@ -61,7 +65,6 @@ How can I assist you today?`,
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [deploymentStatus, setDeploymentStatus] = useState<DeploymentStatus | null>(null);
   const [profitStatus, setProfitStatus] = useState<ProfitStatus | null>(null);
-  const [isEngineRunning, setIsEngineRunning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,7 +74,6 @@ How can I assist you today?`,
           setDeploymentStatus(status);
         });
         await copilotEngine.start();
-        setIsEngineRunning(true);
         setDeploymentStatus(copilotEngine.getDeploymentStatus());
         setProfitStatus(copilotEngine.getProfitStatus());
       } catch (error) {
@@ -190,7 +192,17 @@ ${profit.mode === 'profitable' ? '\n🎉 **System is generating profit!**' : ''}
     }
 
     try {
-      return await sendChatMessage(userInput);
+      const context = {
+        profitData,
+        opportunities,
+        systemHealth,
+        pimlicoStatus: {
+          ...pimlicoStatus,
+          engineRunning: isEngineRunning,
+          mode: isEngineRunning ? 'PRODUCTION' : 'SIMULATION'
+        }
+      };
+      return await sendChatMessage(userInput, context);
     } catch (error) {
       return getSimulatedResponse(userInput);
     }
@@ -353,14 +365,14 @@ ${profit.mode === 'profitable' ? '\n🎉 **System is generating profit!**' : ''}
           >
             <div className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-lg ${message.role === 'user'
-                  ? 'bg-slate-700'
-                  : 'bg-gradient-to-br from-purple-600 to-blue-600 shadow-purple-500/20'
+                ? 'bg-slate-700'
+                : 'bg-gradient-to-br from-purple-600 to-blue-600 shadow-purple-500/20'
                 }`}>
                 {message.role === 'user' ? <Wallet size={14} className="text-slate-300" /> : <Bot size={14} className="text-white" />}
               </div>
               <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xl ${message.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-tr-none'
-                  : 'bg-slate-800 text-slate-100 rounded-tl-none border border-white/5'
+                ? 'bg-blue-600 text-white rounded-tr-none'
+                : 'bg-slate-800 text-slate-100 rounded-tl-none border border-white/5'
                 }`}>
                 <div className="whitespace-pre-wrap font-medium">{message.content}</div>
                 <div className={`mt-2 text-[10px] ${message.role === 'user' ? 'text-blue-100/60' : 'text-slate-500'} font-bold uppercase tracking-widest`}>

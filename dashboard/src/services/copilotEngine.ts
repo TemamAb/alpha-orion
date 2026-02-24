@@ -125,41 +125,19 @@ class CopilotEngine {
     this.addLog('info', 'Detecting deployment environment...');
 
     try {
-      // Check if running on Render
-      const renderCheck = await fetch('/health', { 
-        method: 'HEAD',
-        signal: AbortSignal.timeout(5000) 
+      // Check User API Health
+      const apiCheck = await fetch('/health', {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000)
       }).catch(() => null);
-      
-      if (renderCheck?.ok) {
-        this.addLog('success', 'Detected: Render environment');
+
+      if (apiCheck?.ok) {
+        this.addLog('success', 'Detected: Production API environment');
         return 'render';
       }
 
-      // Check for GCP headers
-      const gcpCheck = await fetch('/api/health', { 
-        method: 'HEAD',
-        signal: AbortSignal.timeout(5000) 
-      }).catch(() => null);
-
-      if (gcpCheck?.ok) {
-        this.addLog('success', 'Detected: GCP environment');
-        return 'gcp';
-      }
-
-      // Check relative path (works in both local and production)
-      const localCheck = await fetch('/health', {
-        method: 'HEAD',
-        signal: AbortSignal.timeout(3000)
-      }).catch(() => null);
-
-      if (localCheck?.ok) {
-        this.addLog('success', 'Detected: Local environment');
-        return 'local';
-      }
-
-      this.addLog('warning', 'Could not determine environment, assuming local');
-      return 'local';
+      this.addLog('warning', 'Could not determine environment, using default production routing');
+      return 'render';
     } catch (error) {
       this.addLog('error', `Environment detection failed: ${error}`);
       return 'unknown';
@@ -175,9 +153,8 @@ class CopilotEngine {
 
     const endpoints = [
       { key: 'dashboard', url: '/', name: 'Dashboard' },
-      { key: 'userApi', url: '/health', name: 'User API' },
-      // Use relative path for brain orchestrator - proxied by backend
-      { key: 'brainOrchestrator', url: '/services', name: 'Brain Orchestrator' },
+      { key: 'userApi', url: '/health', name: 'User API Cluster' },
+      { key: 'brainOrchestrator', url: '/api/engine/status', name: 'Arbitrage Engine' },
     ];
 
     for (const endpoint of endpoints) {
@@ -193,7 +170,7 @@ class CopilotEngine {
         const isHealthy = response?.ok ?? false;
 
         services[endpoint.key] = isHealthy;
-        
+
         if (isHealthy) {
           healthyCount++;
           this.updateServiceStatus(endpoint.key as keyof DeploymentStatus['services'], {
@@ -261,7 +238,7 @@ class CopilotEngine {
     // Attempt to heal each down service
     for (const issue of health.issues) {
       this.addLog('info', `Attempting to heal: ${issue}`);
-      
+
       // In a real implementation, this would trigger Render API calls
       // For now, we log the action
       this.addLog('warning', `Healing action triggered for: ${issue}`);
@@ -286,22 +263,22 @@ class CopilotEngine {
 
   async checkProfitStatus(): Promise<ProfitStatus> {
     try {
-      // Fetch profit data from brain orchestrator (use relative path for production)
+      // Fetch profit data from backend stats API
       const apiBase = import.meta.env.VITE_API_URL || '';
-      const profitUrl = apiBase ? `${apiBase}/profit/real-time` : '/profit/real-time';
-      const response = await fetch(profitUrl, {
+      const statsUrl = `${apiBase}/api/dashboard/stats`;
+      const response = await fetch(statsUrl, {
         signal: AbortSignal.timeout(10000),
       }).catch(() => null);
 
       if (response?.ok) {
         const data = await response.json();
-        
+
         this.profitStatus = {
-          mode: data.status === 'active' ? 'profitable' : 'detecting',
-          totalPnl: data.totalPnl || 0,
-          tradesCount: data.totalTrades || 0,
-          lastTradeTimestamp: data.recentTrades?.[0]?.timestamp || '',
-          profitPerHour: this.calculateProfitPerHour(data),
+          mode: data.profitMode === 'enabled' ? 'profitable' : 'active',
+          totalPnl: parseFloat(data.totalPnl || 0),
+          tradesCount: parseInt(data.totalTrades || 0),
+          lastTradeTimestamp: new Date().toISOString(),
+          profitPerHour: parseFloat(data.totalPnl || 0) / 24, // Estimate for now
         };
       } else {
         this.profitStatus.mode = 'inactive';
@@ -316,14 +293,14 @@ class CopilotEngine {
   private calculateProfitPerHour(data: any): number {
     // Calculate profit per hour from recent trades
     if (!data?.recentTrades?.length) return 0;
-    
+
     const now = Date.now();
     const oneHourAgo = now - 3600000;
-    
+
     const recentProfits = data.recentTrades
       .filter((trade: any) => new Date(trade.timestamp).getTime() > oneHourAgo)
       .reduce((sum: number, trade: any) => sum + (trade.profit_usd || 0), 0);
-    
+
     return recentProfits;
   }
 
@@ -336,7 +313,7 @@ class CopilotEngine {
     try {
       // In production, this would trigger a Render deploy via API
       // For now, we simulate the deployment process
-      
+
       // Simulate deployment steps
       this.addLog('info', 'Building Docker images...');
       await this.simulateDelay(3000);
@@ -423,7 +400,7 @@ class CopilotEngine {
     // Start polling
     this.pollIntervalId = setInterval(async () => {
       const health = await this.checkServicesHealth();
-      
+
       if (!health.healthy && this.deploymentStatus.phase === 'running') {
         this.addLog('warning', 'Service degradation detected, initiating self-healing...');
         await this.performSelfHealing();

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Wifi, RefreshCw } from 'lucide-react';
-import { useAlphaOrionStore } from '../hooks/useAlphaOrionStore';
+import { Wifi, RefreshCw, Wallet, PlayCircle, Activity } from 'lucide-react';
+import { useAlphaOrionStore, useTotalWalletBalance, useIsEngineRunning } from '../hooks/useAlphaOrionStore';
 
 const Header: React.FC = () => {
-  const { systemHealth, profitData, currency, refreshInterval } = useAlphaOrionStore();
+  const { systemHealth, profitData, currency, refreshInterval, activateProductionEngine } = useAlphaOrionStore();
+  const totalWalletBalance = useTotalWalletBalance();
+  const isEngineRunning = useIsEngineRunning();
   const { setCurrency, setRefreshInterval } = useAlphaOrionStore.getState();
   const [isEditingInterval, setIsEditingInterval] = useState(false);
   const [intervalInput, setIntervalInput] = useState(String(refreshInterval));
@@ -16,12 +18,12 @@ const Header: React.FC = () => {
     setIsEditingInterval(false);
   };
 
-  const formatProfit = () => {
-    if (currency === 'ETH' && profitData?.totalPnL) {
+  const formatBalance = (amount: number) => {
+    if (currency === 'ETH') {
       const ethPrice = 3500;
-      return `${(profitData.totalPnL / ethPrice).toFixed(4)} ETH`;
+      return `${(amount / ethPrice).toFixed(4)} ETH`;
     }
-    return `$${profitData?.totalPnL?.toLocaleString() || '0'}`;
+    return `$${amount.toLocaleString()}`;
   };
 
   return (
@@ -37,21 +39,37 @@ const Header: React.FC = () => {
         {/* System Status */}
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-100">System:</span>
-          <div className={`flex items-center gap-2 px-3 py-1 border rounded-full ${
-            systemHealth?.status === 'healthy' ? 'bg-emerald-500/20 border-emerald-500/40' :
+          <div className={`flex items-center gap-2 px-3 py-1 border rounded-full ${systemHealth?.status === 'healthy' ? 'bg-emerald-500/20 border-emerald-500/40' :
             systemHealth?.status === 'warning' ? 'bg-amber-500/20 border-amber-500/40' :
-            'bg-red-500/20 border-red-500/40'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              systemHealth?.status === 'healthy' ? 'bg-emerald-400' :
+              'bg-red-500/20 border-red-500/40'
+            }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${systemHealth?.status === 'healthy' ? 'bg-emerald-400' :
               systemHealth?.status === 'warning' ? 'bg-amber-400' :
-              'bg-red-400'
-            } animate-pulse`} />
+                'bg-red-400'
+              } animate-pulse`} />
             <span className="text-[9px] font-black uppercase tracking-widest">
               {systemHealth?.mode || 'UNKNOWN'}
             </span>
           </div>
         </div>
+
+        {/* Start Engine Button - Requirements 1 & 2 */}
+        {!isEngineRunning && (
+          <button
+            onClick={() => activateProductionEngine()}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all group"
+          >
+            <PlayCircle size={14} className="group-hover:scale-110 transition-transform" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Official Launch Engine</span>
+          </button>
+        )}
+
+        {isEngineRunning && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
+            <Activity size={14} className="text-emerald-400 animate-pulse" />
+            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Production Kernel Live</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-8">
@@ -59,32 +77,33 @@ const Header: React.FC = () => {
         <div className="flex items-center gap-1 bg-slate-900/50 rounded-lg p-1">
           <button
             onClick={() => setCurrency('USD')}
-            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${
-              currency === 'USD'
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${currency === 'USD'
+              ? 'bg-blue-600 text-white'
+              : 'text-slate-400 hover:text-white'
+              }`}
           >
             USD
           </button>
           <button
             onClick={() => setCurrency('ETH')}
-            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${
-              currency === 'ETH'
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${currency === 'ETH'
+              ? 'bg-blue-600 text-white'
+              : 'text-slate-400 hover:text-white'
+              }`}
           >
             ETH
           </button>
         </div>
 
-        {/* Profit/min Pulse */}
-        <div className="text-right">
-          <p className="text-[8px] font-light text-slate-400 uppercase tracking-widest">Profit/min</p>
-          <p className="text-lg font-thin text-emerald-400 tabular-nums tracking-wide">
-            {formatProfit()}
-          </p>
+        {/* Total Wallet Balance Pulse */}
+        <div className="text-right flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Wallet Balance</p>
+            <p className="text-lg font-black text-emerald-400 italic tabular-nums tracking-wide">
+              {formatBalance(totalWalletBalance)}
+            </p>
+          </div>
+          <Wallet size={16} className="text-emerald-500/50" />
         </div>
 
         <div className="h-8 w-px bg-white/10" />

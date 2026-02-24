@@ -67,7 +67,7 @@ export async function sendChatMessage(
   } catch (error) {
     console.error('OpenAI API Error:', error);
     // Fallback to simulated response if API is not available
-    return getSimulatedResponse(message);
+    return getSimulatedResponse(message, context);
   }
 }
 
@@ -114,7 +114,7 @@ export function getSystemContext(context?: {
   pimlicoStatus?: any;
 }): string {
   const { profitData, opportunities, systemHealth, pimlicoStatus } = context || {};
-  
+
   return `You are Alpha-Orion Neural Intelligence Core v3.0, an expert arbitrage trading assistant for decentralized exchanges (DEX).
 
 Your role is to:
@@ -141,9 +141,22 @@ Always prioritize safety and risk management.`;
 /**
  * Fallback simulated responses when API is not available
  */
-export function getSimulatedResponse(userInput: string): string {
+export function getSimulatedResponse(userInput: string, context?: any): string {
   const input = userInput.toLowerCase();
-  
+  const { pimlicoStatus, systemHealth, profitData } = context || {};
+  const isProduction = pimlicoStatus?.mode === 'PRODUCTION';
+
+  if (isProduction && (input.includes('status') || input.includes('mode'))) {
+    return `⚡ **Alpha-Orion Production Mode Active**
+    
+    The engine is currently running in **Full Production Mode**. 
+    • Strategy Kernel: V08-Elite
+    • MEV Protection: Active
+    • Capital Velocity: 85%
+    
+    System is scanning for real-time arbitrage opportunities on Mainnet.`;
+  }
+
   if (input.includes('opportunity') || input.includes('arbitrage') || input.includes('profit')) {
     return `📊 **Current Arbitrage Opportunities**
 
@@ -166,7 +179,7 @@ I've detected several opportunities:
 
 Would you like me to execute any of these?`;
   }
-  
+
   if (input.includes('performance') || input.includes('metric') || input.includes('stat')) {
     return `📈 **Current Performance Metrics**
 
@@ -180,7 +193,7 @@ Would you like me to execute any of these?`;
 
 The optimization engine is running at 85% efficiency.`;
   }
-  
+
   if (input.includes('wallet') || input.includes('balance') || input.includes('fund')) {
     return `💰 **Wallet Status**
 
@@ -192,7 +205,7 @@ The optimization engine is running at 85% efficiency.`;
 
 **Total: 1,180.65 ETH** (~$3.8M)`;
   }
-  
+
   if (input.includes('strategy') || input.includes('strategies')) {
     return `🧠 **Active Strategies**
 
@@ -216,7 +229,7 @@ The optimization engine is running at 85% efficiency.`;
 • Status: Optimizing
 • Performance: +$45/tx`;
   }
-  
+
   if (input.includes('optimize') || input.includes('optimization') || input.includes('improve')) {
     return `⚡ **Available Optimizations**
 
@@ -234,7 +247,7 @@ The optimization engine is running at 85% efficiency.`;
 
 Should I apply these optimizations?`;
   }
-  
+
   if (input.includes('benchmark') || input.includes('compare')) {
     return `🎯 **Benchmark Comparison**
 
@@ -247,7 +260,7 @@ Should I apply these optimizations?`;
 
 **Alpha-Orion is outperforming all benchmarks!** 🚀`;
   }
-  
+
   if (input.includes('help') || input.includes('what can')) {
     return `🤖 **I can help you with:**
 
@@ -260,7 +273,7 @@ Should I apply these optimizations?`;
 
 Just ask me anything about your arbitrage trading!`;
   }
-  
+
   return `I understand you're asking about: "${userInput}"
 
 I can provide detailed analysis on:

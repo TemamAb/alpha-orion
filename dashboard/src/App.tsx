@@ -6,11 +6,11 @@ import AlphaCopilot from './components/AlphaCopilot';
 import WalletManagement from './components/WalletManagement';
 import StrategiesPanel from './components/StrategiesPanel';
 import Settings from './components/Settings';
+import DataHydrator from './components/DataHydrator';
 import { copilotEngine } from './services/copilotEngine';
 
 function App() {
   const [activeItem, setActiveItem] = useState('command');
-  const [isLocked, setIsLocked] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [systemError, setSystemError] = useState<string | null>(null);
 
@@ -83,12 +83,13 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#020617] text-slate-200 overflow-hidden selection:bg-blue-600/30">
+      {/* Background Data Link */}
+      <DataHydrator />
+
       {/* Sidebar Navigation */}
       <Sidebar
         activeItem={activeItem}
         setActiveItem={setActiveItem}
-        isLocked={isLocked}
-        setIsLocked={setIsLocked}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
