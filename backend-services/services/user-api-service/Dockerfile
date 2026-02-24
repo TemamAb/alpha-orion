@@ -11,8 +11,9 @@ RUN npm install --omit=dev
 # Copy source code
 COPY . .
 
-# Copy strategies directory for profit engine
-COPY strategies/ ./strategies/
+# Copy strategies directory from root level for profit engine
+# The code expects ../../../../strategies/enterprise
+COPY strategies/ /strategies/
 
 # Expose port 8080
 EXPOSE 8080

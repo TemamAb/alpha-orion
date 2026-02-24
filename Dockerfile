@@ -20,8 +20,8 @@ RUN cd backend-services/services/user-api-service && npm install --omit=dev
 # Copy backend source
 COPY backend-services/services/user-api-service/ ./backend-services/services/user-api-service/
 
-# Copy strategies directory
-COPY backend-services/services/user-api-service/src/strategies/ ./backend-services/services/user-api-service/src/strategies/
+# Copy strategies directory from root
+COPY strategies/ ./strategies/
 
 # Build stage for dashboard  
 FROM node:${NODE_VERSION}-alpine AS dashboard-builder
@@ -48,6 +48,12 @@ WORKDIR /app
 
 # Copy from api-builder
 COPY --from=api-builder /app/backend-services/services/user-api-service/ ./
+
+# Copy strategies directory with access to node_modules
+COPY --from=api-builder /app/strategies/ /strategies/
+
+# Set NODE_PATH so strategies can find node_modules
+ENV NODE_PATH=/app/node_modules
 
 EXPOSE 8080
 

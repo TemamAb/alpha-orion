@@ -8,15 +8,15 @@ services:
   # Backend API Service
   # ============================================================
   backend:
-    build:
-      context: .
-      dockerfile: backend-services/services/user-api-service/Dockerfile
+    image: alpha-orion-backend:latest
     container_name: alpha-orion-backend
     ports:
       - "8080:8080"
+    volumes:
+      - ./strategies:/strategies:ro
     environment:
       - PORT=8080
-      - NODE_ENV=development
+      - NODE_ENV=production
       # Add your API keys here for local testing
       - DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@localhost:5432/alpha}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
@@ -32,9 +32,7 @@ services:
   # Dashboard (Vite + React)
   # ============================================================
   dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile.dashboard
+    image: alpha-orion-dashboard:latest
     container_name: alpha-orion-dashboard
     ports:
       - "5000:3000"

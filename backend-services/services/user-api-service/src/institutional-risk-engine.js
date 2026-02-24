@@ -6,8 +6,11 @@ const { ethers } = require('ethers');
  */
 class InstitutionalRiskEngine {
   constructor() {
+    // Use ethers v6 API - use native BigInt instead of BigNumber
+    const parseUnits = ethers.parseUnits || ((v, u) => ethers.utils.parseUnits(v, u));
+    
     this.riskLimits = {
-      maxPositionSize: ethers.utils.parseUnits('1000', 18), // $1000 max per position
+      maxPositionSize: parseUnits('1000', 18), // $1000 max per position
       maxPortfolioVaR: 0.05, // 5% VaR limit
       maxDrawdown: 0.10, // 10% max drawdown
       maxLeverage: 3.0, // 3x max leverage
@@ -17,7 +20,7 @@ class InstitutionalRiskEngine {
 
     this.portfolio = {
       positions: new Map(),
-      totalValue: ethers.BigNumber.from(0),
+      totalValue: 0n, // Use native BigInt
       totalVaR: 0,
       currentDrawdown: 0,
       leverage: 1.0,
@@ -494,13 +497,14 @@ class InstitutionalRiskEngine {
     const kellyFraction = Math.max(0, (p * b - q) / b);
 
     const baseBuffer = 10000; // Mock base capital if totalValue is 0
-    const portfolioValue = this.portfolio.totalValue.gt(0) ? parseFloat(ethers.utils.formatUnits(this.portfolio.totalValue, 18)) : baseBuffer;
+    // Use ethers v6 API - functions are directly on ethers object
+    const portfolioValue = this.portfolio.totalValue.gt(0) ? parseFloat(ethers.formatUnits(this.portfolio.totalValue, 18)) : baseBuffer;
 
     let optimalSize = portfolioValue * kellyFraction * 0.5; // Half-Kelly for safety
 
     // Apply hard limits
-    const maxPositionUSD = parseFloat(ethers.utils.formatUnits(this.riskLimits.maxPositionSize, 18));
-    return ethers.utils.parseUnits(Math.min(optimalSize, maxPositionUSD).toFixed(18), 18);
+    const maxPositionUSD = parseFloat(ethers.formatUnits(this.riskLimits.maxPositionSize, 18));
+    return ethers.parseUnits(Math.min(optimalSize, maxPositionUSD).toFixed(18), 18);
   }
 }
 

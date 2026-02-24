@@ -7,21 +7,21 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy package files from dashboard directory
-COPY dashboard/package*.json ./
-COPY dashboard/package-lock.json* ./
+COPY dashboard/package*.json ./dashboard/
+COPY dashboard/package-lock.json* ./dashboard/
 
 # Install dependencies (use --legacy-peer-deps for React 18 compatibility)
-RUN npm install --legacy-peer-deps
+RUN cd dashboard && npm install --legacy-peer-deps
 
 # Copy dashboard source (note: context is alpha-orion/, so we need dashboard/ prefix)
-COPY dashboard/ ./
+COPY dashboard/ ./dashboard/
 
 # Build the Vite application
-RUN npm run build
+RUN cd dashboard && npm run build
 
 # Expose port (Vite dev server or serve)
 EXPOSE 3000
 
 # Start the serve command for production-like testing
 # Use serve to match Render production deployment
-CMD ["npx", "serve", "-s", "dist", "-l", "3000"]
+CMD ["npx", "serve", "-s", "dashboard/dist", "-l", "3000"]

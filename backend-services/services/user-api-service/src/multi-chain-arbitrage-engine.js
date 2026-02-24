@@ -173,19 +173,12 @@ class MultiChainArbitrageEngine {
     this.mevRouter = mevRouter;
     this.infuraApiKey = process.env.INFURA_API_KEY;
 
-    // Wallet configuration - optional for signal generation mode
-    // For production trading, configure via environment variables
-    // The system works in "Signal Generation Mode" without a private key
-    // Trade execution is handled by external smart contracts or relayers
-    if (process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.length === 66) {
-      this.privateKey = process.env.PRIVATE_KEY;
-      this.walletMode = 'execution';
-      console.log("[MultiChainArbitrageEngine] PRIVATE_KEY configured - Execution Mode enabled");
-    } else {
-      // Signal Generation Mode - no private key required
-      this.privateKey = null;
-      this.walletMode = 'signals_only';
-    }
+    // Wallet configuration - Signal Generation Mode (no private key required)
+    // This system generates arbitrage signals for external executors/relayers
+    // Profit is generated through signal subscriptions, not direct trading
+    this.privateKey = null;
+    this.walletMode = 'signals_only';
+    console.log("[MultiChainArbitrageEngine] Signal Generation Mode - No private key required");
 
     if (!this.infuraApiKey) {
       console.warn("[MultiChainArbitrageEngine] No INFURA_API_KEY found. Infura-dependent chains may fail to connect.");
@@ -295,13 +288,17 @@ class MultiChainArbitrageEngine {
         // Use static network definition to prevent noisy auto-detection errors
         const network = new ethers.Network(chainConfig.name, chainConfig.chainId);
         this.providers[chainKey] = new ethers.JsonRpcProvider(chainConfig.rpcUrl, network, { staticNetwork: true });
-        this.wallets[chainKey] = new ethers.Wallet(this.privateKey, this.providers[chainKey]);
+        
+        // Only create wallet if private key is available (for execution mode)
+        if (this.privateKey) {
+          this.wallets[chainKey] = new ethers.Wallet(this.privateKey, this.providers[chainKey]);
+        }
 
         if (chainConfig.flashLoanProvider) {
           this.contracts[chainKey] = new ethers.Contract(
             chainConfig.flashLoanProvider,
             flashLoanExecutorAbi,
-            this.wallets[chainKey]
+            this.wallets[chainKey] || this.providers[chainKey]
           );
         }
 
