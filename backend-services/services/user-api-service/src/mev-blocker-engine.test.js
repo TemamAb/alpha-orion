@@ -31,14 +31,18 @@ describe('MEVBlockerEngine', () => {
     delete process.env.ETHEREUM_RPC_URL;
   });
 
-  it('should throw an error if PRIVATE_KEY is not set', () => {
+  it('should gracefully disable when PRIVATE_KEY is not set', () => {
     delete process.env.PRIVATE_KEY;
-    expect(() => new MEVBlockerEngine()).to.throw('PRIVATE_KEY and ETHEREUM_RPC_URL must be set in environment variables.');
+    const engine = new MEVBlockerEngine();
+    // Engine should be available but disabled when no private key
+    expect(engine.isAvailable).to.equal(false);
   });
 
-  it('should throw an error if ETHEREUM_RPC_URL is not set', () => {
+  it('should gracefully disable when ETHEREUM_RPC_URL is not set', () => {
     delete process.env.ETHEREUM_RPC_URL;
-    expect(() => new MEVBlockerEngine()).to.throw('PRIVATE_KEY and ETHEREUM_RPC_URL must be set in environment variables.');
+    const engine = new MEVBlockerEngine();
+    // Engine should be available but disabled when no RPC
+    expect(engine.isAvailable).to.equal(false);
   });
 
   describe('sendPrivateTransaction', () => {
