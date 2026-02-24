@@ -24,7 +24,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: VITE_API_URL
-        sync: false
+        value: https://alpha-orion-api.onrender.com
       - key: VITE_WS_URL
         sync: false
     healthCheckPath: /

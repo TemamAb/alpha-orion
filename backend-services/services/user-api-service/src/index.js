@@ -179,6 +179,27 @@ app.get('/health', async (req, res) => {
   });
 });
 
+// Mode Current - Returns system mode for dashboard compatibility
+app.get('/mode/current', (req, res) => {
+  const kernelStatus = verifyKernelIntegrity();
+  const activeStrategies = engine && engine.strategyRegistry
+    ? Object.values(engine.strategyRegistry).filter(s => s.enabled).length
+    : 0;
+
+  res.json({
+    success: true,
+    data: {
+      status: engine ? 'healthy' : 'warning',
+      mode: process.env.PRIVATE_KEY ? 'LIVE PRODUCTION' : 'SIGNAL MODE',
+      uptime: Math.floor(process.uptime()),
+      connections: 0,
+      activeStrategies: activeStrategies,
+      kernelReady: kernelStatus.valid,
+      profitMode: process.env.PRIVATE_KEY ? 'production' : 'signals'
+    }
+  });
+});
+
 // Dashboard: Real-time Stats - Works without Redis
 app.get('/api/dashboard/stats', async (req, res) => {
   try {

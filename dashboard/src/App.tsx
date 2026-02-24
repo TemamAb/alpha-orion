@@ -6,6 +6,7 @@ import AlphaCopilot from './components/AlphaCopilot';
 import Settings from './components/Settings';
 import DataHydrator from './components/DataHydrator';
 import { copilotEngine } from './services/copilotEngine';
+import { useAlphaOrionStore } from './hooks/useAlphaOrionStore';
 
 function App() {
   const [activeItem, setActiveItem] = useState('command');
@@ -16,6 +17,8 @@ function App() {
     const initApp = async () => {
       try {
         await copilotEngine.start();
+        // Fetch engine status to sync isEngineRunning state
+        useAlphaOrionStore.getState().fetchEngineStatus();
         setIsInitializing(false);
       } catch (err) {
         console.error('Failed to initialize Alpha-Orion:', err);

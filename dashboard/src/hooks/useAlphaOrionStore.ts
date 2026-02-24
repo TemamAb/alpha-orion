@@ -68,6 +68,7 @@ interface AlphaOrionState {
   setDepositMode: (mode: 'auto' | 'manual') => void;
   setDepositThreshold: (threshold: number) => void;
   setEngineRunning: (running: boolean) => void;
+  fetchEngineStatus: () => Promise<void>;
   activateProductionEngine: () => Promise<boolean>;
 
   // Computed values
@@ -133,6 +134,19 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
     setDepositMode: (depositMode) => set({ depositMode }),
     setDepositThreshold: (depositThreshold) => set({ depositThreshold: Math.max(100, Math.min(10000, depositThreshold)) }),
     setEngineRunning: (isEngineRunning) => set({ isEngineRunning }),
+
+    fetchEngineStatus: async () => {
+      try {
+        const apiBase = useConfigStore.getState().apiUrl;
+        const response = await fetch(`${apiBase}/api/engine/status`);
+        if (response.ok) {
+          const data = await response.json();
+          set({ isEngineRunning: data.status === 'running' });
+        }
+      } catch (error) {
+        console.error('Failed to fetch engine status:', error);
+      }
+    },
 
     activateProductionEngine: async () => {
       try {
