@@ -67,10 +67,17 @@ class LVRRebalancingStrategy {
     const majorPools = {
       polygon: [
         { address: '0xA374094527e1673A86dE625aa59517c5dE346d32', token0_symbol: 'USDC', token1_symbol: 'WETH', fee: 500 }, // 0.05%
+        { address: '0x45dE6e6D099238e833118E84b3e8C80f9F67a147', token0_symbol: 'WETH', token1_symbol: 'USDT', fee: 500 },
         { address: '0x50eaEDB835021E4A108B7290636d62E9765cc6d7', token0_symbol: 'WBTC', token1_symbol: 'WETH', fee: 3000 }, // 0.3%
+        { address: '0xca71d34c3aAd3E15152b0F884b25CC783863ba9E', token0_symbol: 'MATIC', token1_symbol: 'WETH', fee: 3000 }
       ],
       ethereum: [
         { address: '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640', token0_symbol: 'USDC', token1_symbol: 'WETH', fee: 500 },
+        { address: '0x8ad599c3A01463028390E8BB3Be23ceCcF43242C', token0_symbol: 'USDC', token1_symbol: 'WETH', fee: 3000 },
+        { address: '0xCBCdF9626bC03E24f779434178A73a0B4bad62eD', token0_symbol: 'WBTC', token1_symbol: 'WETH', fee: 3000 }
+      ],
+      'polygon-zkevm': [
+        { address: '0xf6ad3ccf71abb3e12becf6b3d2a74c963859adcd', token0_symbol: 'USDC', token1_symbol: 'WETH', fee: 500 }
       ]
     };
     return majorPools[chainKey] || [];
@@ -413,8 +420,25 @@ class CrossDexArbitrageStrategy {
   }
 
   async getTokenPairsForChain(chainKey) {
-    // In production, this would come from a token list or be dynamically discovered
-    return [];
+    const tokens = require('../../backend-services/services/user-api-service/src/multi-chain-arbitrage-engine').TOKEN_ADDRESSES[chainKey];
+    if (!tokens) return [];
+
+    const baseAssets = ['WETH', 'USDC', 'USDT', 'DAI', 'WBTC', 'WMATIC', 'WBNB'];
+    const pairs = [];
+
+    for (const base of baseAssets) {
+      if (!tokens[base]) continue;
+      for (const quote of Object.keys(tokens)) {
+        if (base === quote) continue;
+        pairs.push({
+          base: tokens[base],
+          quote: tokens[quote],
+          baseSymbol: base,
+          quoteSymbol: quote
+        });
+      }
+    }
+    return pairs;
   }
   async getDexPrice(chainKey, dex, baseToken, quoteToken) {
     try {

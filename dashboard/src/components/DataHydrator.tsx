@@ -1,13 +1,16 @@
 import React, { useEffect, useCallback } from 'react';
 import { alphaOrionAPI } from '../services/api';
 import { useAlphaOrionStore } from '../hooks/useAlphaOrionStore';
+import { useConfigStore } from '../hooks/useConfigStore';
 
 const DataHydrator: React.FC = () => {
+    const { apiUrl } = useConfigStore();
     const {
         setProfitData,
         setOpportunities,
         setSystemHealth,
         setPimlicoStatus,
+        setWallets,
         setLoading,
         updateLastUpdate,
         refreshInterval
@@ -15,14 +18,16 @@ const DataHydrator: React.FC = () => {
 
     const hydrate = useCallback(async () => {
         try {
+            const apiBase = apiUrl;
+
             // Fetch stats
-            const statsResponse = await fetch('/api/dashboard/stats').catch(() => null);
+            const statsResponse = await fetch(`${apiBase}/api/dashboard/stats`).catch(() => null);
             if (statsResponse?.ok) {
                 const stats = await statsResponse.json();
                 setProfitData({
                     totalPnL: stats.totalPnl,
                     dailyPnL: stats.hourlyYield * 24 || 0,
-                    winRate: stats.winRate * 100, // Display as percentage
+                    winRate: stats.winRate, // winRate is already 0-1 from backend
                     lastTradeTime: stats.lastPulse || new Date().toISOString()
                 } as any);
 
@@ -33,20 +38,26 @@ const DataHydrator: React.FC = () => {
                     connections: stats.activeConnections || 0
                 } as any);
 
-                // If there are engine metrics, we could also store them
-                if (stats.alphaVelocity) {
-                    // Update additional metrics if needed
+                if (stats.pimlico) {
+                    setPimlicoStatus(stats.pimlico);
                 }
             }
 
             // Fetch opportunities
-            const oppsResponse = await fetch('/api/dashboard/opportunities').catch(() => null);
+            const oppsResponse = await fetch(`${apiBase}/api/dashboard/opportunities`).catch(() => null);
             if (oppsResponse?.ok) {
                 const opps = await oppsResponse.json();
                 setOpportunities(opps.map((o: any) => ({
                     ...o,
                     status: 'pending'
                 })));
+            }
+
+            // Fetch wallets
+            const walletsResponse = await fetch(`${apiBase}/api/wallets`).catch(() => null);
+            if (walletsResponse?.ok) {
+                const wallets = await walletsResponse.json();
+                setWallets(wallets);
             }
 
             updateLastUpdate();

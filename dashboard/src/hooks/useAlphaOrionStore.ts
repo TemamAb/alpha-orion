@@ -8,6 +8,7 @@ import {
   PimlicoStatus,
   AnalyticsData
 } from '../types/api';
+import { useConfigStore } from './useConfigStore';
 
 export interface WalletData {
   id: number;
@@ -136,8 +137,8 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
     activateProductionEngine: async () => {
       try {
         set({ isLoading: { ...get().isLoading, health: true } });
-        // Use fetch directly for simplicity as we established the endpoints
-        const response = await fetch('/api/engine/start', {
+        const apiBase = useConfigStore.getState().apiUrl;
+        const response = await fetch(`${apiBase}/api/engine/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
