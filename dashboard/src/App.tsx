@@ -3,8 +3,6 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import AlphaCopilot from './components/AlphaCopilot';
-import WalletManagement from './components/WalletManagement';
-import StrategiesPanel from './components/StrategiesPanel';
 import Settings from './components/Settings';
 import DataHydrator from './components/DataHydrator';
 import { copilotEngine } from './services/copilotEngine';
@@ -64,14 +62,8 @@ function App() {
   const renderContent = () => {
     switch (activeItem) {
       case 'command':
-        return <Dashboard />;
       case 'monitor':
-        return (
-          <div className="space-y-6">
-            <StrategiesPanel />
-            <WalletManagement />
-          </div>
-        );
+        return <Dashboard />;
       case 'optimize':
         return <div className="p-20 text-center text-slate-500 uppercase text-xs tracking-[0.3em]">Optimization Engine Online</div>;
       case 'settings':

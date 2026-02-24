@@ -87,13 +87,7 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
     systemHealth: null,
     pimlicoStatus: null,
     analytics: null,
-    wallets: [
-      { id: 1, address: '0x742d35Cc6634C0532925a3b844Bc9e7595f7E679', accountName: 'Main Treasury', logo: 'MetaMask', status: 'valid', balance: 125.45 },
-      { id: 2, address: '0x8BA1f109551bD432803012645Ac136ddd64DBA72', accountName: 'Arbitrage Bot A', logo: 'WalletConnect', status: 'valid', balance: 89.32 },
-      { id: 3, address: '0xdD2FD4581271e230360230F9337D5c0430Bf44C0', accountName: 'Hot Wallet', logo: 'MetaMask', status: 'invalid', balance: 0 },
-      { id: 4, address: '0x2546BcD3c84621e976D8185a91A922aE77ECEc30', accountName: 'Cold Storage', logo: 'Ledger', status: 'valid', balance: 2540.67 },
-      { id: 5, address: '0xbDA5747bFD65F08deb54cb465eB87D40e51B197E', accountName: 'LP Provider', logo: 'TrustWallet', status: 'valid', balance: 567.89 },
-    ],
+    wallets: [],
 
     isLoading: {
       profit: false,

@@ -179,109 +179,40 @@ Connectivity to the **Pimlico Gasless Hub** is stable. All executions are curren
   }
 
   if (input.includes('performance') || input.includes('metric') || input.includes('stat')) {
-    return `📈 **Current Performance Metrics**
+    const profit = context?.profitData?.totalPnL || 0;
+    return `📈 **Real-Time Performance Feed**
 
-| Metric | Value | Change |
-|--------|-------|--------|
-| Profit/Trade | $145.50 | +2.3% |
-| Trades/Hour | 12 | +1 |
-| Latency | 42ms | -3ms |
-| Success Rate | 98.2% | +0.5% |
-| Capital Velocity | 85% | Stable |
+The optimization engine reports:
+• Cumulative Profit: $${profit.toLocaleString()}
+• Engine Mode: ${context?.systemHealth?.mode || 'OFFLINE'}
+• MEV Protection: Active (Flashbots/Pimlico Hub)
 
-The optimization engine is running at 85% efficiency.`;
-  }
-
-  if (input.includes('wallet') || input.includes('balance') || input.includes('fund')) {
-    return `💰 **Wallet Status**
-
-| Wallet | Balance | Chain | Status |
-|--------|---------|-------|--------|
-| Main Treasury | 125.45 ETH | Ethereum | ✅ Valid |
-| Execution Wallet | 5.20 ETH | Arbitrum | ✅ Valid |
-| Cold Storage | 1,050.00 ETH | Ethereum | ✅ Valid |
-
-**Total: 1,180.65 ETH** (~$3.8M)`;
+Wait for live block updates for sub-ms execution metrics.`;
   }
 
   if (input.includes('strategy') || input.includes('strategies')) {
-    return `🧠 **Active Strategies**
+    return `🧠 **Institutional Strategy Matrix**
 
-**1. Flash Loan Tri-Arb** (35% allocation)
-• Status: Active
-• Performance: +$145/tx
+The Alpha-Orion kernel is configured for:
+• Multi-Chain Arbitrage
+• MEV Front-run Protection
+• Gasless Execution (via Pimlico)
 
-**2. Cross-Chain Arbitrage** (25% allocation)
-• Status: Active
-• Performance: +$89/tx
-
-**3. Liquidations** (18% allocation)
-• Status: Active
-• Performance: +$230/tx
-
-**4. MEV Protection** (12% allocation)
-• Status: Active
-• Savings: 15% gas
-
-**5. Statistical Arb** (10% allocation)
-• Status: Optimizing
-• Performance: +$45/tx`;
+Connect to the backend cluster to view live strategy allocations.`;
   }
 
-  if (input.includes('optimize') || input.includes('optimization') || input.includes('improve')) {
-    return `⚡ **Available Optimizations**
+  if (input.includes('help')) {
+    return `🤖 **System Command List**
 
-**Gas Optimization:**
-• Using Pimlico → Save 23% gas
-• Current avg: 85 gwei → Target: 65 gwei
+I can facilitate the following professional operations:
+• **Market Analysis** - Real-time opportunity scanning
+• **Performance Recovery** - Analyze execution latency
+• **Treasury Audit** - Verify wallet balances and status
+• **Protocol Optimization** - Adjust Pimlico gasless parameters
 
-**Route Optimization:**
-• Uniswap V3 → 94% efficiency
-• Sushiswap → 89% efficiency
-
-**Pool Selection:**
-• Current: Top 5 pools
-• Recommendation: Add Curve pool
-
-Should I apply these optimizations?`;
+Please provide a specific query for deep-space telemetry.`;
   }
 
-  if (input.includes('benchmark') || input.includes('compare')) {
-    return `🎯 **Benchmark Comparison**
-
-| Metric | Alpha-Orion | Wintermute | 1inch |
-|--------|-------------|------------|-------|
-| Latency | 42ms | 50ms | 55ms |
-| Success Rate | 98.2% | 97.5% | 96.8%
-| Gas Cost | 85 gwei | 92 gwei | 88 gwei |
-| Profit/tx | $145 | $132 | $128 |
-
-**Alpha-Orion is outperforming all benchmarks!** 🚀`;
-  }
-
-  if (input.includes('help') || input.includes('what can')) {
-    return `🤖 **I can help you with:**
-
-• **Market Analysis** - Find arbitrage opportunities
-• **Performance** - Monitor trading metrics
-• **Wallets** - Check balances and status
-• **Strategies** - Review active strategies
-• **Optimization** - Improve execution
-• **Benchmarks** - Compare performance
-
-Just ask me anything about your arbitrage trading!`;
-  }
-
-  return `I understand you're asking about: "${userInput}"
-
-I can provide detailed analysis on:
-• Arbitrage opportunities
-• Performance metrics
-• Wallet status
-• Trading strategies
-• System optimizations
-• Benchmark comparisons
-
-What specific information would you like to know?`;
+  return `System Core Online. Observation for: "${userInput}" is pending live mainnet data synchronization. No simulation metrics allowed.`;
 }
 

@@ -21,16 +21,16 @@ const DataHydrator: React.FC = () => {
                 const stats = await statsResponse.json();
                 setProfitData({
                     totalPnL: stats.totalPnl,
-                    dailyPnL: stats.totalPnl / 10, // Simulated daily
-                    winRate: 0.94, // Real win rate from engine logic
-                    lastTradeTime: new Date().toISOString()
+                    dailyPnL: 0,
+                    winRate: 0,
+                    lastTradeTime: stats.lastTradeTime || new Date().toISOString()
                 } as any);
 
                 setSystemHealth({
                     status: stats.systemStatus === 'active' ? 'healthy' : 'warning',
                     mode: stats.profitMode === 'enabled' ? 'LIVE PRODUCTION' : 'SIMULATION',
-                    uptime: '24h 12m',
-                    connections: 42
+                    uptime: '0h',
+                    connections: stats.activeConnections || 0
                 } as any);
             }
 

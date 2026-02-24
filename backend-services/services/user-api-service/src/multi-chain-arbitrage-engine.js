@@ -173,11 +173,22 @@ class MultiChainArbitrageEngine {
     this.mevRouter = mevRouter;
     this.infuraApiKey = process.env.INFURA_API_KEY;
     
-    if (process.env.PRIVATE_KEY) {
+    // Wallet configuration - optional for signal generation mode
+    // For production trading, configure via environment variables
+    // The system works in "Signal Generation Mode" without a private key
+    // Trade execution is handled by external smart contracts or relayers
+    if (process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.length === 66) {
       this.privateKey = process.env.PRIVATE_KEY;
+      this.walletMode = 'execution';
+      console.log("[MultiChainArbitrageEngine] PRIVATE_KEY configured - Execution Mode enabled");
     } else {
-      console.warn("[MultiChainArbitrageEngine] No PRIVATE_KEY found. Generating random wallet for simulation.");
-      this.privateKey = ethers.Wallet.createRandom().privateKey;
+      // Signal Generation Mode - no private key required
+      this.privateKey = null;
+      this.walletMode = 'signals_only';
+    }
+    
+    if (!this.infuraApiKey) {
+      console.warn("[MultiChainArbitrageEngine] No INFURA_API_KEY found. Infura-dependent chains may fail to connect.");
     }
 
     if (!this.infuraApiKey) {
