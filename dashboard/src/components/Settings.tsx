@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Settings as SettingsIcon, Plus, Upload, Trash2, Edit2, Check, X, Wallet, Search, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react';
 import { useCurrency, useWallets, useAlphaOrionStore, useDepositMode, useDepositThreshold, WalletData } from '../hooks/useAlphaOrionStore';
 
@@ -20,6 +20,32 @@ const Settings: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
+
+  const refreshBalances = useCallback(async () => {
+    if (wallets.length === 0) return;
+    try {
+      const response = await fetch('/api/wallets/balances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ addresses: wallets.map(w => w.address) })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const updatedWallets = wallets.map(w => {
+          const match = data.balances.find((b: any) => b.address.toLowerCase() === w.address.toLowerCase());
+          return match ? { ...w, balance: match.balance, status: match.status } : w;
+        });
+        setWallets(updatedWallets);
+      }
+    } catch (error) {
+      console.error('Failed to sync institutional balances:', error);
+    }
+  }, [wallets, setWallets]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => refreshBalances(), 1000);
+    return () => clearTimeout(timer);
+  }, [wallets.length]);
 
   const formatAddress = (address: string) => {
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
@@ -115,14 +141,9 @@ const Settings: React.FC = () => {
             clearInterval(interval);
             setIsUploading(false);
 
-            // Auto-configure: ensure all have valid metadata and simulated status check
-            const configured = newWallets.map(w => ({
-              ...w,
-              status: Math.random() > 0.1 ? 'valid' as const : 'invalid' as const,
-              balance: Math.floor(Math.random() * 500) // Simulated initial balance fetch
-            }));
+            setWallets([...wallets, ...newWallets]);
+            refreshBalances();
 
-            setWallets([...wallets, ...configured]);
             if (fileInputRef.current) {
               fileInputRef.current.value = '';
             }

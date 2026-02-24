@@ -158,26 +158,24 @@ export function getSimulatedResponse(userInput: string, context?: any): string {
   }
 
   if (input.includes('opportunity') || input.includes('arbitrage') || input.includes('profit')) {
-    return `📊 **Current Arbitrage Opportunities**
+    const oppCount = context?.opportunities?.length || 0;
+    const totalPnL = context?.profitData?.totalPnL || 0;
 
-I've detected several opportunities:
+    return `📊 **Operational State Analysis**
 
-**1. Tri-Arb on ETH/ARB**
-• Spread: 0.85%
-• Potential profit: ~$4,500
-• Confidence: 94%
+Current system telemetry shows **${oppCount} active opportunities** identified by the Variant Execution Kernel.
+Total Cumulative PnL is currently **$${totalPnL.toLocaleString()}**.
 
-**2. Cross-Chain on WBTC**
-• Spread: 0.42%
-• Potential profit: ~$2,100
-• Confidence: 87%
+The engine is operating on **Mainnet** using **Pimlico Gasless Architecture**. 
+I am ready to authorize ${oppCount > 0 ? 'immediate execution' : 'further scanning'} protocol.`;
+  }
 
-**3. Flash Loan on Uniswap**
-• Spread: 0.28%
-• Potential profit: ~$1,400
-• Confidence: 91%
+  if (input.includes('wallet') || input.includes('balance')) {
+    const totalBalance = context?.totalWalletBalance || 0;
+    return `👛 **Treasury Status Report**
 
-Would you like me to execute any of these?`;
+The integrated ledger reports a total aggregate liquidity of **$${totalBalance.toLocaleString()}**.
+Connectivity to the **Pimlico Gasless Hub** is stable. All executions are currently configured to bypass traditional gas requirements via the Alpha-Policy-ID.`;
   }
 
   if (input.includes('performance') || input.includes('metric') || input.includes('stat')) {

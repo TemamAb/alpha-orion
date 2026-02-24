@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wifi, RefreshCw, Wallet, PlayCircle, Activity } from 'lucide-react';
+import { Wifi, RefreshCw, Wallet, PlayCircle, Activity, Sparkles } from 'lucide-react';
 import { useAlphaOrionStore, useTotalWalletBalance, useIsEngineRunning } from '../hooks/useAlphaOrionStore';
 
 const Header: React.FC = () => {
@@ -57,17 +57,26 @@ const Header: React.FC = () => {
         {!isEngineRunning && (
           <button
             onClick={() => activateProductionEngine()}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all group"
+            className="flex flex-col items-center gap-1 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all group"
           >
-            <PlayCircle size={14} className="group-hover:scale-110 transition-transform" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Official Launch Engine</span>
+            <div className="flex items-center gap-2">
+              <PlayCircle size={14} className="group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Official Launch Engine</span>
+            </div>
+            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest opacity-80 italic">Pimlico Gasless Interface Active</span>
           </button>
         )}
 
         {isEngineRunning && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
-            <Activity size={14} className="text-emerald-400 animate-pulse" />
-            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Production Kernel Live</span>
+          <div className="flex flex-col items-end gap-1 px-5 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
+            <div className="flex items-center gap-2">
+              <Activity size={14} className="text-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Production Kernel Live</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Sparkles size={10} className="text-emerald-500" />
+              <span className="text-[7px] font-black text-emerald-500 uppercase tracking-tighter">Gasless Execution Enabled</span>
+            </div>
           </div>
         )}
       </div>

@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { ethers } = require('ethers');
 
 // Set default values for required env vars if not set (for development/free tier)
 // NOTE: Don't set REDIS_URL to empty string - let redis-client handle missing config gracefully
@@ -267,6 +268,36 @@ app.post('/api/config', authenticateToken, async (req, res) => {
     res.json({ status: 'updated' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update config' });
+  }
+});
+
+// --- Wallet & Balance APIs ---
+app.post('/api/wallets/balances', authenticateToken, async (req, res) => {
+  const { addresses } = req.body;
+  if (!addresses || !Array.isArray(addresses)) {
+    return res.status(400).json({ error: 'Valid addresses array required' });
+  }
+
+  try {
+    const provider = new ethers.JsonRpcProvider(process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com');
+    const balancePromises = addresses.map(async (addr) => {
+      try {
+        const balance = await provider.getBalance(addr);
+        return {
+          address: addr,
+          balance: parseFloat(ethers.formatEther(balance)),
+          status: 'valid'
+        };
+      } catch (err) {
+        return { address: addr, balance: 0, status: 'invalid' };
+      }
+    });
+
+    const results = await Promise.all(balancePromises);
+    res.json({ balances: results, timestamp: new Date().toISOString() });
+  } catch (error) {
+    logger.error('Failed to fetch blockchain balances', error);
+    res.status(500).json({ error: 'Failed to fetch balances from blockchain' });
   }
 });
 
