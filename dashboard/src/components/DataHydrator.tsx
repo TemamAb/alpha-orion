@@ -21,17 +21,22 @@ const DataHydrator: React.FC = () => {
                 const stats = await statsResponse.json();
                 setProfitData({
                     totalPnL: stats.totalPnl,
-                    dailyPnL: 0,
-                    winRate: 0,
-                    lastTradeTime: stats.lastTradeTime || new Date().toISOString()
+                    dailyPnL: stats.hourlyYield * 24 || 0,
+                    winRate: stats.winRate * 100, // Display as percentage
+                    lastTradeTime: stats.lastPulse || new Date().toISOString()
                 } as any);
 
                 setSystemHealth({
                     status: stats.systemStatus === 'active' ? 'healthy' : 'warning',
-                    mode: stats.profitMode === 'enabled' ? 'LIVE PRODUCTION' : 'SIMULATION',
-                    uptime: '0h',
+                    mode: stats.profitMode === 'production' ? 'LIVE PRODUCTION' : 'SIGNAL MODE',
+                    uptime: stats.uptime,
                     connections: stats.activeConnections || 0
                 } as any);
+
+                // If there are engine metrics, we could also store them
+                if (stats.alphaVelocity) {
+                    // Update additional metrics if needed
+                }
             }
 
             // Fetch opportunities

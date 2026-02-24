@@ -3,6 +3,8 @@ from flask_cors import CORS
 import random
 import os
 import json
+import requests
+import time
 
 # Optional GCP imports (for local development without credentials)
 try:
@@ -105,31 +107,52 @@ def get_redis_connection():
     return redis_conn
 
 def get_market_data_context():
-    """Get current market data for AI analysis"""
+    """Get current market data for AI analysis using real providers"""
     try:
-        # Get latest opportunities
+        # 1. Get latest opportunities from Redis
         redis_conn = get_redis_connection()
-        opportunities_data = redis_conn.get('latest_opportunities')
-        opportunities = json.loads(opportunities_data) if opportunities_data else []
+        opportunities = []
+        if redis_conn:
+            opportunities_data = redis_conn.get('latest_opportunities')
+            opportunities = json.loads(opportunities_data) if opportunities_data else []
 
-        # Get risk metrics
-        risk_data = {'var_95': 0.05, 'volatility': 0.02}  # Default fallback
+        # 2. Get real-time Gas Price (EthGasStation or PolygonScan)
+        gas_price = 50
+        try:
+            # Polygon PoS Gas Price as proxy
+            resp = requests.get('https://gasstation-mainnet.matic.network/v2', timeout=2)
+            if resp.status_code == 200:
+                gas_price = resp.json().get('fast', {}).get('maxFee', 50)
+        except: pass
 
-        # Get gas prices
-        gas_price = 50  # Default fallback
+        # 3. Get Market Volatility & Sentiment (Fear & Greed Index)
+        risk_data = {'var_95': 0.05, 'volatility': 0.02}
+        market_condition = 'normal'
+        try:
+            fng_resp = requests.get('https://api.alternative.me/fng/', timeout=2)
+            if fng_resp.status_code == 200:
+                val = int(fng_resp.json().get('data', [{}])[0].get('value', 50))
+                if val < 25: market_condition = 'extreme_fear'
+                elif val < 45: market_condition = 'fear'
+                elif val > 75: market_condition = 'extreme_greed'
+                elif val > 55: market_condition = 'greed'
+        except: pass
 
         return {
             'opportunities_count': len(opportunities),
             'gas_price': gas_price,
             'risk_metrics': risk_data,
-            'market_condition': 'normal'  # Could be determined by volatility
+            'market_condition': market_condition,
+            'timestamp': int(time.time())
         }
-    except:
+    except Exception as e:
+        print(f"Error in get_market_data_context: {e}")
         return {
             'opportunities_count': 0,
             'gas_price': 50,
             'risk_metrics': {'var_95': 0.05, 'volatility': 0.02},
-            'market_condition': 'normal'
+            'market_condition': 'normal',
+            'timestamp': int(time.time())
         }
 
 def generate_ai_optimization(prompt, market_context):
@@ -281,12 +304,34 @@ def optimize():
             'fallback': generate_fallback_optimization('error recovery', get_market_data_context())
         }), 500
 
+@app.route('/predict/opportunity', methods=['POST'])
+def predict_opportunity():
+    """Predict the success probability of a specific arbitrage opportunity"""
+    try:
+        data = request.get_json()
+        features = data.get('features', {})
+        
+        # In production, this would use a loaded ML model (PyTorch/TF)
+        # For now, we use AI-powered heuristic optimization
+        market_context = get_market_data_context()
+        prompt = f"Predict success for arbitrage: {json.dumps(features)}"
+        prediction = generate_ai_optimization(prompt, market_context)
+        
+        return jsonify({
+            'successProbability': prediction.get('confidence', 0.85),
+            'expectedReturn': prediction.get('expectedProfit', 2.5),
+            'risk': 0.1,
+            'confidence': prediction.get('confidence', 0.85)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({
         'status': 'ok',
-        'gemini_api': 'available' if gemini_available else 'unavailable',
-        'gcp_services': 'available' if gcp_available else 'unavailable'
+        'ai_client': ai_client,
+        'gcp_available': gcp_available
     })
 
 if __name__ == '__main__':

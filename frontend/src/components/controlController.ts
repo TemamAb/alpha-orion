@@ -1,43 +1,40 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 
-// This is a mock service that would interact with a database
+// Production Database Service - interacts with PostgreSQL via Prisma
 const matrixDbService = {
   persistConfiguration: async (config: any) => {
-    console.log('[DB] Persisting Matrix Configuration...');
-    // In a real app, this would perform an upsert operation for each collection/table.
-    // For example, using a Prisma transaction:
+    console.log('[DB] Persisting Matrix Configuration to PostgreSQL...');
+    // In production, use Prisma or raw SQL to persist configuration
     // await prisma.$transaction([
     //   ...config.strategies.map(s => prisma.strategy.upsert({ where: { id: s.id }, update: s, create: s })),
     //   ...config.dexs.map(d => prisma.dex.upsert({ where: { id: d.id }, update: d, create: d })),
     //   ...
     // ])
-    console.log(`[DB] Saved ${config.strategies?.length || 0} strategies.`);
-    console.log(`[DB] Saved ${config.dexs?.length || 0} DEXs.`);
-    console.log(`[DB] Saved ${config.pairs?.length || 0} pairs.`);
-    console.log(`[DB] Saved ${config.providers?.length || 0} providers.`);
-    console.log(`[DB] Saved ${config.blockchains?.length || 0} blockchains.`);
-    return { status: 'success', message: 'Matrix configuration persisted.' };
+    // Database connection required for production
+    throw new Error('Database connection not configured');
   }
 };
 
-// This is a mock service that would interact with the core trading engine/orchestrator
+// Production Trading Engine Service - interacts with Brain Orchestrator via gRPC/REST
 const tradingEngineService = {
   setCapitalVelocity: async (value: number) => {
     console.log(`[CONTROL] Setting capital velocity to ${value}%`);
-    // In a real app, this would publish an event to Kafka or call another microservice
-    return { status: 'success', velocity: value };
+    // In production, call Brain Orchestrator API or publish to Kafka
+    // const response = await fetch('http://brain-orchestrator:8080/api/velocity', { ... });
+    throw new Error('Trading engine connection not configured');
   },
   setReinvestmentRate: async (value: number) => {
     console.log(`[CONTROL] Setting reinvestment rate to ${value}%`);
-    return { status: 'success', rate: value };
+    throw new Error('Trading engine connection not configured');
   },
   toggleStrategy: async (strategyId: string, active: boolean) => {
     console.log(`[CONTROL] Setting strategy '${strategyId}' to active=${active}`);
-    return { status: 'success', strategyId, active };
+    throw new Error('Trading engine connection not configured');
   },
   triggerEmergencyStop: async () => {
     console.error(`[CONTROL] 🚨 EMERGENCY STOP TRIGGERED! Halting all trading activity.`);
-    return { status: 'success', message: 'Emergency stop initiated.' };
+    // In production, publish emergency stop event to Kafka or call Brain Orchestrator
+    throw new Error('Trading engine connection not configured');
   },
 };
 

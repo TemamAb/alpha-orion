@@ -13,6 +13,8 @@ class PimlicoGaslessEngine {
       this.rpcUrl = process.env.POLYGON_ZKEVM_RPC_URL || 'https://rpc.polygon-zkevm.gateway.fm';
     }
 
+    this.provider = new ethers.providers.JsonRpcProvider(this.rpcUrl);
+
     // Pimlico Endpoints
     this.bundlerUrl = `https://api.pimlico.io/v2/${this.chainKey}/rpc?apikey=${this.apiKey}`;
     this.paymasterUrl = `https://api.pimlico.io/v2/${this.chainKey}/rpc?apikey=${this.apiKey}`;

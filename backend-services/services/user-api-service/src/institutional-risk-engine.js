@@ -480,6 +480,28 @@ class InstitutionalRiskEngine {
 
     return recommendations;
   }
+  /**
+   * Calculate optimal position size using Kelly Criterion and risk limits
+   */
+  calculateOptimalPositionSize(opportunity) {
+    const winProb = opportunity.successProbability || 0.6;
+    const profitRatio = (opportunity.potentialProfit || 1) / (opportunity.loanAmount || 1000);
+
+    // Simple Kelly Fraction: f = (p*b - q) / b
+    const b = profitRatio;
+    const p = winProb;
+    const q = 1 - p;
+    const kellyFraction = Math.max(0, (p * b - q) / b);
+
+    const baseBuffer = 10000; // Mock base capital if totalValue is 0
+    const portfolioValue = this.portfolio.totalValue.gt(0) ? parseFloat(ethers.utils.formatUnits(this.portfolio.totalValue, 18)) : baseBuffer;
+
+    let optimalSize = portfolioValue * kellyFraction * 0.5; // Half-Kelly for safety
+
+    // Apply hard limits
+    const maxPositionUSD = parseFloat(ethers.utils.formatUnits(this.riskLimits.maxPositionSize, 18));
+    return ethers.utils.parseUnits(Math.min(optimalSize, maxPositionUSD).toFixed(18), 18);
+  }
 }
 
 module.exports = InstitutionalRiskEngine;

@@ -172,7 +172,7 @@ class MultiChainArbitrageEngine {
   constructor(mevRouter) {
     this.mevRouter = mevRouter;
     this.infuraApiKey = process.env.INFURA_API_KEY;
-    
+
     // Wallet configuration - optional for signal generation mode
     // For production trading, configure via environment variables
     // The system works in "Signal Generation Mode" without a private key
@@ -186,7 +186,7 @@ class MultiChainArbitrageEngine {
       this.privateKey = null;
       this.walletMode = 'signals_only';
     }
-    
+
     if (!this.infuraApiKey) {
       console.warn("[MultiChainArbitrageEngine] No INFURA_API_KEY found. Infura-dependent chains may fail to connect.");
     }
@@ -382,8 +382,8 @@ class MultiChainArbitrageEngine {
     const tokens = TOKEN_ADDRESSES[chainKey];
 
     if (!tokens) {
-        console.warn(`[MultiChainArbitrageEngine] No token map for ${chainKey}. Skipping.`);
-        return [];
+      console.warn(`[MultiChainArbitrageEngine] No token map for ${chainKey}. Skipping.`);
+      return [];
     }
 
     // Dynamic Pair Configuration based on Chain Assets
@@ -406,18 +406,18 @@ class MultiChainArbitrageEngine {
     const profitablePairs = [];
 
     for (const config of pairConfigs) {
-        // Resolve addresses dynamically. Fallback to chain's wrapped token if 'WETH' is requested but not in map (e.g. WMATIC on Polygon)
-        const baseAddr = tokens[config.base] || (config.base === 'WETH' ? chain.wrappedToken : undefined);
-        const quoteAddr = tokens[config.quote];
+      // Resolve addresses dynamically. Fallback to chain's wrapped token if 'WETH' is requested but not in map (e.g. WMATIC on Polygon)
+      const baseAddr = tokens[config.base] || (config.base === 'WETH' ? chain.wrappedToken : undefined);
+      const quoteAddr = tokens[config.quote];
 
-        if (baseAddr && quoteAddr) {
-            profitablePairs.push({
-                base: baseAddr,
-                quote: quoteAddr,
-                symbol: `${config.base}/${config.quote}`,
-                volume: config.volume
-            });
-        }
+      if (baseAddr && quoteAddr) {
+        profitablePairs.push({
+          base: baseAddr,
+          quote: quoteAddr,
+          symbol: `${config.base}/${config.quote}`,
+          volume: config.volume
+        });
+      }
     }
 
     for (const pair of profitablePairs) {
@@ -466,7 +466,7 @@ class MultiChainArbitrageEngine {
       [pair.base, pair.quote, pair.base],
       [pair.base, pair.quote, chain.wrappedToken, pair.base],
       // Dynamic path using USDC/USDT if available
-      TOKEN_ADDRESSES[chainKey]?.USDC && TOKEN_ADDRESSES[chainKey]?.USDT 
+      TOKEN_ADDRESSES[chainKey]?.USDC && TOKEN_ADDRESSES[chainKey]?.USDT
         ? [pair.base, TOKEN_ADDRESSES[chainKey].USDC, TOKEN_ADDRESSES[chainKey].USDT, pair.base]
         : null
     ];
@@ -660,7 +660,7 @@ class MultiChainArbitrageEngine {
       try {
         const provider = this.providers[chainKey];
         const quoterContract = new ethers.Contract(quoterAddress, QUOTER_ABI, provider);
-        
+
         // Check multiple fee tiers for best price (500, 3000, 10000)
         // For efficiency in this snippet, we default to 3000 (0.3%) or 500 (0.05%) for stablecoins
         // In full enterprise mode, we would parallelize calls for all fee tiers.
@@ -748,9 +748,9 @@ class MultiChainArbitrageEngine {
   getTokenSymbol(chainKey, address) {
     const tokens = TOKEN_ADDRESSES[chainKey];
     if (tokens) {
-        for (const [symbol, addr] of Object.entries(tokens)) {
-            if (addr.toLowerCase() === address.toLowerCase()) return symbol;
-        }
+      for (const [symbol, addr] of Object.entries(tokens)) {
+        if (addr.toLowerCase() === address.toLowerCase()) return symbol;
+      }
     }
     if (address.toLowerCase() === this.chains[chainKey].wrappedToken.toLowerCase()) return 'Wrapped Native';
     return 'UNKNOWN';
@@ -764,14 +764,74 @@ class MultiChainArbitrageEngine {
   }
 
   async getPoolPrice(chainKey, pool) {
-    // In strict production mode, we do not guess or simulate.
-    // Use on-chain query to pool.getReserves() in v2.0
-    return null;
+    // In production, use ethers.js to get reserves or slot0
+    try {
+      const provider = this.providers[chainKey];
+      if (!provider) return null;
+
+      // Check if it's a V3 pool (has slot0) or V2 (has getReserves)
+      const poolContract = new ethers.Contract(pool.address, [
+        'function slot0() external view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)',
+        'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)'
+      ], provider);
+
+      try {
+        const slot0 = await poolContract.slot0();
+        // Convert sqrtPriceX96 to normal price: (sqrtPriceX96 / 2^96)^2
+        const sqrtPriceX96 = BigInt(slot0.sqrtPriceX96);
+        const price = (Number(sqrtPriceX96) / (2 ** 96)) ** 2;
+        return price;
+      } catch (e) {
+        const reserves = await poolContract.getReserves();
+        return Number(reserves.reserve1) / Number(reserves.reserve0);
+      }
+    } catch (e) {
+      return null;
+    }
   }
 
   async getMarketPrice(chainKey, pair) {
-    // In strict production mode, we do not guess or simulate.
-    // Use Chainlink Oracles in v2.0
+    // Return the best price available across all DEXes as the "Market Price"
+    try {
+      const bestQuote = await this.getBestQuote(
+        chainKey,
+        pair.base,
+        pair.quote,
+        ethers.parseUnits('1', 18)
+      );
+      if (bestQuote) {
+        return parseFloat(bestQuote.toTokenAmount);
+      }
+
+      // Fallback: Use CEX price if all DEXes fail
+      const tokens = TOKEN_ADDRESSES[chainKey];
+      const baseSymbol = this.getTokenSymbol(chainKey, pair.base);
+      const quoteSymbol = this.getTokenSymbol(chainKey, pair.quote);
+
+      const pairSymbol = `${baseSymbol.replace('WETH', 'ETH')}${quoteSymbol.replace('WETH', 'ETH')}`;
+      const response = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${pairSymbol}USDT`);
+      if (response.data && response.data.price) {
+        return parseFloat(response.data.price);
+      }
+    } catch (error) { }
+    return null;
+  }
+
+  async getParaSwapQuote(chainId, fromToken, toToken, amount) {
+    try {
+      const url = `https://apiv5.paraswap.io/prices/?srcToken=${fromToken}&destToken=${toToken}&amount=${amount}&side=SELL&network=${chainId}`;
+      const response = await axios.get(url);
+      if (response.data && response.data.priceRoute) {
+        return {
+          toAmount: response.data.priceRoute.destAmount,
+          toTokenAmount: parseFloat(ethers.formatUnits(response.data.priceRoute.destAmount, 18)),
+          dex: 'paraswap',
+          estimatedGas: response.data.priceRoute.gasCost
+        };
+      }
+    } catch (error) {
+      // console.debug(`ParaSwap quote failed: ${error.message}`);
+    }
     return null;
   }
 
@@ -795,9 +855,9 @@ class MultiChainArbitrageEngine {
       // Dynamic stablecoin check
       const tokens = TOKEN_ADDRESSES[chainKey];
       if (tokens) {
-          if (tokenAddress === tokens.USDC || tokenAddress === tokens.USDT || tokenAddress === tokens.DAI) {
-              return val * 1.0;
-          }
+        if (tokenAddress === tokens.USDC || tokenAddress === tokens.USDT || tokenAddress === tokens.DAI) {
+          return val * 1.0;
+        }
       }
 
       // For other tokens, we return 0 in strict mode to avoid fake profit reporting
@@ -815,9 +875,9 @@ class MultiChainArbitrageEngine {
     // Only return 1.0 for known stablecoins.
     const tokens = TOKEN_ADDRESSES[chainKey];
     if (tokens) {
-        if (tokenAddress === tokens.USDC || tokenAddress === tokens.USDT || tokenAddress === tokens.DAI) {
-            return 1.0;
-        }
+      if (tokenAddress === tokens.USDC || tokenAddress === tokens.USDT || tokenAddress === tokens.DAI) {
+        return 1.0;
+      }
     }
     return 0;
   }
@@ -1112,16 +1172,16 @@ class MultiChainArbitrageEngine {
 
     try {
       if (dryRun) {
-        // Live Simulation: Calculate theoretical profit based on real quotes
+        // Dry Run: Calculate theoretical profit based on real quotes
         const theoreticalProfit = opportunities.reduce((acc, opp) => acc + (opp.expectedProfit || 0), 0);
         console.log(`[Batch-Velocity] Dry Run Executed! Theoretical Profit: ${theoreticalProfit} ETH`);
 
-        // Record 'Virtual' execution for metrics
+        // Record execution for metrics
         this.analyzeExecutionResult(
-          { id: 'sim-batch-' + Date.now(), strategy: 'Batch-Flash-V3', chain: chainKey },
-          { profit: theoreticalProfit, gasUsed: '250000', executionTime: 45, status: 'confirmed' }
+          { id: 'dryrun-batch-' + Date.now(), strategy: 'Batch-Flash-V3', chain: chainKey },
+          { profit: theoreticalProfit, gasUsed: '250000', executionTime: 45, status: 'dry_run' }
         );
-        return { status: 'simulated', hash: '0x-simulated-' + Date.now() };
+        return { status: 'dry_run', hash: null, message: 'Dry run completed - no actual transaction sent' };
       }
 
       // Check for Gasless Support (Pimlico)
@@ -1362,4 +1422,4 @@ class MultiChainArbitrageEngine {
   }
 }
 
-module.exports = MultiChainArbitrageEngine; "// MEV EXTRACTION ENGINE - REAL IMPLEMENTATION" 
+module.exports = MultiChainArbitrageEngine;

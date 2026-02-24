@@ -66,8 +66,7 @@ export async function sendChatMessage(
     return data.response || data.message || data.content;
   } catch (error) {
     console.error('OpenAI API Error:', error);
-    // Fallback to simulated response if API is not available
-    return getSimulatedResponse(message, context);
+    throw new Error('OpenAI service unavailable. Please configure valid API credentials.');
   }
 }
 
