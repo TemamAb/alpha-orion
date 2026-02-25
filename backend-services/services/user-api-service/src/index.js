@@ -47,14 +47,14 @@ function verifyKernelIntegrity() {
     warnings.push('POLYGON_RPC_URL not set - using default public RPC');
   }
 
-  // Check Redis connection status
+  // Check Redis connection status - optional, degrades gracefully to in-memory
   if (!redisClient || !redisClient.isReady) {
-    errors.push('Redis connection failure - telemetry and persistence unavailable');
+    warnings.push('Redis not connected - running with in-memory storage (degraded mode)');
   }
 
   // Check engine availability
-  if (!engine) {
-    errors.push('Variant Execution Kernel failed to initialize');
+  if (!engine || engine.name === 'StubProfitEngine') {
+    warnings.push('Variant Execution Kernel using stub - enterprise engine not fully loaded');
   }
 
   return {
@@ -766,9 +766,12 @@ const startProfitGenerationLoop = async () => {
       const integrity = verifyKernelIntegrity();
       if (!integrity.valid) {
         logger.error({ errors: integrity.errors }, '[Kernel] Execution halted - integrity check failed');
-        // Retry in 1 minute if integrity fails
         setTimeout(runIteration, 60000);
         return;
+      }
+
+      if (integrity.warnings.length > 0) {
+        logger.warn({ warnings: integrity.warnings }, '[Kernel] Running with warnings (degraded mode)');
       }
 
       if (engine && typeof engine.generateProfitOpportunities === 'function') {

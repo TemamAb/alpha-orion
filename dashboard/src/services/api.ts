@@ -17,30 +17,14 @@ class AlphaOrionAPI {
   private baseURL: string;
 
   constructor(baseURL: string = '') {
-    // Use Vite environment variable or fallback
-    // In production (Render), use VITE_API_URL from environment
-    // In development, use proxy (empty string = relative URL)
-    let envAPIUrl = import.meta.env.VITE_API_URL || '';
-
-    // Auto-discovery logic for Render/Production
-    if (!envAPIUrl && typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      if (hostname.includes('.onrender.com') && !hostname.includes('-api')) {
-        // Strip variant suffixes like '-alpha', '-beta', '-staging' to get the base service name
-        // e.g. alpha-orion-alpha.onrender.com -> alpha-orion-api.onrender.com
-        const baseHostname = hostname.replace('.onrender.com', '');
-        const baseName = baseHostname.replace(/-alpha$/, '').replace(/-beta$/, '').replace(/-staging$/, '').replace(/-dev$/, '');
-        const apiHostname = `${baseName}-api.onrender.com`;
-        envAPIUrl = `https://${apiHostname}`;
-        console.log(`[API Discovery] Computed API URL: ${envAPIUrl} (from hostname: ${hostname})`);
-      }
-    }
-
-    this.baseURL = baseURL || envAPIUrl || '';
+    // VITE_API_URL is baked into the bundle at build time by Render.
+    // In local dev, it's empty string → Vite proxy routes /api/* to backend.
+    const envAPIUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+    this.baseURL = baseURL || envAPIUrl;
 
     this.client = axios.create({
       baseURL: this.baseURL,
-      timeout: 10000,
+      timeout: 15000,
       headers: {
         'Content-Type': 'application/json',
       },

@@ -147,22 +147,8 @@ class CopilotEngine {
   // === Health Monitoring ===
 
   private getApiBase(): string {
-    // Use VITE_API_URL from environment or auto-discover for Render
-    let apiBase = import.meta.env.VITE_API_URL || '';
-
-    // Auto-discovery logic for Render/Production
-    if (!apiBase && typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      if (hostname.includes('.onrender.com') && !hostname.includes('-api')) {
-        // Strip variant suffixes like '-alpha', '-beta' to get base service name
-        // e.g. alpha-orion-alpha.onrender.com -> alpha-orion-api.onrender.com
-        const baseHostname = hostname.replace('.onrender.com', '');
-        const baseName = baseHostname.replace(/-alpha$/, '').replace(/-beta$/, '').replace(/-staging$/, '').replace(/-dev$/, '');
-        apiBase = `https://${baseName}-api.onrender.com`;
-      }
-    }
-
-    return apiBase;
+    // VITE_API_URL is baked in at build time — same as the dashboard origin
+    return (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
   }
 
   async checkServicesHealth(): Promise<HealthCheckResult> {
