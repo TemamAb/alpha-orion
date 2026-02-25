@@ -42,9 +42,6 @@ function verifyKernelIntegrity() {
   const walletMode = hasPrivateKey ? 'execution' : 'signals_only';
 
   // Check ETHEREUM_RPC_URL - required for blockchain connectivity
-  if (!process.env.INFURA_API_KEY) {
-    errors.push('INFURA_API_KEY is missing - multichain scanning disabled');
-  }
 
   if (!process.env.POLYGON_RPC_URL) {
     warnings.push('POLYGON_RPC_URL not set - using default public RPC');

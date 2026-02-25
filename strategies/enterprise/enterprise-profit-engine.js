@@ -7,6 +7,21 @@
  */
 
 const { ethers } = require('ethers');
+
+// Ethers v6 Compatibility Shim
+if (!ethers.utils) {
+  ethers.utils = {
+    parseUnits: ethers.parseUnits,
+    formatUnits: ethers.formatUnits,
+    parseEther: ethers.parseEther,
+    formatEther: ethers.formatEther,
+    getAddress: ethers.getAddress,
+    isAddress: ethers.isAddress,
+    id: ethers.id,
+    keccak256: ethers.keccak256,
+  };
+}
+
 const tf = require('@tensorflow/tfjs-node');
 const axios = require('axios');
 
@@ -314,7 +329,7 @@ class TriangularArbitrageStrategy {
 
   async evaluateTriangularPath(chainKey, token1, token2, token3) {
     try {
-      const loanAmount = ethers.utils.parseUnits('1', 18); // 1 ETH test amount
+      const loanAmount = ethers.parseUnits('1', 18); // 1 ETH test amount
 
       const quote1 = await this.multiChainEngine.getBestQuote(chainKey, token1.address, token2.address, loanAmount);
       if (!quote1) return null;
@@ -442,7 +457,7 @@ class CrossDexArbitrageStrategy {
   }
   async getDexPrice(chainKey, dex, baseToken, quoteToken) {
     try {
-      const loanAmount = ethers.utils.parseUnits('1', 18);
+      const loanAmount = ethers.parseUnits('1', 18);
       const quote = await this.multiChainEngine.getDexSpecificQuote(chainKey, dex, baseToken.address, quoteToken.address, loanAmount);
       if (quote) {
         return {
@@ -458,7 +473,7 @@ class CrossDexArbitrageStrategy {
     try {
       const profit = (bestAsk.price - bestBid.price);
       const gasCost = await this.multiChainEngine.estimateGasCost(chainKey, 'cross_dex');
-      const profitUSD = await this.multiChainEngine.convertToUSD(chainKey, ethers.utils.parseUnits(profit.toFixed(18), 18), tokenPair.base);
+      const profitUSD = await this.multiChainEngine.convertToUSD(chainKey, ethers.parseUnits(profit.toFixed(18), 18), tokenPair.base);
       return profitUSD - (Number(gasCost) * 0.000000001); // Simple gas subtraction
     } catch (e) {
       return 0;
@@ -1033,7 +1048,7 @@ class EnterpriseProfitEngine {
 
     this.executionParams = {
       maxSlippage: 0.003,
-      minProfitThreshold: ethers.utils.parseUnits('0.001', 18),
+      minProfitThreshold: ethers.parseUnits('0.001', 18),
       maxExecutionTime: 30000,
       gasPriceMultiplier: 1.2,
       flashLoanFee: 0.0009,

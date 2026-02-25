@@ -181,11 +181,7 @@ class MultiChainArbitrageEngine {
     console.log("[MultiChainArbitrageEngine] Signal Generation Mode - No private key required");
 
     if (!this.infuraApiKey) {
-      console.warn("[MultiChainArbitrageEngine] No INFURA_API_KEY found. Infura-dependent chains may fail to connect.");
-    }
-
-    if (!this.infuraApiKey) {
-      console.warn("[MultiChainArbitrageEngine] No INFURA_API_KEY found. Infura-dependent chains may fail to connect.");
+      console.log("[MultiChainArbitrageEngine] No INFURA_API_KEY found. Using public fallback RPCs.");
     }
 
     // Supported chains configuration
@@ -193,7 +189,7 @@ class MultiChainArbitrageEngine {
       ethereum: {
         chainId: 1,
         name: 'Ethereum',
-        rpcUrl: `https://mainnet.infura.io/v3/${this.infuraApiKey}`,
+        rpcUrl: this.infuraApiKey ? `https://mainnet.infura.io/v3/${this.infuraApiKey}` : 'https://eth.llamarpc.com',
         nativeToken: 'ETH',
         wrappedToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
         flashLoanProvider: '0x87870Bcd2C8d8b9F8c7e4c6eE3d4c8F2a1b3c5d7', // Aave V3 Pool
@@ -229,7 +225,7 @@ class MultiChainArbitrageEngine {
       arbitrum: {
         chainId: 42161,
         name: 'Arbitrum',
-        rpcUrl: `https://arbitrum-mainnet.infura.io/v3/${this.infuraApiKey}`,
+        rpcUrl: this.infuraApiKey ? `https://arbitrum-mainnet.infura.io/v3/${this.infuraApiKey}` : 'https://arb1.arbitrum.io/rpc',
         nativeToken: 'ETH',
         wrappedToken: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1', // WETH
         flashLoanProvider: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave V3 Pool
@@ -238,7 +234,7 @@ class MultiChainArbitrageEngine {
       optimism: {
         chainId: 10,
         name: 'Optimism',
-        rpcUrl: `https://optimism-mainnet.infura.io/v3/${this.infuraApiKey}`,
+        rpcUrl: this.infuraApiKey ? `https://optimism-mainnet.infura.io/v3/${this.infuraApiKey}` : 'https://mainnet.optimism.io',
         nativeToken: 'ETH',
         wrappedToken: '0x4200000000000000000000000000000000000006', // WETH
         flashLoanProvider: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave V3 Pool
@@ -288,7 +284,7 @@ class MultiChainArbitrageEngine {
         // Use static network definition to prevent noisy auto-detection errors
         const network = new ethers.Network(chainConfig.name, chainConfig.chainId);
         this.providers[chainKey] = new ethers.JsonRpcProvider(chainConfig.rpcUrl, network, { staticNetwork: true });
-        
+
         // Only create wallet if private key is available (for execution mode)
         if (this.privateKey) {
           this.wallets[chainKey] = new ethers.Wallet(this.privateKey, this.providers[chainKey]);

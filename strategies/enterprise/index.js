@@ -1,36 +1,10 @@
 /**
- * Enterprise Strategy Stub
+ * Alpha-Orion Enterprise Strategy Entry
  * 
- * This is a stub implementation that provides a fallback when the full
- * enterprise profit engine is not available.
+ * This file exports the real enterprise profit engine implementation.
+ * Updated: 2026-02-24
  */
 
-class EnterpriseProfitEngine {
-  constructor(multiChainEngine, mevRouter) {
-    this.multiChainEngine = multiChainEngine;
-    this.mevRouter = mevRouter;
-    this.name = 'EnterpriseProfitEngine';
-    this.strategies = [];
-    console.log('[EnterpriseProfitEngine] Initialized (STUB - no real strategies)');
-  }
-
-  initialize() {
-    console.log('[EnterpriseProfitEngine] Initialized with 0 strategies (stub mode)');
-  }
-
-  async generateProfitOpportunities() {
-    console.log('[EnterpriseProfitEngine] Generating profit opportunities (stub mode)');
-    return [];
-  }
-
-  async scanStrategy(strategyName) {
-    console.log(`[EnterpriseProfitEngine] Scanning strategy: ${strategyName} (stub mode)`);
-    return { success: false, reason: 'Not available in stub mode' };
-  }
-
-  calculateVaR() {
-    return 0;
-  }
-}
+const { EnterpriseProfitEngine } = require('./enterprise-profit-engine');
 
 module.exports = EnterpriseProfitEngine;
