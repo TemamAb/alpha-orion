@@ -138,13 +138,25 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
     fetchEngineStatus: async () => {
       try {
         const apiBase = useConfigStore.getState().apiUrl;
+        console.log('[EngineStatus] Fetching from:', `${apiBase}/api/engine/status`);
         const response = await fetch(`${apiBase}/api/engine/status`);
+        console.log('[EngineStatus] Response status:', response.status, response.statusText);
         if (response.ok) {
           const data = await response.json();
+          console.log('[EngineStatus] Engine running:', data.status === 'running');
           set({ isEngineRunning: data.status === 'running' });
+        } else {
+          console.warn('[EngineStatus] Failed, trying /mode/current fallback...');
+          // Fallback to /mode/current if /api/engine/status fails
+          const fallbackResponse = await fetch(`${apiBase}/mode/current`);
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            console.log('[EngineStatus] Fallback status:', fallbackData.data?.status);
+            set({ isEngineRunning: fallbackData.data?.status === 'healthy' });
+          }
         }
       } catch (error) {
-        console.error('Failed to fetch engine status:', error);
+        console.error('[EngineStatus] Error:', error);
       }
     },
 
@@ -152,17 +164,20 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
       try {
         set({ isLoading: { ...get().isLoading, health: true } });
         const apiBase = useConfigStore.getState().apiUrl;
+        console.log('[ActivateEngine] Starting engine at:', `${apiBase}/api/engine/start`);
         const response = await fetch(`${apiBase}/api/engine/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
+        console.log('[ActivateEngine] Response:', response.status, response.statusText);
         if (response.ok) {
           set({ isEngineRunning: true });
+          console.log('[ActivateEngine] Engine started successfully');
           return true;
         }
         return false;
       } catch (error) {
-        console.error('Failed to activate production engine:', error);
+        console.error('[ActivateEngine] Error:', error);
         return false;
       } finally {
         set({ isLoading: { ...get().isLoading, health: false } });

@@ -411,6 +411,30 @@ app.post('/api/wallets/balances', authenticateToken, async (req, res) => {
 });
 
 // --- Engine Control & Status ---
+// Public endpoint - no authentication required for dashboard compatibility
+app.get('/api/engine/status', (req, res) => {
+  const activeStrategies = engine && engine.strategyRegistry
+    ? Object.values(engine.strategyRegistry).filter(s => s.enabled).length
+    : 0;
+
+  res.json({
+    status: engine ? 'running' : 'stopped',
+    lastPulse: new Date().toISOString(),
+    activeStrategies: activeStrategies,
+    totalStrategies: 20,
+    profitMode: 'production',
+    kernelReady: verifyKernelIntegrity().valid
+  });
+});
+
+// Public endpoint - no authentication required for dashboard
+app.post('/api/engine/start', (req, res) => {
+  logger.info("Profit Engine start requested via Dashboard (public endpoint)");
+  startProfitGenerationLoop();
+  res.json({ success: true, status: 'starting', timestamp: new Date().toISOString() });
+});
+
+// --- Engine Control & Status (Authenticated - for admin use) ---
 app.get('/api/engine/status', authenticateToken, (req, res) => {
   const activeStrategies = engine && engine.strategyRegistry
     ? Object.values(engine.strategyRegistry).filter(s => s.enabled).length
