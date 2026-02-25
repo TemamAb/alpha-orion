@@ -1,9 +1,12 @@
 /**
- * Alpha-Orion Client Profit Engine — LIVE DATA EDITION
- *
- * All opportunity data comes from real on-chain prices via DEX Screener API.
- * Spreads are real price differences between DEXes for identical tokens.
- * PnL represents signal value (this is a signal generation platform — no private key).
+ * Alpha-Orion Client Profit Engine — LIVE REAL DATA EDITION
+ * 
+ * All data comes from real on-chain prices via DEX Screener API.
+ * NO fake PnL, NO fake calculations, NO mock numbers.
+ * 
+ * This is a SIGNAL GENERATION platform - shows real-time arbitrage opportunities.
+ * Actual trading requires wallet integration (not included for security).
+ * 
  * Prices sourced from: https://api.dexscreener.com (free, CORS-enabled, real DEX data)
  */
 
@@ -24,26 +27,23 @@ export interface LiveOpportunity {
 }
 
 export interface EngineStats {
-    totalPnl: number;
-    winRate: number;
-    totalTrades: number;
-    uptime: number;
+    totalPnl: number;        // ALWAYS 0 - we don't trade, we only generate signals
+    winRate: number;          // ALWAYS 0 - signals aren't executed
+    totalTrades: number;      // ALWAYS 0 - no actual trades
+    uptime: number;          // Real seconds since engine started
     systemStatus: 'active' | 'inactive';
     profitMode: string;
     activeConnections: number;
     lastPulse: string;
     pimlico: {
         status: 'active' | 'inactive';
-        totalGasSavings: number;
-        transactionsProcessed: number;
-        averageGasReduction: number;
+        totalGasSavings: number;      // ALWAYS 0 - no trades executed
+        transactionsProcessed: number; // ALWAYS 0 - no actual transactions
+        averageGasReduction: number;   // ALWAYS 0
     };
 }
 
 // ─── Known same-token multi-DEX pair groups on DEX Screener ───────────────────
-// Each group is the SAME token on DIFFERENT DEXes — so we can compare prices for REAL spreads.
-const PAIR_GROUPS = [
-    {
         label: 'WETH/USDC',
         chain: 'ethereum',
         chainLabel: 'Ethereum',
