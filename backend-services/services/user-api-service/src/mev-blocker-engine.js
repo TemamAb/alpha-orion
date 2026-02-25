@@ -13,7 +13,7 @@ class MEVBlockerEngine {
     this.isAvailable = false;
 
     if (!this.privateKey || !this.publicRpc) {
-      console.warn('[MEV Blocker] PRIVATE_KEY or ETHEREUM_RPC_URL not set - MEV Blocker disabled');
+      console.log('[MEV Blocker] Running in public/gasless mode (No private key provided)');
       return;
     }
 

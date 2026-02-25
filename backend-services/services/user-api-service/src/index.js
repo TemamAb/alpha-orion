@@ -1,13 +1,6 @@
 require('dotenv').config();
 const { ethers } = require('ethers');
 
-// Set default values for required env vars if not set (for development/free tier)
-// NOTE: Don't set REDIS_URL to empty string - let redis-client handle missing config gracefully
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-not-for-production';
-// DATABASE_URL and REDIS_URL should NOT have empty string defaults - they will be provided by Render
-
-console.log('Starting Alpha-Orion API Service...');
-
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
@@ -19,6 +12,11 @@ const logger = require('./logger');
 const pinoHttp = require('pino-http');
 const { pgPool, connectToDB } = require('./database');
 const { redisClient, redisSubscriber, connectRedis } = require('./redis-client');
+const axios = require('axios');
+
+// Error Notifier for real-time alerts via Telegram/Discord
+const { getErrorNotifier, errorHandlerMiddleware } = require('./error-notifier');
+const errorNotifier = getErrorNotifier();
 
 // Import the singleton manager for the main profit engine
 const { getProfitEngine } = require('./profit-engine-manager');
@@ -43,6 +41,8 @@ function verifyKernelIntegrity() {
 
   // Wallet mode detection using WALLET_ADDRESS (public address, no private keys)
   const hasWalletAddress = process.env.WALLET_ADDRESS && isValidEthAddress(process.env.WALLET_ADDRESS);
+  const hasPimlicoKey = !!process.env.PIMLICO_API_KEY;
+  const isDryRun = process.env.PROFIT_MODE === 'paper' || process.env.DRY_RUN === 'true';
   
   if (!process.env.POLYGON_RPC_URL) {
     warnings.push('POLYGON_RPC_URL not set - using default public RPC');
@@ -58,14 +58,32 @@ function verifyKernelIntegrity() {
     warnings.push('Variant Execution Kernel using stub - enterprise engine not fully loaded');
   }
 
+  // Production mode requirements: Wallet Address (for profits/monitoring) AND Pimlico Key (for execution)
+  // Private Key is explicitly NOT required for safety.
+  const isProductionReady = hasWalletAddress && hasPimlicoKey;
+
+  if (!hasWalletAddress) {
+      warnings.push('WALLET_ADDRESS not set - system running in signal-only mode');
+  }
+  if (!hasPimlicoKey && !isDryRun) {
+      warnings.push('PIMLICO_API_KEY not set - gasless execution disabled');
+  }
+
+  let currentMode = 'signals';
+  if (isDryRun) {
+      currentMode = 'paper';
+  } else if (isProductionReady) {
+      currentMode = 'production';
+  }
+
   return {
     valid: errors.length === 0,
-    mode: hasWalletAddress ? 'production' : 'signals',
+    mode: currentMode,
     errors,
     warnings,
     timestamp: new Date().toISOString(),
     strategiesActive: engine && engine.strategies ? Object.keys(engine.strategies).length : 0,
-    executionEnabled: hasWalletAddress,
+    executionEnabled: isProductionReady || isDryRun,
     walletAddress: process.env.WALLET_ADDRESS || null
   };
 }
@@ -122,6 +140,45 @@ wss.on('connection', (ws) => {
 app.use(cors());
 app.use(express.json());
 app.use(pinoHttp({ logger }));
+
+// --- AI Service Proxy Configuration ---
+// Proxies requests to the Python AI Service (Brain/Optimizer)
+// This allows the User API to act as a unified gateway for the frontend
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:5000';
+const AI_ROUTES = [
+    '/orchestrate',
+    '/signals',
+    '/scanner',
+    '/options-arbitrage',
+    '/perpetuals-arbitrage',
+    '/gamma-scalping',
+    '/delta-neutral',
+    '/advanced-risk',
+    '/regulatory-report',
+    '/apex-optimization'
+];
+
+const proxyToAiService = async (req, res) => {
+    try {
+        const targetUrl = `${AI_SERVICE_URL}${req.originalUrl}`;
+        const response = await axios({
+            method: req.method,
+            url: targetUrl,
+            data: req.body,
+            headers: { ...req.headers, host: new URL(AI_SERVICE_URL).host },
+            validateStatus: () => true // Pass all status codes back to client
+        });
+        res.status(response.status).set(response.headers).send(response.data);
+    } catch (error) {
+        logger.error(`AI Service Proxy Error: ${error.message}`);
+        res.status(502).json({ error: 'AI Service Unavailable', details: error.message });
+    }
+};
+
+// Register AI proxy routes
+AI_ROUTES.forEach(route => {
+    app.use(route, proxyToAiService);
+});
 
 // Auth Middleware - Works without real JWT
 const authenticateToken = (req, res, next) => {
@@ -184,10 +241,25 @@ app.get('/mode/current', (req, res) => {
   const activeStrategies = engine && engine.strategyRegistry
     ? Object.values(engine.strategyRegistry).filter(s => s.enabled).length  
     : 0;
+  
+  // Distinguish real engine from stub
+  const isRealEngine = engine && engine.name !== 'StubProfitEngine';
 
-res.json({
-success:true,
-data:{status:engine?'healthy':'warning',mode:stats.mode==='production'?'LIVE PRODUCTION':'SIGNAL MODE',uptime:Math.floor(process.uptime()),connections:activeStrategies,kernelReady:stats.valid,profitMode:stats.mode}});
+  let modeText = 'Signal Mode';
+  if (stats.mode === 'production') modeText = 'Production Mode Live';
+  else if (stats.mode === 'paper') modeText = 'Paper Trading Active';
+
+  res.json({
+    success: true,
+    data: {
+      status: isRealEngine ? 'Engine Active' : 'Stopped',
+      mode: modeText,
+      uptime: Math.floor(process.uptime()),
+      connections: activeStrategies,
+      kernelReady: stats.valid,
+      profitMode: stats.mode
+    }
+  });
 });
 
 // Dashboard: Real-time Stats - Works without Redis
@@ -212,7 +284,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
     // Get metrics from engine if available
     let engineMetrics = {};
     if (engine && typeof engine.getPerformanceMetrics === 'function') {
-      engineMetrics = engine.getPerformanceMetrics();
+      const metrics = engine.getPerformanceMetrics();
+      engineMetrics = metrics instanceof Promise ? await metrics : metrics;
     }
 
     const activeStrategies = engine && engine.strategies ? Object.keys(engine.strategies).length : 0;
@@ -249,7 +322,8 @@ app.get('/api/dashboard/mission-control', async (req, res) => {
     let metrics = { totalPnl: 0, totalTrades: 0, activeStrategies: 0 };
     try {
       if (engine && engine.getPerformanceMetrics) {
-        metrics = engine.getPerformanceMetrics();
+        const result = engine.getPerformanceMetrics();
+        metrics = result instanceof Promise ? await result : result;
       }
     } catch (e) { /* Engine not ready */ }
 
@@ -282,9 +356,8 @@ app.get('/api/dashboard/opportunities', async (req, res) => {
     } else {
       // No mock data - require launch button to generate real opportunities
       res.json({
-        message: 'No opportunities found. Use POST /api/launch to scan for opportunities.',
-        opportunities: [],
-        hint: 'Send POST request to /api/launch with { "mode": "scan" }'
+        message: 'No opportunities found. Engine is scanning...',
+        opportunities: []
       });
     }
   } catch (error) {
@@ -446,154 +519,6 @@ app.post('/api/admin/engine/stop', authenticateToken, (req, res) => {
   res.json({ status: 'stopping', timestamp: new Date().toISOString() });
 });
 
-// ============================================================
-// LAUNCH BUTTON ENDPOINT
-// Triggers the Variant Execution Kernel with all 20 strategies
-// ============================================================
-
-// Rate limiter for launch endpoint - prevent abuse
-const launchRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // limit each IP to 10 requests per windowMs
-  message: { error: 'Too many launch requests, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
-app.post('/api/launch', launchRateLimiter, authenticateToken, async (req, res) => {
-  // Only admins can trigger launch
-  const userRole = req.user.role || '';
-  if (userRole !== 'admin' && userRole !== 'super_admin' && req.user.username !== 'dev-user') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-
-  const { mode } = req.body; // 'scan' | 'execute' | 'full'
-  const validModes = ['scan', 'execute', 'full'];
-
-  if (!mode || !validModes.includes(mode)) {
-    return res.status(400).json({
-      error: 'Invalid mode',
-      validModes,
-      example: { mode: 'scan' }
-    });
-  }
-
-  logger.info(`🚀 LAUNCH BUTTON TRIGGERED: Mode=${mode}, User=${req.user.username}`);
-
-  try {
-    // 1. Verify kernel integrity before launch
-    const integrityCheck = verifyKernelIntegrity();
-
-    if (!integrityCheck.valid) {
-      logger.warn('[Launch] Kernel integrity check failed:', integrityCheck.errors);
-      return res.status(400).json({
-        error: 'Kernel integrity check failed',
-        details: integrityCheck
-      });
-    }
-
-    const results = {
-      timestamp: new Date().toISOString(),
-      mode,
-      kernelStatus: 'active',
-      strategiesActivated: 0,
-      opportunities: [],
-      execution: []
-    };
-
-    // 2. Scan for opportunities (always run for all modes)
-    if (mode === 'scan' || mode === 'full') {
-      logger.info('[Launch] Scanning for opportunities across all strategies...');
-
-      if (engine && typeof engine.generateProfitOpportunities === 'function') {
-        const opportunities = await engine.generateProfitOpportunities();
-        results.opportunities = opportunities;
-        results.strategiesActivated = opportunities.length > 0
-          ? [...new Set(opportunities.map(o => o.strategy))].length
-          : 0;
-
-        // Store in Redis
-        if (redisClient && redisClient.isReady) {
-          await redisClient.del('recent_opportunities');
-          for (const opp of opportunities.slice(0, 20)) {
-            await redisClient.lPush('recent_opportunities', JSON.stringify({
-              ...opp,
-              timestamp: new Date().toISOString()
-            }));
-          }
-
-          // Broadcast to connected clients
-          broadcast({
-            type: 'OPPORTUNITIES_UPDATED',
-            count: opportunities.length,
-            topOpportunity: opportunities[0] || null,
-            mode
-          });
-        }
-
-        logger.info(`[Launch] Found ${opportunities.length} opportunities from ${results.strategiesActivated} strategies`);
-      }
-    }
-
-    // 3. Execute top opportunities (only for execute or full mode)
-    if (mode === 'execute' || mode === 'full') {
-      logger.info('[Launch] Executing top opportunities...');
-
-      const topOpportunities = results.opportunities
-        .sort((a, b) => (b.mlScore || b.potentialProfit || 0) - (a.mlScore || a.potentialProfit || 0))
-        .slice(0, 5);
-
-      for (const opp of topOpportunities) {
-        try {
-          const executionResult = await engine.executeOptimizedTrade(opp);
-          results.execution.push({
-            opportunityId: opp.id,
-            strategy: opp.strategy,
-            status: executionResult.success ? 'confirmed' : 'failed',
-            hash: executionResult.transactionHash,
-            profit: executionResult.netProfit || 0,
-            timestamp: new Date().toISOString()
-          });
-        } catch (err) {
-          results.execution.push({
-            opportunityId: opp.id,
-            strategy: opp.strategy,
-            status: 'error',
-            message: err.message,
-            timestamp: new Date().toISOString()
-          });
-        }
-      }
-
-      logger.info(`[Launch] Execution cycle complete. ${results.execution.filter(e => e.status === 'confirmed').length} trades successful.`);
-    }
-
-    // 4. Store launch result in Redis
-    if (redisClient && redisClient.isReady) {
-      await redisClient.set('last_launch_result', JSON.stringify({
-        ...results,
-        timestamp: new Date().toISOString()
-      }), { EX: 3600 }); // Expire after 1 hour
-    }
-
-    // 5. Return success response
-    res.json({
-      status: 'success',
-      ...results,
-      message: mode === 'scan'
-        ? `Scanned ${results.strategiesActivated} strategies, found ${results.opportunities.length} opportunities`
-        : `Executed ${results.execution.length} opportunities`
-    });
-
-  } catch (error) {
-    logger.error({ err: error }, '[Launch] Launch failed');
-    res.status(500).json({
-      error: 'Launch failed',
-      details: error.message
-    });
-  }
-});
-
 // --- Kernel Status Endpoint ---
 app.get('/api/kernel/status', authenticateToken, (req, res) => {
   const integrity = verifyKernelIntegrity();
@@ -630,6 +555,15 @@ app.get('/api/wallets', authenticateToken, async (req, res) => {
 app.post('/api/wallets', authenticateToken, async (req, res) => {
   try {
     const newWallet = req.body;
+
+    // Validation
+    if (!newWallet.address || !newWallet.chain) {
+      return res.status(400).json({ error: 'Address and chain are required' });
+    }
+    if (!isValidEthAddress(newWallet.address)) {
+      return res.status(400).json({ error: 'Invalid Ethereum address' });
+    }
+
     const walletToAdd = { ...newWallet, id: Date.now().toString(), status: 'pending' };
     if (redisClient && redisClient.isOpen) {
       const wallets = JSON.parse(await redisClient.get('wallets_data') || '[]');
@@ -644,23 +578,161 @@ app.post('/api/wallets', authenticateToken, async (req, res) => {
   }
 });
 
+app.put('/api/wallets/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  try {
+    let updatedWallet = null;
+    if (redisClient && redisClient.isOpen) {
+      let wallets = JSON.parse(await redisClient.get('wallets_data') || '[]');
+      const index = wallets.findIndex(w => w.id === id);
+      if (index !== -1) {
+        wallets[index] = { ...wallets[index], ...updates };
+        updatedWallet = wallets[index];
+        await redisClient.set('wallets_data', JSON.stringify(wallets));
+      }
+    } else {
+      const index = inMemoryWallets.findIndex(w => w.id === id);
+      if (index !== -1) {
+        inMemoryWallets[index] = { ...inMemoryWallets[index], ...updates };
+        updatedWallet = inMemoryWallets[index];
+      }
+    }
+    
+    if (updatedWallet) {
+      res.json({ status: 'success', wallet: updatedWallet });
+    } else {
+      res.status(404).json({ error: 'Wallet not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update wallet' });
+  }
+});
+
+app.delete('/api/wallets/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (redisClient && redisClient.isOpen) {
+      let wallets = JSON.parse(await redisClient.get('wallets_data') || '[]');
+      wallets = wallets.filter(w => w.id !== id);
+      await redisClient.set('wallets_data', JSON.stringify(wallets));
+    } else {
+      inMemoryWallets = inMemoryWallets.filter(w => w.id !== id);
+    }
+    res.json({ status: 'success', message: 'Wallet deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete wallet' });
+  }
+});
+
 // --- Strategy & Benchmarking Metrics ---
 app.get('/api/dashboard/strategies', authenticateToken, async (req, res) => {
   try {
-    const [strategies, topPairs] = await Promise.all([
-      redisClient.get('strategy_metrics'),
-      redisClient.get('top_pairs_metrics')
-    ]);
+    // 1. Get all enabled strategies from the engine as the source of truth
+    const allStrategies = engine && engine.strategyRegistry
+      ? Object.keys(engine.strategyRegistry).filter(name => engine.strategyRegistry[name].enabled)
+      : [];
 
-    // In production, we do not hardcode shares.
-    // If Redis is empty, we return empty arrays or a "Scanning" state.
+    // NEW: Get performance metrics from the engine to merge with profit data
+    let performanceMetrics = {};
+    if (engine && typeof engine.getPerformanceMetrics === 'function') {
+      const metrics = await engine.getPerformanceMetrics();
+      performanceMetrics = metrics instanceof Promise ? await metrics : metrics;
+    }
+    const strategyPerformanceData = performanceMetrics.strategyPerformance || [];
+    const performanceMap = new Map(strategyPerformanceData.map(p => [p.strategy, p]));
+
+    // 2. Query the database for profit per strategy in the last 24 hours
+    const query = `
+      SELECT
+        strategy,
+        SUM(profit) as total_profit
+      FROM trades
+      WHERE status = 'confirmed' AND timestamp >= NOW() - INTERVAL '1 day'
+      GROUP BY strategy;
+    `;
+    const { rows } = await pgPool.query(query);
+
+    // 3. Process the results to calculate percentage contribution
+    const profitByStrategy = new Map(rows.map(row => [row.strategy, parseFloat(row.total_profit)]));
+    const grandTotalProfit = rows.reduce((sum, row) => sum + parseFloat(row.total_profit), 0);
+
+    // 4. Format the response, ensuring all 16 strategies are included
+    const strategyContributions = allStrategies.map(strategyName => {
+      const profit = profitByStrategy.get(strategyName) || 0;
+      const performance = performanceMap.get(strategyName) || { avgLatencyMs: 0, mevExposureRate: 0.00 };
+      const share = grandTotalProfit > 0 ? (profit / grandTotalProfit) * 100 : 0;
+      return {
+        // Format name for display, e.g., 'triangular_arbitrage' -> 'Triangular Arbitrage'
+        name: strategyName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        share: parseFloat(share.toFixed(2)),
+        // Add performance data
+        avgLatencyMs: parseInt(performance.avgLatencyMs, 10),
+        mevExposureRate: parseFloat(performance.mevExposureRate)
+      };
+    }).sort((a, b) => b.share - a.share); // Sort by highest contribution
+
+    // 5. Query for top pairs by profit
+    const pairsQuery = `
+      SELECT
+        details->>'pair' as pair_name,
+        SUM(profit) as total_profit
+      FROM trades
+      WHERE status = 'confirmed' AND timestamp >= NOW() - INTERVAL '1 day'
+      GROUP BY details->>'pair'
+      ORDER BY total_profit DESC
+      LIMIT 10;
+    `;
+    const { rows: pairRows } = await pgPool.query(pairsQuery);
+
+    const topPairs = pairRows.map(row => ({
+      name: row.pair_name || 'Multi-Hop',
+      profit: parseFloat(row.total_profit)
+    }));
+
+    // 6. Query for top chains by profit
+    const chainsQuery = `
+      SELECT
+        chain,
+        SUM(profit) as total_profit
+      FROM trades
+      WHERE status = 'confirmed' AND timestamp >= NOW() - INTERVAL '1 day'
+      GROUP BY chain
+      ORDER BY total_profit DESC;
+    `;
+    const { rows: chainRows } = await pgPool.query(chainsQuery);
+
+    const chains = chainRows.map(row => ({
+      name: row.chain ? row.chain.charAt(0).toUpperCase() + row.chain.slice(1) : 'Unknown',
+      profit: parseFloat(row.total_profit)
+    }));
+
+    // 7. Query for top DEXes by profit
+    const dexesQuery = `
+      SELECT
+        COALESCE(details->>'dex', details->>'exchange', 'Multi-DEX') as dex_name,
+        SUM(profit) as total_profit
+      FROM trades
+      WHERE status = 'confirmed' AND timestamp >= NOW() - INTERVAL '1 day'
+      GROUP BY COALESCE(details->>'dex', details->>'exchange', 'Multi-DEX')
+      ORDER BY total_profit DESC
+      LIMIT 10;
+    `;
+    const { rows: dexRows } = await pgPool.query(dexesQuery);
+
+    const dexes = dexRows.map(row => ({
+      name: row.dex_name,
+      profit: parseFloat(row.total_profit)
+    }));
+
     res.json({
-      strategies: JSON.parse(strategies || '[]'),
-      topPairs: JSON.parse(topPairs || '[]'),
-      chains: [], // Populated by real analytics
-      dexes: []   // Populated by real analytics
+      strategies: strategyContributions,
+      topPairs: topPairs,
+      chains: chains,
+      dexes: dexes
     });
   } catch (error) {
+    logger.error({ err: error }, 'DB Error fetching strategy metrics');
     res.status(500).json({ error: 'Failed to fetch strategy metrics' });
   }
 });
@@ -732,22 +804,6 @@ function getFallbackResponse(userInput) {
   }
 
   return `System is running in **LIVE PRODUCTION MODE**. How can I assist you with the active deployment?`;
-}
-
-const dashboardDistPath = path.join(__dirname, '..', '..', '..', '..', 'dashboard', 'dist');
-const fs = require('fs');
-if (fs.existsSync(dashboardDistPath)) {
-  app.use(express.static(dashboardDistPath));
-  app.get('*', (req, res, next) => {
-    if (req.method !== 'GET') return next();
-    if (req.headers.accept && !req.headers.accept.includes('text/html')) return next();
-    const indexPath = path.join(dashboardDistPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      next();
-    }
-  });
 }
 
 // --- Background Profit Generation & Execution Loop ---
@@ -833,13 +889,10 @@ if (fs.existsSync(dashboardPath)) {
   logger.info(`📊 Serving dashboard from: ${dashboardPath}`);
   app.use(express.static(dashboardPath));
 
-  // SPA fallback: any non-API route gets index.html
+  // SPA fallback: for any GET request that doesn't match a previous API route or a static file,
+  // send the main index.html file. This enables client-side routing.
   app.get('*', (req, res) => {
-    // Don't intercept /api/* or /health or /mode/* routes (they're handled above)
-    if (req.path.startsWith('/api/') || req.path === '/health' || req.path.startsWith('/mode/')) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    res.sendFile(path.join(dashboardPath, 'index.html'));
+    res.sendFile(path.resolve(dashboardPath, 'index.html'));
   });
 } else {
   logger.warn(`⚠️  Dashboard build not found at ${dashboardPath} — serving API only`);
@@ -872,6 +925,18 @@ const start = async () => {
     // Start the profit engine loop
     startProfitGenerationLoop();
 
+    // ============================================================
+    // Error Handling Middleware
+    // ============================================================
+    
+    // 404 handler
+    app.use((req, res, next) => {
+      res.status(404).json({ error: 'Not found', path: req.path });
+    });
+    
+    // Global error handler (must be last)
+    app.use(errorHandlerMiddleware);
+    
     server.listen(PORT, () => {
       logger.info(`🚀 User API Service with WebSocket server running on port ${PORT}`);
     });

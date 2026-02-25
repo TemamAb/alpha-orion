@@ -72,10 +72,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
         # API Endpoints - Proxy to Backend
         api_prefixes = [
-            '/analytics', '/trades', '/opportunities', '/mode', '/pimlico', '/health',
+            '/api', '/analytics', '/trades', '/opportunities', '/mode', '/pimlico', '/health',
             '/orchestrate', '/signals', '/scanner', '/options-arbitrage', 
             '/perpetuals-arbitrage', '/gamma-scalping', '/delta-neutral', '/advanced-risk',
-            '/copilot'
+            '/copilot', '/apex-optimization'
         ]
         if any(self.path.startswith(p) for p in api_prefixes):
             self.handle_api_request()

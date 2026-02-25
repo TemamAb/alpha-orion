@@ -13,26 +13,6 @@ import requests
 import sys
 import time
 
-# Sentry SDK for error tracking
-import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-
-# Initialize Sentry if DSN is provided
-SENTRY_DSN = os.getenv('SENTRY_DSN')
-if SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        integrations=[
-            FlaskIntegration(),
-            LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
-        ],
-        traces_sample_rate=0.1,
-        environment=os.getenv('NODE_ENV', 'production'),
-        release=f'alpha-orion@2.1.0'
-    )
-    print(f"✅ Sentry initialized for environment: {os.getenv('NODE_ENV', 'production')}")
-
 # Add the benchmarking tracker
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../..'))
 from benchmarking_tracker import ApexBenchmarker
@@ -48,6 +28,46 @@ try:
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
+
+# Dead Letter Queue for failed task processing
+try:
+    from dead_letter_queue import DeadLetterQueue, DLQProcessor, create_dlq_from_redis_url
+    DLQ_AVAILABLE = True
+except ImportError:
+    DLQ_AVAILABLE = False
+    print("⚠️  DLQ module not available - failed tasks will not be tracked")
+
+# Error Notifier for real-time alerts via Telegram/Discord
+try:
+    from error_notifier import ErrorNotifier, get_error_notifier, notify_error
+    ERROR_NOTIFIER_AVAILABLE = True
+except ImportError:
+    ERROR_NOTIFIER_AVAILABLE = False
+    print("⚠️  Error Notifier module not available - error notifications disabled")
+
+# Initialize Error Notifier
+error_notifier = None
+if ERROR_NOTIFIER_AVAILABLE:
+    try:
+        error_notifier = get_error_notifier()
+        print("✅ Error Notifier initialized")
+    except Exception as e:
+        print(f"⚠️  Failed to initialize Error Notifier: {e}")
+
+# Initialize DLQ if Redis is available
+dead_letter_queue = None
+if REDIS_AVAILABLE and DLQ_AVAILABLE:
+    REDIS_URL = os.getenv('REDIS_URL')
+    if REDIS_URL:
+        try:
+            dead_letter_queue = create_dlq_from_redis_url(
+                REDIS_URL,
+                max_retries=int(os.getenv('DLQ_MAX_RETRIES', '3')),
+                retry_delay=float(os.getenv('DLQ_RETRY_DELAY', '5.0'))
+            )
+            print("✅ Dead Letter Queue initialized successfully")
+        except Exception as e:
+            print(f"⚠️  Failed to initialize DLQ: {e}")
 
 # Configure logging
 class JsonFormatter(logging.Formatter):
@@ -68,6 +88,41 @@ logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 CORS(app)
+
+# ============================
+# Error Handlers with Notifications
+# ============================
+
+def send_error_notification(error, context=None):
+    """Send error notification if error notifier is available."""
+    if error_notifier and ERROR_NOTIFIER_AVAILABLE:
+        try:
+            error_notifier.notify(error, context)
+        except Exception as e:
+            logger.error(f"Failed to send error notification: {e}")
+
+@app.errorhandler(404)
+def not_found_error(error):
+    """Handle 404 errors."""
+    logger.warning(f"404 Not Found: {request.path}")
+    return jsonify({"error": "Resource not found", "path": request.path}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 internal server errors."""
+    logger.error(f"500 Internal Server Error: {error}")
+    send_error_notification(error, {"type": "500_error", "path": request.path})
+    return jsonify({"error": "Internal server error"}), 500
+
+# Register unhandled exception handler
+def unhandled_exception_handler(e):
+    """Handle unhandled exceptions."""
+    logger.error(f"Unhandled exception: {e}")
+    send_error_notification(e, {"type": "unhandled_exception"})
+
+if not app.debug:
+    import sys
+    sys.excepthook = unhandled_exception_handler
 
 # JWT_SECRET will be initialized after get_secret function
 JWT_SECRET = None
@@ -1224,9 +1279,104 @@ def record_benchmark_metric():
 # --- HOTFIX: Added by Deployment Script ---
 def setup_routes():
     app.logger.info('Setting up routes (Hotfix Applied)')
+    
     @app.route('/health')
     def health_check():
         return {'status': 'healthy', 'service': 'brain-orchestrator'}, 200
+    
+    # --- Dead Letter Queue Management Endpoints ---
+    @app.route('/dlq/status', methods=['GET'])
+    def dlq_status():
+        """Get DLQ status and statistics."""
+        if not dead_letter_queue:
+            return {
+                'status': 'unavailable',
+                'message': 'DLQ not initialized - Redis may not be available'
+            }, 503
+        
+        try:
+            stats = dead_letter_queue.get_queue_stats()
+            return {
+                'status': 'available',
+                'stats': stats
+            }, 200
+        except Exception as e:
+            return {'error': str(e)}, 500
+    
+    @app.route('/dlq/messages', methods=['GET'])
+    def dlq_messages():
+        """Get messages from the Dead Letter Queue."""
+        if not dead_letter_queue:
+            return {'error': 'DLQ not available'}, 503
+        
+        try:
+            limit = request.args.get('limit', 100, type=int)
+            offset = request.args.get('offset', 0, type=int)
+            messages = dead_letter_queue.get_dlq_messages(limit=limit, offset=offset)
+            return {
+                'count': len(messages),
+                'messages': messages
+            }, 200
+        except Exception as e:
+            return {'error': str(e)}, 500
+    
+    @app.route('/dlq/retry/<message_id>', methods=['POST'])
+    def dlq_retry(message_id):
+        """Retry a specific message from the DLQ."""
+        if not dead_letter_queue:
+            return {'error': 'DLQ not available'}, 503
+        
+        try:
+            queue_name = request.json.get('queue', 'default') if request.json else 'default'
+            success = dead_letter_queue.retry_dlq_message(message_id, queue_name)
+            if success:
+                return {'message': f'Message {message_id} retried successfully'}, 200
+            else:
+                return {'error': f'Message {message_id} not found in DLQ'}, 404
+        except Exception as e:
+            return {'error': str(e)}, 500
+    
+    @app.route('/dlq/clear', methods=['POST'])
+    @require_auth
+    def dlq_clear():
+        """Clear all messages from the DLQ (requires authentication)."""
+        if not dead_letter_queue:
+            return {'error': 'DLQ not available'}, 503
+        
+        try:
+            count = dead_letter_queue.clear_dlq()
+            return {
+                'message': f'DLQ cleared successfully',
+                'cleared_count': count
+            }, 200
+        except Exception as e:
+            return {'error': str(e)}, 500
+    
+    @app.route('/dlq/enqueue', methods=['POST'])
+    @require_auth
+    def dlq_enqueue():
+        """Enqueue a new task to the processing queue."""
+        if not dead_letter_queue:
+            return {'error': 'DLQ not available'}, 503
+        
+        try:
+            data = request.json
+            if not data:
+                return {'error': 'No payload provided'}, 400
+            
+            queue_name = data.get('queue', 'default')
+            priority = data.get('priority', 0)
+            message_id = dead_letter_queue.enqueue(
+                data.get('payload', {}),
+                queue_name=queue_name,
+                priority=priority
+            )
+            return {
+                'message': 'Task enqueued successfully',
+                'message_id': message_id
+            }, 201
+        except Exception as e:
+            return {'error': str(e)}, 500
 
 setup_routes()
 

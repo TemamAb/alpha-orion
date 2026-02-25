@@ -21,7 +21,7 @@ class MEVRouter {
     }
 
     if (!privateKey) {
-      console.warn('[MEV Router] PRIVATE_KEY not set - MEV features disabled');
+      console.log('[MEV Router] Running in public/gasless mode (No private key provided)');
       return;
     }
 

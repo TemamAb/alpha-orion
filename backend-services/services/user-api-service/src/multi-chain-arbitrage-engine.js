@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { ethers } = require('ethers');
 const flashLoanExecutorAbi = require('./abi/V08_Elite_FlashArbExecutor.json');
+const { pgPool } = require('./database');
 
 // Minimal Router ABI for getAmountsOut
 const ROUTER_ABI = [
@@ -172,6 +173,14 @@ class MultiChainArbitrageEngine {
   constructor(mevRouter) {
     this.mevRouter = mevRouter;
     this.infuraApiKey = process.env.INFURA_API_KEY;
+
+    // Check for Paper Trading / Dry Run Mode
+    this.dryRun = process.env.PROFIT_MODE === 'paper' || process.env.DRY_RUN === 'true';
+    if (this.dryRun) {
+        console.log("============================================================");
+        console.log("🟢 PAPER TRADING MODE ACTIVE - No real transactions will be sent.");
+        console.log("============================================================");
+    }
 
     // Wallet configuration - Signal Generation Mode (no private key required)
     // This system generates arbitrage signals for external executors/relayers
@@ -887,6 +896,31 @@ class MultiChainArbitrageEngine {
 
     console.log(`[MultiChainArbitrageEngine] Executing ${opportunity.strategy} on ${chain.name} for opportunity ${opportunity.id}`);
 
+    // PAPER TRADING INTERCEPTION
+    if (this.dryRun) {
+        console.log(`[PaperTrade] Simulating execution of ${opportunity.strategy} on ${chain.name}`);
+        
+        // Simulate network latency (1-3 seconds)
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+
+        // Create a mock success result
+        const mockResult = {
+            transactionHash: `0x-paper-${Date.now()}-${Math.floor(Math.random()*10000)}`,
+            status: 'confirmed',
+            gasUsed: '150000',
+            profit: opportunity.potentialProfit,
+            executionTime: 1500,
+            isGasless: this.pimlicoEngine && (chainKey === 'polygon' || chainKey === 'polygon-zkevm'),
+            mevProtected: true,
+            strategy: opportunity.strategy,
+            timestamp: Date.now()
+        };
+
+        // Log and record the simulated trade
+        await this.analyzeExecutionResult(opportunity, mockResult);
+        return mockResult;
+    }
+
     if (!this.contracts[chainKey]) {
       throw new Error(`No flash loan contract configured for ${chain.name}`);
     }
@@ -924,6 +958,7 @@ class MultiChainArbitrageEngine {
   // OPTIMIZED CROSS-DEX EXECUTION using V08-Elite Kernel
   async executeCrossDexArbitrage(opportunity) {
     const chainKey = opportunity.chain;
+    const startTime = Date.now();
 
     // Construct Path
     // [TokenA, TokenB]
@@ -973,7 +1008,8 @@ class MultiChainArbitrageEngine {
         status: 'submitted',
         gasUsed: '0', // Gasless for EOA
         profit: opportunity.potentialProfit,
-        isGasless: true
+        isGasless: true,
+        executionTime: Date.now() - startTime
       };
     } else {
       // Standard EOA Execution
@@ -993,7 +1029,8 @@ class MultiChainArbitrageEngine {
         transactionHash: tx.hash,
         status: receipt.status === 1 ? 'confirmed' : 'failed',
         gasUsed: receipt.gasUsed.toString(),
-        profit: opportunity.potentialProfit
+        profit: opportunity.potentialProfit,
+        executionTime: Date.now() - startTime
       };
     }
   }
@@ -1002,6 +1039,7 @@ class MultiChainArbitrageEngine {
   // TRIANGULAR ARBITRAGE EXECUTION using V08-Elite Kernel
   async executeTriangularArbitrage(opportunity) {
     const chainKey = opportunity.chain;
+    const startTime = Date.now();
 
     // Triangular uses the SAME router (usually) or a mix.
     // Opportunity.path: [A, B, C, A]
@@ -1034,7 +1072,8 @@ class MultiChainArbitrageEngine {
         transactionHash: userOpHash,
         status: 'submitted',
         profit: opportunity.potentialProfit,
-        isGasless: true
+        isGasless: true,
+        executionTime: Date.now() - startTime
       };
     } else {
       const tx = await this.contracts[chainKey].executeFlashArbitrage(
@@ -1052,7 +1091,8 @@ class MultiChainArbitrageEngine {
       return {
         transactionHash: tx.hash,
         status: receipt.status === 1 ? 'confirmed' : 'failed',
-        profit: opportunity.potentialProfit
+        profit: opportunity.potentialProfit,
+        executionTime: Date.now() - startTime
       };
     }
   }
@@ -1148,7 +1188,8 @@ class MultiChainArbitrageEngine {
   // HIGH-VELOCITY BATCH EXECUTION
   // Execute multiple arbitrage opportunities in a single transaction to maximize daily volume
   async executeBatchArbitrage(opportunities, chainKey, dryRun = false) {
-    console.log(`[Batch-Velocity] Preparing batch of ${opportunities.length} trades for ${chainKey} (DryRun: ${dryRun})...`);
+    const isSimulation = dryRun || this.dryRun;
+    console.log(`[Batch-Velocity] Preparing batch of ${opportunities.length} trades for ${chainKey} (DryRun: ${isSimulation})...`);
 
     // velocity check: ensure total volume > $100k to justify batch gas
     const totalVolume = opportunities.reduce((acc, opp) => acc + opp.loanAmount, 0n); // Simplified check
@@ -1164,7 +1205,7 @@ class MultiChainArbitrageEngine {
     }));
 
     try {
-      if (dryRun) {
+      if (isSimulation) {
         // Dry Run: Calculate theoretical profit based on real quotes
         const theoreticalProfit = opportunities.reduce((acc, opp) => acc + (opp.expectedProfit || 0), 0);
         console.log(`[Batch-Velocity] Dry Run Executed! Theoretical Profit: ${theoreticalProfit} ETH`);
@@ -1247,16 +1288,21 @@ class MultiChainArbitrageEngine {
 
   // POST-EXECUTION ANALYSIS FOR CONTINUOUS IMPROVEMENT
   async analyzeExecutionResult(opportunity, result) {
+    const gasUsed = parseInt(result.gasUsed || '0');
+    const gasCostUSD = gasUsed * 0.00000005; // Approximate
+    const netProfit = (result.profit || 0) - gasCostUSD;
+
     const analysis = {
       opportunityId: opportunity.id,
       strategy: opportunity.strategy,
       chain: opportunity.chain,
-      profit: result.profit,
-      gasUsed: parseInt(result.gasUsed),
+      profit: result.profit || 0,
+      gasUsed: gasUsed,
       executionTime: result.executionTime,
-      gasCostUSD: (parseInt(result.gasUsed) * 0.00000005), // Approximate
-      netProfit: result.profit - (parseInt(result.gasUsed) * 0.00000005),
+      gasCostUSD: gasCostUSD,
+      netProfit: netProfit,
       success: result.status === 'confirmed',
+      mevProtected: result.mevProtected || false,
       timestamp: Date.now()
     };
 
@@ -1265,12 +1311,16 @@ class MultiChainArbitrageEngine {
       this.performanceMetrics.totalTrades++;
       this.performanceMetrics.successfulTrades++;
       this.performanceMetrics.totalProfit = this.performanceMetrics.totalProfit + BigInt(Math.floor(analysis.netProfit * 1e18));
+    } else if (result.status !== 'dry_run') { // Don't count dry runs as failed trades
+        this.performanceMetrics.totalTrades++;
     }
 
-    this.performanceMetrics.executionTimes.push(analysis.executionTime);
-    this.performanceMetrics.timestamps.push(analysis.timestamp); // Track time for velocity calc
-    this.performanceMetrics.gasCosts.push(analysis.gasCostUSD);
-    this.performanceMetrics.profits.push(analysis.netProfit);
+    if (result.status !== 'dry_run') {
+      this.performanceMetrics.executionTimes.push(analysis.executionTime);
+      this.performanceMetrics.timestamps.push(analysis.timestamp); // Track time for velocity calc
+      this.performanceMetrics.gasCosts.push(analysis.gasCostUSD);
+      this.performanceMetrics.profits.push(analysis.netProfit);
+    }
 
     // Keep only last 1000 records for analysis
     if (this.performanceMetrics.executionTimes.length > 1000) {
@@ -1282,10 +1332,70 @@ class MultiChainArbitrageEngine {
 
     // Structured Logging (JSON)
     console.log(JSON.stringify({
-      severity: analysis.success ? 'INFO' : 'ERROR',
-      message: `Execution ${analysis.success ? 'Success' : 'Failed'}: $${analysis.netProfit.toFixed(2)}`,
+      severity: analysis.success ? 'INFO' : (result.status === 'dry_run' ? 'DEBUG' : 'ERROR'),
+      message: `Execution ${result.status}: $${analysis.netProfit.toFixed(2)}`,
       ...analysis
     }));
+
+    // Record the trade to PostgreSQL if it's not a dry run
+    if (result.status !== 'dry_run') {
+      await this.recordTrade(opportunity, result, analysis);
+    }
+  }
+
+  /**
+   * Records the result of an executed trade to the PostgreSQL database.
+   * @param {object} opportunity - The original opportunity object.
+   * @param {object} result - The result from the execution method.
+   * @param {object} analysis - The result from the post-execution analysis.
+   */
+  async recordTrade(opportunity, result, analysis) {
+    if (!pgPool) {
+      console.warn('[MultiChainArbitrageEngine] pgPool not available. Skipping trade recording.');
+      return;
+    }
+
+    try {
+      const query = `
+        INSERT INTO trades (chain, strategy, status, profit, transaction_hash, gas_cost, loan_amount, details)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id;
+      `;
+
+      const mapStatus = (status) => {
+        switch (status) {
+          case 'confirmed': return 'confirmed';
+          case 'submitted': return 'pending';
+          default: return 'failed';
+        }
+      };
+
+      const loanAmount = opportunity.loanAmount ? opportunity.loanAmount.toString() : '0';
+      
+      const details = {
+        opportunityId: opportunity.id,
+        assets: opportunity.assets,
+        path: opportunity.path,
+        exchanges: opportunity.exchanges,
+        riskLevel: opportunity.riskLevel,
+        confidence: opportunity.confidence,
+        isGasless: result.isGasless || false,
+        isMevProtected: result.mevProtected || false,
+        executionTimeMs: analysis.executionTime,
+        ...(opportunity.metadata || {})
+      };
+
+      const values = [
+        opportunity.chain, opportunity.strategy, mapStatus(result.status),
+        analysis.netProfit || 0, result.transactionHash, analysis.gasCostUSD || 0,
+        loanAmount, details
+      ];
+
+      const res = await pgPool.query(query, values);
+      console.log(`[MultiChainArbitrageEngine] Recorded trade ${res.rows[0].id} to PostgreSQL.`);
+    } catch (error) {
+      console.error('[MultiChainArbitrageEngine] Failed to record trade to PostgreSQL:', error.message);
+    }
   }
 
   // FAILURE ANALYSIS AND RECOVERY
@@ -1309,7 +1419,109 @@ class MultiChainArbitrageEngine {
   }
 
   // REAL-TIME PERFORMANCE METRICS (INDUSTRY STANDARD KPI ENGINE)
-  getPerformanceMetrics() {
+  async getPerformanceMetrics() {
+    if (!pgPool) {
+      return this._getPerformanceMetricsInMemory();
+    }
+
+    try {
+      // 1. Aggregate Stats
+      const statsQuery = `
+        SELECT
+          COUNT(*) as total_trades,
+          COUNT(*) FILTER (WHERE status = 'confirmed') as successful_trades,
+          COALESCE(SUM(profit), 0) as total_profit,
+          COALESCE(AVG(gas_cost), 0) as avg_gas_cost,
+          COALESCE(AVG(CAST(details->>'executionTimeMs' AS NUMERIC)), 0) as avg_latency
+        FROM trades
+        WHERE status != 'dry_run'
+      `;
+
+      // 2. Window Stats (Last 1000 trades for velocity)
+      const windowQuery = `
+        WITH window_trades AS (
+          SELECT timestamp, profit
+          FROM trades
+          WHERE status != 'dry_run'
+          ORDER BY timestamp DESC
+          LIMIT 1000
+        )
+        SELECT
+          COUNT(*) as window_count,
+          COALESCE(SUM(profit), 0) as window_profit,
+          EXTRACT(EPOCH FROM (MAX(timestamp) - MIN(timestamp))) / 3600 as window_hours
+        FROM window_trades
+      `;
+
+      // 3. Profit Distribution
+      const distQuery = `
+        SELECT
+          percentile_cont(0.25) WITHIN GROUP (ORDER BY profit) as p25,
+          percentile_cont(0.50) WITHIN GROUP (ORDER BY profit) as p50,
+          percentile_cont(0.75) WITHIN GROUP (ORDER BY profit) as p75,
+          percentile_cont(0.95) WITHIN GROUP (ORDER BY profit) as p95
+        FROM trades
+        WHERE status = 'confirmed'
+      `;
+
+      // 4. Strategy Performance (Latency & MEV Exposure)
+      const strategyQuery = `
+        SELECT
+          strategy,
+          AVG(CAST(COALESCE(details->>'executionTimeMs', '0') AS NUMERIC)) as avg_latency,
+          COUNT(*) FILTER (WHERE (details->>'isMevProtected')::boolean IS NOT TRUE) as exposed_trades,
+          COUNT(*) as total_trades
+        FROM trades
+        WHERE status = 'confirmed'
+        GROUP BY strategy
+      `;
+
+      const [statsRes, windowRes, distRes, strategyRes] = await Promise.all([
+        pgPool.query(statsQuery),
+        pgPool.query(windowQuery),
+        pgPool.query(distQuery),
+        pgPool.query(strategyQuery)
+      ]);
+
+      const stats = statsRes.rows[0];
+      const window = windowRes.rows[0];
+      const dist = distRes.rows[0] || {};
+      const strategyStats = strategyRes.rows;
+
+      const totalTrades = parseInt(stats.total_trades || 0);
+      const successfulTrades = parseInt(stats.successful_trades || 0);
+      const timeWindowHours = Math.max(parseFloat(window.window_hours || 0), 0.001);
+      const hourlyYield = parseFloat(window.window_profit || 0) / timeWindowHours;
+
+      return {
+        totalOps: totalTrades,
+        alphaCaptureRate: totalTrades > 0 ? successfulTrades / totalTrades : 0,
+        totalYield: parseFloat(stats.total_profit),
+        hourlyYield: hourlyYield.toFixed(4),
+        projected24hYield: (hourlyYield * 24).toFixed(4),
+        executionLatencyMs: parseFloat(stats.avg_latency).toFixed(0),
+        alphaVelocity: (parseInt(window.window_count || 0) / timeWindowHours).toFixed(1),
+        averageGasCost: parseFloat(stats.avg_gas_cost),
+        profitDistribution: {
+          p25: parseFloat(dist.p25 || 0),
+          p50: parseFloat(dist.p50 || 0),
+          p75: parseFloat(dist.p75 || 0),
+          p95: parseFloat(dist.p95 || 0)
+        },
+        strategyPerformance: strategyStats.map(row => ({
+          strategy: row.strategy,
+          avgLatencyMs: parseFloat(row.avg_latency || 0).toFixed(0),
+          mevExposureRate: parseInt(row.total_trades) > 0 ? (parseInt(row.exposed_trades) / parseInt(row.total_trades)).toFixed(2) : '0.00',
+          totalTrades: parseInt(row.total_trades)
+        }))
+      };
+    } catch (error) {
+      console.error('[MultiChainArbitrageEngine] DB Metrics Error:', error.message);
+      return this._getPerformanceMetricsInMemory();
+    }
+  }
+
+  _getPerformanceMetricsInMemory() {
     const totalTrades = this.performanceMetrics.totalTrades;
     const successfulTrades = this.performanceMetrics.successfulTrades;
     const executionTimes = this.performanceMetrics.executionTimes;

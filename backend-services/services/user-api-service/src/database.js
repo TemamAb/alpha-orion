@@ -1,4 +1,6 @@
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 const logger = require('./logger');
 
 const pgPool = new Pool({
@@ -17,6 +19,14 @@ const connectToDB = async () => {
     // This is a good place to run a single query to check the connection.
     await pgPool.query('SELECT NOW()');
     logger.info('Successfully connected to PostgreSQL');
+
+    // Initialize Schema and Indexes
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+      await pgPool.query(schemaSql);
+      logger.info('Database schema and indexes verified');
+    }
   } catch (e) {
     logger.error({ err: e }, 'Failed to connect to PostgreSQL on startup.');
   }

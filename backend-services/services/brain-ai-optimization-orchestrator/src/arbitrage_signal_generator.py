@@ -179,27 +179,25 @@ class ArbitrageScanner:
     
     # Supported tokens
     TOKENS = {
-        'WETH': '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-        'USDC': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-        'USDT': '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-        'DAI': '0x6B175474E89094C44Da98b954EedeAC495271d0F',
-        'WBTC': '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+        'WETH': '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+        'USDC': '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+        'USDT': '0xdac17f958d2ee523a2206206994597c13d831ec7',
+        'DAI': '0x6b175474e89094c44da98b954eedeac495271d0f',
+        'WBTC': '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',
+        'ARB': '0x912ce59144191c1204e64559fe8253a0e49e6548',
+        'OP': '0x4200000000000000000000000000000000000042',
+        'LINK': '0x514910771af9ca656af840dff83e8264ecf986ca',
+        'UNI': '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+        'AAVE': '0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9',
     }
     
     # Supported DEXes
     DEXES = {
-        'uniswap_v2': {
-            'router': '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
-            'factory': '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
-        },
-        'uniswap_v3': {
-            'router': '0x68b3465833fb72B5a828cCEd3294e3e6962E3786',
-            'factory': '0x1F98431c8aC98597336d07217c6D0B8D8B0a7a8'
-        },
-        'sushiswap': {
-            'router': '0xd9e1cE17f2641f24aE5D51AEe6325DAA6F3Dcf45',
-            'factory': '0xC0AEe478e3658e2610c5F753A278b1B6B739aab5'
-        }
+        # This map is now less critical as we fetch from an aggregator,
+        # but can be used for mapping DEX IDs to router addresses later.
+        'uniswap_v2': {'router': '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'},
+        'uniswap_v3': {'router': '0x68b3465833fb72B5a828cCEd3294e3e6962E3786'},
+        'sushiswap': {'router': '0xd9e1cE17f2641f24aE5D51AEe6325DAA6F3Dcf45'}
     }
     
     def __init__(self):
@@ -213,6 +211,15 @@ class ArbitrageScanner:
         # Current prices cache
         self.current_prices: Dict[str, Dict[str, float]] = {}
         
+        # Chain mapping for DEX Screener
+        self.CHAINS = {
+            'ethereum': 'ethereum',
+            'polygon': 'polygon',
+            'arbitrum': 'arbitrum',
+            'optimism': 'optimism',
+            'base': 'base',
+            'bsc': 'bsc'
+        }
         logger.info("ArbitrageScanner initialized")
     
     async def start(self):
@@ -234,46 +241,6 @@ class ArbitrageScanner:
         """Stop the scanning loop"""
         self.is_running = False
         logger.info("ArbitrageScanner stopped")
-    
-    async def fetch_prices(self, dex_name: str, token_pair: str) -> Dict[str, float]:
-        """
-        Fetch current prices from a DEX.
-        In production, use actual DEX APIs or on-chain calls.
-        """
-        # Placeholder - replace with real price fetching
-        # In production:
-        # router = web3.eth.contract(address=router_address, abi=UNISWAP_ROUTER_ABI)
-        # amounts = router.functions.getAmountsOut(amount_in, path).call()
-        
-        base = np.random.uniform(1800, 2200)  # ETH price simulation
-        token_in, token_out = token_pair.split('/')
-        
-        # Add some noise to simulate different DEX prices
-        noise = np.random.randn() * 0.001
-        
-        prices = {
-            token_in: base * (1 + noise),
-            token_out: base * (1 + noise + np.random.uniform(0.001, 0.02))
-        }
-        
-        return prices
-    
-    async def calculate_spread(
-        self,
-        dex1_prices: Dict[str, float],
-        dex2_prices: Dict[str, float],
-        token_in: str,
-        token_out: str
-    ) -> float:
-        """Calculate spread between two DEXs in basis points"""
-        price1 = dex1_prices.get(token_out, 0) / dex1_prices.get(token_in, 1)
-        price2 = dex2_prices.get(token_out, 0) / dex2_prices.get(token_in, 1)
-        
-        if price1 == 0 or price2 == 0:
-            return 0
-        
-        spread = (price1 - price2) / price2 * 10000  # in bps
-        return spread
     
     async def estimate_liquidity(self, token_pair: str, dex_name: str) -> float:
         """
@@ -339,54 +306,85 @@ class ArbitrageScanner:
         
         return base_risk
     
-    async def scan_pair(
-        self,
-        token_in: str,
-        token_out: str,
-        dex1_name: str,
-        dex2_name: str
-    ) -> Optional[ArbitrageSignal]:
-        """Scan a single token pair on two DEXs"""
+    async def fetch_prices_from_screener(self, chain_name: str, base_token: str, quote_token: str) -> List[Dict]:
+        """Fetch prices for a token pair from DEX Screener API."""
+        dex_screener_chain = self.CHAINS.get(chain_name)
+        if not dex_screener_chain:
+            return []
+
+        search_query = f"{base_token} {quote_token}"
+        url = f"https://api.dexscreener.com/latest/dex/search?q={search_query}"
         
-        # Fetch prices from both DEXs
-        prices_dex1 = await self.fetch_prices(dex1_name, f"{token_in}/{token_out}")
-        prices_dex2 = await self.fetch_prices(dex2_name, f"{token_in}/{token_out}")
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=10) as response:
+                    if response.status != 200:
+                        logger.warning(f"DEX Screener API returned status {response.status} for {search_query}")
+                        return []
+                    
+                    data = await response.json()
+                    
+                    if not data or not data.get('pairs'):
+                        return []
+
+                    # Filter for the correct chain and ensure price is available
+                    relevant_pairs = [
+                        p for p in data['pairs'] 
+                        if p.get('chainId') == dex_screener_chain and p.get('priceUsd')
+                    ]
+                    return relevant_pairs
+        except Exception as e:
+            logger.error(f"Error fetching from DEX Screener for {search_query} on {chain_name}: {e}")
+            return []
+
+    async def scan_pair_on_chain(self, chain_name: str, token_in_symbol: str, token_out_symbol: str) -> List[ArbitrageSignal]:
+        """Scans a single token pair on a given chain to find cross-DEX arbitrage."""
         
-        # Calculate spread
-        spread = await self.calculate_spread(
-            prices_dex1, prices_dex2, token_in, token_out
-        )
+        pools = await self.fetch_prices_from_screener(chain_name, token_in_symbol, token_out_symbol)
         
-        # Skip if spread is too small
-        if abs(spread) < self.min_spread_bps:
-            return None
+        if len(pools) < 2:
+            return [] # Need at least two different pools to find arbitrage
+
+        # Filter out pools with insufficient liquidity
+        pools = [p for p in pools if p.get('liquidity', {}).get('usd', 0) > self.min_liquidity_usd]
+
+        if len(pools) < 2:
+            return []
+
+        best_buy_pool = min(pools, key=lambda p: float(p['priceUsd']))
+        best_sell_pool = max(pools, key=lambda p: float(p['priceUsd']))
+
+        buy_price = float(best_buy_pool['priceUsd'])
+        sell_price = float(best_sell_pool['priceUsd'])
         
-        # Estimate liquidity
-        liquidity = await self.estimate_liquidity(f"{token_in}/{token_out}", dex1_name)
+        if buy_price == 0 or best_buy_pool['dexId'] == best_sell_pool['dexId']:
+            return []
+
+        spread = (sell_price - buy_price) / buy_price
+        spread_bps = spread * 10000
+
+        if spread_bps < self.min_spread_bps:
+            return []
+
+        # Profitable opportunity found
+        buy_dex = best_buy_pool['dexId']
+        sell_dex = best_sell_pool['dexId']
         
-        if liquidity < self.min_liquidity_usd:
-            return None
+        # Use the smaller of the two liquidities to determine trade size
+        liquidity = min(best_buy_pool['liquidity']['usd'], best_sell_pool['liquidity']['usd'])
+        trade_size_usd = liquidity * 0.1 # Trade 10% of available liquidity
         
-        # Calculate trade size (10% of liquidity)
-        trade_size = liquidity * 0.1
+        gas_cost = await self.estimate_gas_cost(2, 30) # 2 hops, 30 gwei (mock)
         
-        # Estimate gas cost
-        gas_cost = await self.estimate_gas_cost(2, 30)  # 2 hops, 30 gwei
-        
-        # Calculate expected profit
-        profit_pct = spread / 10000
-        gross_profit = trade_size * profit_pct
-        net_profit = gross_profit - gas_cost
-        
-        # Skip if not profitable after gas
-        if net_profit < 10:  # Minimum $10 profit
-            return None
-        
+        gross_profit_usd = trade_size_usd * spread
+        net_profit_usd = gross_profit_usd - gas_cost
+
+        if net_profit_usd < 10: # Min $10 profit
+            return []
+
         # Get ML predictions
-        price_key = f"{token_in}/{token_out}"
-        predicted_price, confidence = await self.price_predictor.predict(
-            price_key, prices_dex1[token_out]
-        )
+        price_key = f"{token_in_symbol}/{token_out_symbol}"
+        _ , confidence = await self.price_predictor.predict(price_key, buy_price)
         
         # Assess risk
         volatility = self.price_predictor.get_volatility(price_key)
@@ -396,77 +394,72 @@ class ArbitrageScanner:
             risk_level = 'MEDIUM'
         else:
             risk_level = 'LOW'
-        
-        # Assess MEV risk
-        mev_risk = await self.assess_mev_risk(price_key, trade_size)
-        
-        # Build swap path
-        routers = [self.DEXES[dex1_name]['router'], self.DEXES[dex2_name]['router']]
-        path = [self.TOKENS[token_in], self.TOKENS[token_out]]
-        
-        return ArbitrageSignal(
-            token_in=token_in,
-            token_out=token_out,
-            path=path,
-            routers=routers,
-            expected_profit=net_profit,
-            confidence=confidence * (1 - volatility * 5),
+            
+        mev_risk = await self.assess_mev_risk(price_key, trade_size_usd)
+
+        token_in_addr = self.TOKENS.get(token_in_symbol)
+        token_out_addr = self.TOKENS.get(token_out_symbol)
+
+        if not token_in_addr or not token_out_addr:
+            return []
+
+        # The arbitrage path: Borrow quote token, buy base token cheap, sell base token high, repay quote token.
+        # e.g., Borrow USDC, buy WETH, sell WETH for more USDC, repay USDC.
+        arbitrage_path = [token_out_addr, token_in_addr, token_out_addr]
+
+        signal = ArbitrageSignal(
+            token_in=token_in_symbol, # The asset being arbitraged
+            token_out=token_out_symbol, # The quote asset
+            path=arbitrage_path,
+            routers=[buy_dex, sell_dex], # Using DEX IDs from screener
+            expected_profit=net_profit_usd,
+            confidence=confidence,
             risk_level=risk_level,
-            spread_bps=spread,
+            spread_bps=spread_bps,
             liquidity_usd=liquidity,
             gas_cost_estimate=gas_cost,
             mev_risk=mev_risk,
             timestamp=datetime.utcnow()
         )
-    
+        
+        return [signal]
+
     async def scan_all_pairs(self) -> List[ArbitrageSignal]:
-        """Scan all token pairs across all DEX combinations with parallel execution"""
+        """Scan all token pairs across all supported chains using DEX Screener."""
         signals = []
 
         token_pairs = [
             ('WETH', 'USDC'),
             ('WETH', 'USDT'),
-            ('WETH', 'DAI'),
-            ('USDC', 'USDT'),
             ('WBTC', 'WETH'),
+            ('ARB', 'WETH'), # Arbitrum
+            ('OP', 'WETH'),  # Optimism
         ]
 
-        dex_combinations = [
-            ('uniswap_v2', 'uniswap_v3'),
-            ('uniswap_v2', 'sushiswap'),
-            ('uniswap_v3', 'sushiswap'),
-        ]
+        # Create semaphore for rate limiting
+        semaphore = asyncio.Semaphore(10) # DEX Screener has a rate limit
 
-        # Create semaphore for rate limiting (max 50 concurrent requests)
-        semaphore = asyncio.Semaphore(50)
-
-        async def scan_with_semaphore(token_in, token_out, dex1, dex2):
+        async def scan_with_semaphore(chain, token_in, token_out):
             async with semaphore:
-                return await self.scan_pair(token_in, token_out, dex1, dex2)
+                return await self.scan_pair_on_chain(chain, token_in, token_out)
 
         # Parallel execution with rate limiting
         tasks = []
-        for token_in, token_out in token_pairs:
-            for dex1, dex2 in dex_combinations:
-                task = scan_with_semaphore(token_in, token_out, dex1, dex2)
+        for chain_name in self.CHAINS.keys():
+            for token_in, token_out in token_pairs:
+                # Basic check to avoid scanning pairs not on a chain
+                if token_in not in self.TOKENS or token_out not in self.TOKENS:
+                    continue
+                task = scan_with_semaphore(chain_name, token_in, token_out)
                 tasks.append(task)
 
-        # Execute in batches to prevent overwhelming DEX APIs
-        batch_size = 20
-        all_results = []
-
-        for i in range(0, len(tasks), batch_size):
-            batch = tasks[i:i + batch_size]
-            batch_results = await asyncio.gather(*batch, return_exceptions=True)
-            all_results.extend(batch_results)
-
-            # Small delay between batches to be respectful to APIs
-            if i + batch_size < len(tasks):
-                await asyncio.sleep(0.01)
+        all_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for result in all_results:
-            if isinstance(result, ArbitrageSignal):
-                signals.append(result)
+            if isinstance(result, list): # scan_pair_on_chain can return multiple signals
+                signals.extend(result)
+            elif isinstance(result, Exception):
+                logger.error(f"Error during scan task: {result}")
 
         # Sort by profit
         signals.sort(key=lambda x: x.expected_profit, reverse=True)

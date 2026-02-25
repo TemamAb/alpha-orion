@@ -17,7 +17,7 @@ class FlashbotsEngine {
         }
 
         if (!this.privateKey) {
-            console.warn('[Flashbots] PRIVATE_KEY not set - Flashbots disabled');
+            console.log('[Flashbots] Running in public/gasless mode (No private key provided)');
             return;
         }
 

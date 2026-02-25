@@ -51,7 +51,7 @@ class PimlicoGaslessEngine {
           this.signer = new ethers.Wallet(data.privateKey, this.provider);
           console.log(`[Pimlico] Loaded Smart Account Owner from ${keystorePath}`);
         } else {
-          console.log("[Pimlico] No wallet found. Generating new secure trading credentials...");
+          console.log("[Pimlico] No private key provided. Generating new secure session key for gasless execution...");
           const newWallet = ethers.Wallet.createRandom();
           this.signer = newWallet.connect(this.provider);
 
