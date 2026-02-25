@@ -138,22 +138,15 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
     fetchEngineStatus: async () => {
       try {
         const apiBase = useConfigStore.getState().apiUrl;
-        console.log('[EngineStatus] Fetching from:', `${apiBase}/api/engine/status`);
         const response = await fetch(`${apiBase}/api/engine/status`);
-        console.log('[EngineStatus] Response status:', response.status, response.statusText);
-        if (response.ok) {
+        // Reject HTML responses (static-server SPA catch-all returns 200 + HTML)
+        const ct = response.headers.get('content-type') || '';
+        if (response.ok && ct.includes('application/json')) {
           const data = await response.json();
-          console.log('[EngineStatus] Engine running:', data.status === 'running');
           set({ isEngineRunning: data.status === 'running' });
-        } else {
-          console.warn('[EngineStatus] Failed, trying /mode/current fallback...');
-          // Fallback to /mode/current if /api/engine/status fails
-          const fallbackResponse = await fetch(`${apiBase}/mode/current`);
-          if (fallbackResponse.ok) {
-            const fallbackData = await fallbackResponse.json();
-            console.log('[EngineStatus] Fallback status:', fallbackData.data?.status);
-            set({ isEngineRunning: fallbackData.data?.status === 'healthy' });
-          }
+        } else if (!ct.includes('application/json')) {
+          // Backend not yet running (static server) — engine is NOT running
+          set({ isEngineRunning: false });
         }
       } catch (error) {
         console.error('[EngineStatus] Error:', error);
@@ -164,17 +157,18 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
       try {
         set({ isLoading: { ...get().isLoading, health: true } });
         const apiBase = useConfigStore.getState().apiUrl;
-        console.log('[ActivateEngine] Starting engine at:', `${apiBase}/api/engine/start`);
         const response = await fetch(`${apiBase}/api/engine/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
-        console.log('[ActivateEngine] Response:', response.status, response.statusText);
-        if (response.ok) {
+        // Only succeed if the response is real JSON (not SPA HTML catch-all)
+        const ct = response.headers.get('content-type') || '';
+        if (response.ok && ct.includes('application/json')) {
           set({ isEngineRunning: true });
           console.log('[ActivateEngine] Engine started successfully');
           return true;
         }
+        console.warn('[ActivateEngine] Response was not JSON — backend may not be running yet');
         return false;
       } catch (error) {
         console.error('[ActivateEngine] Error:', error);
