@@ -22,7 +22,8 @@ function App() {
         setIsInitializing(false);
       } catch (err) {
         console.error('Failed to initialize Alpha-Orion:', err);
-        setSystemError('Critical System Error: Convergence Failure in Neural Core');
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setSystemError(`Critical System Error: Convergence Failure - ${errorMessage}`);
         setIsInitializing(false);
       }
     };

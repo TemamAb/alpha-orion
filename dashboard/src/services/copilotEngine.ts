@@ -146,15 +146,34 @@ class CopilotEngine {
 
   // === Health Monitoring ===
 
+  private getApiBase(): string {
+    // Use VITE_API_URL from environment or auto-discover for Render
+    let apiBase = import.meta.env.VITE_API_URL || '';
+    
+    // Auto-discovery logic for Render/Production
+    if (!apiBase && typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      if (hostname.includes('.onrender.com') && !hostname.includes('-api')) {
+        // Guess the API URL (e.g., alpha-orion.onrender.com -> alpha-orion-api.onrender.com)
+        const apiHostname = hostname.replace('.onrender.com', '-api.onrender.com');
+        apiBase = `https://${apiHostname}`;
+      }
+    }
+    
+    return apiBase;
+  }
+
   async checkServicesHealth(): Promise<HealthCheckResult> {
     const issues: string[] = [];
     const services: Record<string, boolean> = {};
     let healthyCount = 0;
+    
+    const apiBase = this.getApiBase();
 
     const endpoints = [
       { key: 'dashboard', url: '/', name: 'Dashboard' },
-      { key: 'userApi', url: '/health', name: 'User API Cluster' },
-      { key: 'brainOrchestrator', url: '/api/engine/status', name: 'Arbitrage Engine' },
+      { key: 'userApi', url: apiBase ? `${apiBase}/health` : '/health', name: 'User API Cluster' },
+      { key: 'brainOrchestrator', url: apiBase ? `${apiBase}/api/engine/status` : '/api/engine/status', name: 'Arbitrage Engine' },
     ];
 
     for (const endpoint of endpoints) {

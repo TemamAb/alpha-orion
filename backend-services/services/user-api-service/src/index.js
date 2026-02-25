@@ -434,23 +434,8 @@ app.post('/api/engine/start', (req, res) => {
   res.json({ success: true, status: 'starting', timestamp: new Date().toISOString() });
 });
 
-// --- Engine Control & Status (Authenticated - for admin use) ---
-app.get('/api/engine/status', authenticateToken, (req, res) => {
-  const activeStrategies = engine && engine.strategyRegistry
-    ? Object.values(engine.strategyRegistry).filter(s => s.enabled).length
-    : 0;
-
-  res.json({
-    status: engine ? 'running' : 'stopped',
-    lastPulse: new Date().toISOString(),
-    activeStrategies: activeStrategies,
-    totalStrategies: 20,
-    profitMode: 'production',
-    kernelReady: verifyKernelIntegrity().valid
-  });
-});
-
-app.post('/api/engine/start', authenticateToken, (req, res) => {
+// --- Admin-only endpoints (with authentication) ---
+app.post('/api/admin/engine/start', authenticateToken, (req, res) => {
   if (req.user.role !== 'admin' && req.user.username !== 'dev-user') return res.sendStatus(403);
 
   logger.info("Profit Engine start requested via API");
@@ -458,7 +443,7 @@ app.post('/api/engine/start', authenticateToken, (req, res) => {
   res.json({ status: 'starting', timestamp: new Date().toISOString() });
 });
 
-app.post('/api/engine/stop', authenticateToken, (req, res) => {
+app.post('/api/admin/engine/stop', authenticateToken, (req, res) => {
   const userRole = req.user.role || '';
   if (userRole !== 'admin' && req.user.username !== 'dev-user') return res.sendStatus(403);
 
