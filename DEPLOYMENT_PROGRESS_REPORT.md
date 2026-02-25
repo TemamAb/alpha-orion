@@ -1,126 +1,51 @@
 # Alpha-Orion Production Deployment Progress
 
-## Current Status: IN PROGRESS - Backend Services Ready for Deployment
+## Current Status: READY - Unified Service Architecture
 
 ### What Was Fixed (Completed ✅)
 
-1. **InstitutionalRiskEngine Constructor Error**
-   - Issue: `risk-engine.js` was exporting an instance instead of a class
-   - Fix: Changed to export class, added `getInstance()` helper in profit-engine-manager.js
-   - Files changed: `backend-services/services/user-api-service/src/risk-engine.js`, `profit-engine-manager.js`
-   - Status: ✅ Code fixed and pushed to main branch
+1.  **Unified Service Architecture**: The frontend dashboard and backend API have been merged into a single Node.js service. This simplifies deployment, eliminates CORS issues, and reduces infrastructure costs.
+    -   **Files changed**: `render.yaml`, `backend-services/services/user-api-service/src/index.js`, `dashboard/src/components/DataHydrator.tsx`
+    -   **Status**: ✅ Code and deployment configuration updated.
 
-2. **Redis/PostgreSQL Dependency at Startup**
-   - Issue: App required JWT_SECRET, DATABASE_URL, REDIS_URL at startup - would crash without them
-   - Fix: Made env vars optional with fallback values, made auth middleware work without JWT
-   - Files changed: `backend-services/services/user-api-service/src/index.js`
-   - Status: ✅ Code fixed and pushed to main branch
-
-3. **Render.yaml Path Fix**
-   - Issue: strategies-orchestrator referenced non-existent 'strategies' directory
-   - Fix: Updated to point to brain-orchestrator service
-   - File changed: `render.yaml`
-   - Status: ✅ Fixed and verified
+2.  **Startup Dependencies Removed**: The backend no longer requires Redis/PostgreSQL or a `JWT_SECRET` to start, allowing it to run in a lightweight or simulation mode.
+    -   **Status**: ✅ Code fixed and pushed to main branch.
 
 ### Deployment Preparation Complete ✅
 
-- ✅ render.yaml configured with all 9 services
-- ✅ All service directories verified
-- ✅ Deployment scripts created (DEPLOY_TO_RENDER.sh)
-- ✅ Deployment guide created (RENDER_DEPLOYMENT_GUIDE.md)
-- ✅ Frontend already live at https://alpha-orion.onrender.com
+- ✅ `render.yaml` (v5.0) configured for a **single unified web service**.
+- ✅ Build command now compiles the React frontend and installs backend dependencies.
+- ✅ Start command runs the Node.js server, which serves both the API and the static frontend.
+- ✅ Frontend is configured to call the API on the same domain.
 
-### Next Steps for Deployment (Manual Required)
+### Next Steps for Deployment (Simplified)
 
-The code is ready. Deployment to Render requires manual steps on Render Dashboard:
+The code is ready. Deployment to Render is now much simpler:
 
-#### Step 1: Deploy Backend Services
-Go to: https://dashboard.render.com/
-
-1. **Create PostgreSQL Database**
-   - Name: `alpha-orion-db`
-   - Plan: Pro ($7/month) - Required for production
-   - Region: Choose closest to users
-
-2. **Create Redis Cache**
-   - Name: `alpha-orion-redis`  
-   - Plan: Pro ($7/month) - Required for real-time data
-   - Region: Same as database
-
-3. **Sync Environment Variables**
-   - In render.yaml, these vars are marked `sync: false`:
-     - `OPENAI_API_KEY`
-     - `ETHEREUM_RPC_URL`
-     - `ARBITRUM_RPC_URL`
-     - `PIMLICO_API_KEY`
-     - `DEPLOYER_PRIVATE_KEY`
-     - `PROFIT_WALLET_ADDRESS`
-   
-   These MUST be set in Render Dashboard manually.
-
-4. **Deploy Services**
-   - The render.yaml defines 7 services:
-     - user-api-service (Node.js)
-     - brain-orchestrator (Python)
-     - copilot-agent (Python)
-     - brain-ai-optimizer (Python)
-     - strategies-orchestrator (Python)
-     - compliance-service (Python)
-     - blockchain-monitor (Node.js)
-   
-   - Each needs to be deployed separately or use Render's "Create from YAML" feature
+1.  **Go to Render Dashboard**: https://dashboard.render.com/
+2.  **Create a new "Blueprint" instance.**
+3.  **Connect your GitHub repository.**
+4.  Render will automatically detect and use the `render.yaml` file to deploy the `alpha-orion-alpha` service.
+5.  **Set Secrets**: Manually set the following environment variables in the Render dashboard for your service (under the "Environment" tab):
+    -   `OPENAI_API_KEY`
+    -   `PRIVATE_KEY`
+    -   `FLASH_LOAN_EXECUTOR_ADDRESS`
+    -   `PIMLICO_API_KEY`
+    -   *(Optional)* If you want to use a database and cache for full features, create PostgreSQL and Redis instances on Render and add their connection URLs (`DATABASE_URL`, `REDIS_URL`) to the environment variables.
 
 ### Current Live Deployment
 
-| Service | URL | Status |
-|---------|-----|--------|
-| Frontend Dashboard | https://alpha-orion.onrender.com | ✅ LIVE |
-| API Service | alpha-orion-api.onrender.com | ⏳ Need manual deploy |
-| Brain Orchestrator | alpha-orion-brain.onrender.com | ⏳ Need manual deploy |
-| Copilot Agent | alpha-orion-copilot.onrender.com | ⏳ Need manual deploy |
+| Service             | URL                                       | Status             |
+| ------------------- | ----------------------------------------- | ------------------ |
+| Unified App (FE+BE) | https://alpha-orion-alpha.onrender.com | 🚀 READY TO DEPLOY |
 
 ### To Activate Profit Mode
 
-Once backend services are deployed:
+Once the unified service is deployed:
 
-1. Access the dashboard at https://alpha-orion.onrender.com
-2. Navigate to Settings → Profit Mode
-3. Enter your API keys (Ethereum RPC, etc.)
-4. Click "Activate Profit Engine"
-5. The arbitrage strategies will begin scanning and executing
-
-### Cost Estimate (Monthly)
-
-| Service | Plan | Cost |
-|---------|------|------|
-| PostgreSQL | Pro | $7/month |
-| Redis | Pro | $7/month |
-| Web Services | Free (with limits) | $0 |
-| **Total** | | **$14/month** |
-
-### Alternative: Free Tier Deployment
-
-To run without paid plans:
-1. Modify index.js to not require Redis/Postgres (already done ✅)
-2. Deploy only frontend
-3. Strategies will run in "simulation mode" without real trading
-
-### Next Steps for Successor
-
-1. ✅ Code is ready in `main` branch
-2. ⏳ Need Render account with payment method
-3. ⏳ Create PostgreSQL + Redis on Render
-4. ⏳ Set environment variables in Render Dashboard
-5. ⏳ Deploy services using render.yaml
-6. ⏳ Test profit mode activation
-
-### Commit History (Recent)
-
-```
-6762e2b - Make app work without Redis/DB at startup
-5b7c882 - Fix InstitutionalRiskEngine constructor error
-```
+1.  Access the dashboard at `https://alpha-orion-alpha.onrender.com`.
+2.  The profit engine will be running in the mode configured on the backend (`production` or `signal`).
 
 ---
 
-**Handoff Complete** - The successor should focus on completing the Render Dashboard setup steps to get full production deployment running.
+**Handoff Complete** - The successor should focus on deploying the unified service via the `render.yaml` blueprint on Render.

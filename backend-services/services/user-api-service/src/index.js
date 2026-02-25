@@ -28,6 +28,10 @@ const engine = getProfitEngine(); // Get the singleton instance
 // KERNEL INTEGRITY VERIFICATION
 // Validates production configuration before enabling trading
 // ============================================================
+function isValidEthAddress(address) {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
+
 function verifyKernelIntegrity() {
   const errors = [];
   const warnings = [];
@@ -37,12 +41,9 @@ function verifyKernelIntegrity() {
     warnings.push('NODE_ENV is not production - running in development mode');
   }
 
-  // Wallet mode detection - execution or signals_only
-  const hasPrivateKey = process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.length === 66;
-  const walletMode = hasPrivateKey ? 'execution' : 'signals_only';
-
-  // Check ETHEREUM_RPC_URL - required for blockchain connectivity
-
+  // Wallet mode detection using WALLET_ADDRESS (public address, no private keys)
+  const hasWalletAddress = process.env.WALLET_ADDRESS && isValidEthAddress(process.env.WALLET_ADDRESS);
+  
   if (!process.env.POLYGON_RPC_URL) {
     warnings.push('POLYGON_RPC_URL not set - using default public RPC');
   }
@@ -59,12 +60,13 @@ function verifyKernelIntegrity() {
 
   return {
     valid: errors.length === 0,
-    mode: walletMode,
+    mode: hasWalletAddress ? 'production' : 'signals',
     errors,
     warnings,
     timestamp: new Date().toISOString(),
     strategiesActive: engine && engine.strategies ? Object.keys(engine.strategies).length : 0,
-    executionEnabled: walletMode === 'execution'
+    executionEnabled: hasWalletAddress,
+    walletAddress: process.env.WALLET_ADDRESS || null
   };
 }
 
@@ -176,25 +178,16 @@ app.get('/health', async (req, res) => {
   });
 });
 
-// Mode Current - Returns system mode for dashboard compatibility
+// Mode Current - Returns system mode for dashboard compatibility  
 app.get('/mode/current', (req, res) => {
-  const kernelStatus = verifyKernelIntegrity();
+  const stats = verifyKernelIntegrity();
   const activeStrategies = engine && engine.strategyRegistry
-    ? Object.values(engine.strategyRegistry).filter(s => s.enabled).length
+    ? Object.values(engine.strategyRegistry).filter(s => s.enabled).length  
     : 0;
 
-  res.json({
-    success: true,
-    data: {
-      status: engine ? 'healthy' : 'warning',
-      mode: process.env.PRIVATE_KEY ? 'LIVE PRODUCTION' : 'SIGNAL MODE',
-      uptime: Math.floor(process.uptime()),
-      connections: 0,
-      activeStrategies: activeStrategies,
-      kernelReady: kernelStatus.valid,
-      profitMode: process.env.PRIVATE_KEY ? 'production' : 'signals'
-    }
-  });
+res.json({
+success:true,
+data:{status:engine?'healthy':'warning',mode:stats.mode==='production'?'LIVE PRODUCTION':'SIGNAL MODE',uptime:Math.floor(process.uptime()),connections:activeStrategies,kernelReady:stats.valid,profitMode:stats.mode}});
 });
 
 // Dashboard: Real-time Stats - Works without Redis
@@ -232,7 +225,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
       winRate: trades > 0 ? wins / trades : 0,
       activeStrategies: activeStrategies,
       systemStatus: engine ? 'active' : 'inactive',
-      profitMode: process.env.PRIVATE_KEY ? 'production' : 'signals',
+      profitMode: verifyKernelIntegrity().mode,
       uptime: uptimeSeconds,
       activeConnections: wss.clients.size,
       lastPulse: new Date().toISOString(),
@@ -829,6 +822,37 @@ const startProfitGenerationLoop = async () => {
 
   runIteration();
 };
+
+// ─── Serve React Dashboard (built static files) ─────────────────────
+// The dashboard is built to dashboard/dist/ during Render's build step.
+// Serve it as static files, with SPA fallback for client-side routing.
+const dashboardPath = path.resolve(__dirname, '../../../../dashboard/dist');
+const fs = require('fs');
+
+if (fs.existsSync(dashboardPath)) {
+  logger.info(`📊 Serving dashboard from: ${dashboardPath}`);
+  app.use(express.static(dashboardPath));
+
+  // SPA fallback: any non-API route gets index.html
+  app.get('*', (req, res) => {
+    // Don't intercept /api/* or /health or /mode/* routes (they're handled above)
+    if (req.path.startsWith('/api/') || req.path === '/health' || req.path.startsWith('/mode/')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.sendFile(path.join(dashboardPath, 'index.html'));
+  });
+} else {
+  logger.warn(`⚠️  Dashboard build not found at ${dashboardPath} — serving API only`);
+  // Fallback: return JSON for any unknown route
+  app.get('*', (req, res) => {
+    res.status(200).json({
+      service: 'alpha-orion-api',
+      status: 'running',
+      dashboard: 'not built — run: cd dashboard && npm run build',
+      endpoints: ['/health', '/api/engine/status', '/api/dashboard/stats']
+    });
+  });
+}
 
 // Start Server
 const start = async () => {

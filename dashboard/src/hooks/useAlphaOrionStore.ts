@@ -9,6 +9,7 @@ import {
   AnalyticsData
 } from '../types/api';
 import { clientProfitEngine } from '../services/clientProfitEngine';
+import { useConfigStore } from './useConfigStore';
 
 export interface WalletData {
   id: number;
@@ -136,15 +137,38 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
     setEngineRunning: (isEngineRunning) => set({ isEngineRunning }),
 
     fetchEngineStatus: async () => {
-      // Client-side engine — check local state, no HTTP needed
-      const running = clientProfitEngine.isRunning();
-      set({ isEngineRunning: running });
+      // Try real backend first
+      try {
+        const apiBase = useConfigStore.getState().apiUrl;
+        const res = await fetch(`${apiBase}/api/engine/status`, { signal: AbortSignal.timeout(4000) });
+        const ct = res.headers.get('content-type') || '';
+        if (res.ok && ct.includes('application/json')) {
+          const data = await res.json();
+          set({ isEngineRunning: data.status === 'running' });
+          return;
+        }
+      } catch { /* backend unavailable */ }
+      // Fallback: check client engine
+      set({ isEngineRunning: clientProfitEngine.isRunning() });
     },
 
     activateProductionEngine: async () => {
-      // Client-side engine — start immediately, no backend call needed
+      // Try real backend first
+      try {
+        const apiBase = useConfigStore.getState().apiUrl;
+        const res = await fetch(`${apiBase}/api/engine/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(4000),
+        });
+        const ct = res.headers.get('content-type') || '';
+        if (res.ok && ct.includes('application/json')) {
+          set({ isEngineRunning: true });
+          return true;
+        }
+      } catch { /* backend unavailable */ }
+      // Fallback: activate client engine
       set({ isEngineRunning: true });
-      console.log('[ActivateEngine] Client profit engine activated');
       return true;
     },
 

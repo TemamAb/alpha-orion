@@ -33,12 +33,11 @@ services:
       - key: POLYGON_RPC_URL
         value: https://polygon-rpc.com
       # Set these secrets in the Render dashboard (leave as sync: false)
+      # WALLET_ADDRESS is your public Ethereum wallet address (0x...) for production mode display only - NO private keys!
+      - key: WALLET_ADDRESS
+        sync: false  
       - key: OPENAI_API_KEY
-        sync: false
-      - key: PRIVATE_KEY
-        sync: false
-      - key: FLASH_LOAN_EXECUTOR_ADDRESS
-        sync: false
+        sync: false  
       - key: PIMLICO_API_KEY
         sync: false
     healthCheckPath: /health
