@@ -1,5 +1,5 @@
 # Alpha-Orion Unified Render Deployment
-# Version: 5.0 - SINGLE UNIFIED SERVICE
+# Version: 5.1 - PRODUCTION READY
 #
 # One Node.js service handles BOTH the React dashboard AND the backend API.
 # Endpoint: https://alpha-orion-alpha.onrender.com
@@ -26,18 +26,39 @@ services:
       - key: NODE_ENV
         value: production
       # VITE_API_URL must match THIS service URL so /api calls resolve correctly
-      # Since API + frontend are on the same domain, relative URLs work.
-      # Set explicitly to avoid auto-discovery picking the wrong host.
       - key: VITE_API_URL
         value: https://alpha-orion-alpha.onrender.com
+      
+      # Blockchain RPC URLs (Public - No API key needed)
       - key: POLYGON_RPC_URL
         value: https://polygon-rpc.com
-      # Set these secrets in the Render dashboard (leave as sync: false)
-      # WALLET_ADDRESS is your public Ethereum wallet address (0x...) for production mode display only - NO private keys!
+      - key: ETHEREUM_RPC_URL
+        value: https://eth.llamarpc.com
+      - key: ARBITRUM_RPC_URL
+        value: https://arb1.arbitrum.io/rpc
+      - key: OPTIMISM_RPC_URL
+        value: https://mainnet.optimism.io
+      - key: BASE_RPC_URL
+        value: https://mainnet.base.org
+      - key: BSC_RPC_URL
+        value: https://bsc-dataseed.binance.org
+      
+      # Wallet Address for production mode display
       - key: WALLET_ADDRESS
-        sync: false  
-      - key: OPENAI_API_KEY
-        sync: false  
+        sync: false
+      
+      # Flash Loan Executor Contract Address (DEPLOY THIS CONTRACT TO ENABLE TRADING)
+      # Deploy FlashLoan.sol to Polygon mainnet and paste address here
+      - key: FLASH_LOAN_EXECUTOR_ADDRESS
+        sync: false
+      
+      # Pimlico for gasless transactions (already in .env locally)
+      # Add your PIMLICO_API_KEY in Render dashboard secrets
       - key: PIMLICO_API_KEY
         sync: false
+      
+      # OpenAI for AI features
+      - key: OPENAI_API_KEY
+        sync: false
+      
     healthCheckPath: /health

@@ -260,21 +260,6 @@ class EnterpriseProfitEngine {
   // Live price cache
   priceCache = new Map();
   cacheExpiry = 5000; // 5 seconds cache
-  
-  constructor(multiChainEngine, mevRouter) {
-    this.multiChainEngine = multiChainEngine;
-    this.mevRouter = mevRouter;
-    this.name = 'EnterpriseProfitEngine';
-    
-    // Start cache cleanup interval to prevent memory leaks
-    this.cacheCleanupInterval = setInterval(() => {
-      const now = Date.now();
-      for (const [key, value] of this.priceCache) {
-        if (now - value.timestamp > 60000) { // Remove entries older than 60s
-          this.priceCache.delete(key);
-        }
-      }
-    }, 60000);
 
   /**
    * Get live token price from DEX APIs
