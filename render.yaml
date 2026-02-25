@@ -1,34 +1,24 @@
 # Alpha-Orion Unified Render Deployment
-# Version: 5.1 - PRODUCTION READY
-#
-# One Node.js service handles BOTH the React dashboard AND the backend API.
-# Endpoint: https://alpha-orion-alpha.onrender.com
-#
-# Architecture:
-#   - Build step: Compiles the React dashboard, then installs API dependencies
-#   - Runtime:    Node.js backend serves /api/* routes + static dashboard files
-#   - No separate API service needed → zero CORS/URL discovery issues
+# Version: 6.0 - Blueprint with AI Service
 
 services:
-  # ============================================================
-  # UNIFIED SERVICE: Dashboard + API in one process
-  # Matches the existing service name on Render: alpha-orion-alpha
-  # ============================================================
+  # 1. Unified Frontend + User API Service (Gateway)
   - type: web
     name: alpha-orion-alpha
-    env: node
-    nodeVersion: 18
-    # Build step: compile React frontend, then install Node.js backend deps
-    buildCommand: cd dashboard && npm install && npm run build && cd .. && cd backend-services/services/user-api-service && npm install
-    # Start: run Node.js backend — it serves /api/* AND the built React app
-    startCommand: node backend-services/services/user-api-service/src/index.js
+    env: docker
+    plan: starter
+    rootDir: .
     envVars:
       - key: NODE_ENV
         value: production
-      # VITE_API_URL must match THIS service URL so /api calls resolve correctly
-      - key: VITE_API_URL
-        value: https://alpha-orion-alpha.onrender.com
-      
+      # Link to the Python AI service. Render handles the URL automatically.
+      - key: AI_SERVICE_URL
+        fromService:
+          type: web
+          name: alpha-orion-brain
+          property: url
+      - key: JWT_SECRET
+        generateValue: true
       # Blockchain RPC URLs (Public - No API key needed)
       - key: POLYGON_RPC_URL
         value: https://polygon-rpc.com
@@ -42,23 +32,26 @@ services:
         value: https://mainnet.base.org
       - key: BSC_RPC_URL
         value: https://bsc-dataseed.binance.org
-      
-      # Wallet Address for production mode display
       - key: WALLET_ADDRESS
         sync: false
-      
-      # Flash Loan Executor Contract Address (DEPLOY THIS CONTRACT TO ENABLE TRADING)
-      # Deploy FlashLoan.sol to Polygon mainnet and paste address here
       - key: FLASH_LOAN_EXECUTOR_ADDRESS
         sync: false
-      
-      # Pimlico for gasless transactions (already in .env locally)
-      # Add your PIMLICO_API_KEY in Render dashboard secrets
       - key: PIMLICO_API_KEY
         sync: false
-      
-      # OpenAI for AI features
       - key: OPENAI_API_KEY
         sync: false
-      
     healthCheckPath: /health
+
+  # 2. Brain AI Optimization Orchestrator (Python)
+  - type: web
+    name: alpha-orion-brain
+    env: python
+    plan: starter
+    rootDir: backend-services/services/brain-ai-optimization-orchestrator
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn src.app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: OPENAI_API_KEY
+        sync: false

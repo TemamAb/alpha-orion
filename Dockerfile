@@ -2,74 +2,37 @@
 # Serves as entry point for Render deployment
 # Supports both backend API and dashboard from same repository
 
-ARG SERVICE=api
-ARG NODE_VERSION=18
+# 1. Build Dashboard (Frontend)
+FROM node:18-alpine AS dashboard-builder
+WORKDIR /app/dashboard
+COPY dashboard/package*.json ./
+RUN npm install --legacy-peer-deps
+COPY dashboard/ ./
+RUN npm run build
 
-# Build stage for backend
-FROM node:${NODE_VERSION}-alpine AS api-builder
-
+# 2. Build & Run Unified Service (Backend + Frontend)
+FROM node:18-alpine
 WORKDIR /app
 
-# Copy backend package files
-COPY backend-services/services/user-api-service/package*.json ./backend-services/services/user-api-service/
-COPY backend-services/services/user-api-service/package-lock.json* ./backend-services/services/user-api-service/
+# Install Backend Dependencies
+WORKDIR /app/backend-services/services/user-api-service
+COPY backend-services/services/user-api-service/package*.json ./
+RUN npm install --omit=dev
 
-# Install backend dependencies
-RUN cd backend-services/services/user-api-service && npm install --omit=dev
+# Copy Backend Source
+COPY backend-services/services/user-api-service/ ./
 
-# Copy backend source
-COPY backend-services/services/user-api-service/ ./backend-services/services/user-api-service/
+# Copy Strategies
+COPY strategies/ /app/strategies/
 
-# Copy strategies directory from root
-COPY strategies/ ./strategies/
+# Copy Dashboard Build from Builder Stage
+# Placed where the backend expects it: ../../../../dashboard/dist relative to src/index.js
+COPY --from=dashboard-builder /app/dashboard/dist /app/dashboard/dist
 
-# Build stage for dashboard  
-FROM node:${NODE_VERSION}-alpine AS dashboard-builder
-
-WORKDIR /app
-
-# Copy dashboard package files
-COPY dashboard/package*.json ./dashboard/
-COPY dashboard/package-lock.json* ./dashboard/
-
-# Install dashboard dependencies
-RUN cd dashboard && npm install --legacy-peer-deps
-
-# Copy dashboard source
-COPY dashboard/ ./dashboard/
-
-# Build dashboard
-RUN cd dashboard && npm run build
-
-# Production stage - API
-FROM node:${NODE_VERSION}-alpine AS production-api
-
-WORKDIR /app
-
-# Copy from api-builder
-COPY --from=api-builder /app/backend-services/services/user-api-service/ ./
-
-# Copy strategies directory with access to node_modules
-COPY --from=api-builder /app/strategies/ /strategies/
-
-# Set NODE_PATH so strategies can find node_modules
-ENV NODE_PATH=/app/node_modules
-
+# Environment Configuration
+ENV NODE_ENV=production
+ENV PORT=8080
 EXPOSE 8080
 
-CMD ["npm", "start"]
-
-# Production stage - Dashboard
-FROM node:${NODE_VERSION}-alpine AS production-dashboard
-
-WORKDIR /app
-
-# Install serve
-RUN npm install -g serve
-
-# Copy from dashboard-builder
-COPY --from=dashboard-builder /app/dashboard/dist ./dist
-
-EXPOSE 3000
-
-CMD ["serve", "-s", "dist", "-l", "3000"]
+# Start the Unified Gateway
+CMD ["node", "src/index.js"]
