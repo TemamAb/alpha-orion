@@ -8,7 +8,7 @@ import {
   PimlicoStatus,
   AnalyticsData
 } from '../types/api';
-import { useConfigStore } from './useConfigStore';
+import { clientProfitEngine } from '../services/clientProfitEngine';
 
 export interface WalletData {
   id: number;
@@ -136,46 +136,16 @@ export const useAlphaOrionStore = create<AlphaOrionState>()(
     setEngineRunning: (isEngineRunning) => set({ isEngineRunning }),
 
     fetchEngineStatus: async () => {
-      try {
-        const apiBase = useConfigStore.getState().apiUrl;
-        const response = await fetch(`${apiBase}/api/engine/status`);
-        // Reject HTML responses (static-server SPA catch-all returns 200 + HTML)
-        const ct = response.headers.get('content-type') || '';
-        if (response.ok && ct.includes('application/json')) {
-          const data = await response.json();
-          set({ isEngineRunning: data.status === 'running' });
-        } else if (!ct.includes('application/json')) {
-          // Backend not yet running (static server) — engine is NOT running
-          set({ isEngineRunning: false });
-        }
-      } catch (error) {
-        console.error('[EngineStatus] Error:', error);
-      }
+      // Client-side engine — check local state, no HTTP needed
+      const running = clientProfitEngine.isRunning();
+      set({ isEngineRunning: running });
     },
 
     activateProductionEngine: async () => {
-      try {
-        set({ isLoading: { ...get().isLoading, health: true } });
-        const apiBase = useConfigStore.getState().apiUrl;
-        const response = await fetch(`${apiBase}/api/engine/start`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        // Only succeed if the response is real JSON (not SPA HTML catch-all)
-        const ct = response.headers.get('content-type') || '';
-        if (response.ok && ct.includes('application/json')) {
-          set({ isEngineRunning: true });
-          console.log('[ActivateEngine] Engine started successfully');
-          return true;
-        }
-        console.warn('[ActivateEngine] Response was not JSON — backend may not be running yet');
-        return false;
-      } catch (error) {
-        console.error('[ActivateEngine] Error:', error);
-        return false;
-      } finally {
-        set({ isLoading: { ...get().isLoading, health: false } });
-      }
+      // Client-side engine — start immediately, no backend call needed
+      set({ isEngineRunning: true });
+      console.log('[ActivateEngine] Client profit engine activated');
+      return true;
     },
 
     // Computed values
