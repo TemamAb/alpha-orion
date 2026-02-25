@@ -13,6 +13,8 @@ const DataHydrator: React.FC = () => {
         setPimlicoStatus,
         setWallets,
         setLoading,
+        setEngineRunning,
+        fetchEngineStatus,
         updateLastUpdate,
         refreshInterval
     } = useAlphaOrionStore();
@@ -40,6 +42,9 @@ const DataHydrator: React.FC = () => {
                     connections: stats.activeConnections || 0
                 } as any);
 
+                // Derive engine running state from backend stats
+                setEngineRunning(stats.systemStatus === 'active');
+
                 if (stats.pimlico) {
                     setPimlicoStatus(stats.pimlico);
                 }
@@ -62,13 +67,15 @@ const DataHydrator: React.FC = () => {
                 setWallets(wallets);
             }
 
+            // Also fetch standalone engine status to keep isEngineRunning accurate
+            await fetchEngineStatus();
             updateLastUpdate();
         } catch (error) {
             console.error('Data Hydration Error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
             setError(`Failed to connect to API: ${errorMessage}. Please check if the backend service is running.`);
         }
-    }, [setProfitData, setOpportunities, setSystemHealth, setPimlicoStatus, setWallets, updateLastUpdate, apiUrl]);
+    }, [setProfitData, setOpportunities, setSystemHealth, setPimlicoStatus, setWallets, setEngineRunning, fetchEngineStatus, updateLastUpdate, apiUrl]);
 
     useEffect(() => {
         hydrate();
@@ -88,7 +95,7 @@ const DataHydrator: React.FC = () => {
                         <p className="text-sm font-medium">Connection Error</p>
                         <p className="text-xs text-red-200 mt-1">{error}</p>
                     </div>
-                    <button 
+                    <button
                         onClick={() => setError(null)}
                         className="text-red-300 hover:text-white"
                     >

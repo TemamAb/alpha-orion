@@ -3,7 +3,7 @@
  * Powers self-deploying, self-healing capabilities for Alpha-Orion
  */
 
-import { browserHistory } from 'react-router';
+
 
 // Types
 export interface DeploymentStatus {
@@ -149,17 +149,19 @@ class CopilotEngine {
   private getApiBase(): string {
     // Use VITE_API_URL from environment or auto-discover for Render
     let apiBase = import.meta.env.VITE_API_URL || '';
-    
+
     // Auto-discovery logic for Render/Production
     if (!apiBase && typeof window !== 'undefined') {
       const hostname = window.location.hostname;
       if (hostname.includes('.onrender.com') && !hostname.includes('-api')) {
-        // Guess the API URL (e.g., alpha-orion.onrender.com -> alpha-orion-api.onrender.com)
-        const apiHostname = hostname.replace('.onrender.com', '-api.onrender.com');
-        apiBase = `https://${apiHostname}`;
+        // Strip variant suffixes like '-alpha', '-beta' to get base service name
+        // e.g. alpha-orion-alpha.onrender.com -> alpha-orion-api.onrender.com
+        const baseHostname = hostname.replace('.onrender.com', '');
+        const baseName = baseHostname.replace(/-alpha$/, '').replace(/-beta$/, '').replace(/-staging$/, '').replace(/-dev$/, '');
+        apiBase = `https://${baseName}-api.onrender.com`;
       }
     }
-    
+
     return apiBase;
   }
 
@@ -167,7 +169,7 @@ class CopilotEngine {
     const issues: string[] = [];
     const services: Record<string, boolean> = {};
     let healthyCount = 0;
-    
+
     const apiBase = this.getApiBase();
 
     const endpoints = [

@@ -989,6 +989,7 @@ class BatchAuctionArbitrageStrategy {
 
 class EnterpriseProfitEngine {
   constructor(multiChainEngine, mevRouter) {
+    this.name = 'EnterpriseProfitEngine';
     this.multiChainEngine = multiChainEngine;
     this.mevRouter = mevRouter;
     this.chains = multiChainEngine.chains;

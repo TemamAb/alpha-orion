@@ -26,10 +26,13 @@ class AlphaOrionAPI {
     if (!envAPIUrl && typeof window !== 'undefined') {
       const hostname = window.location.hostname;
       if (hostname.includes('.onrender.com') && !hostname.includes('-api')) {
-        // Guess the API URL (e.g., alpha-orion.onrender.com -> alpha-orion-api.onrender.com)
-        const apiHostname = hostname.replace('.onrender.com', '-api.onrender.com');
+        // Strip variant suffixes like '-alpha', '-beta', '-staging' to get the base service name
+        // e.g. alpha-orion-alpha.onrender.com -> alpha-orion-api.onrender.com
+        const baseHostname = hostname.replace('.onrender.com', '');
+        const baseName = baseHostname.replace(/-alpha$/, '').replace(/-beta$/, '').replace(/-staging$/, '').replace(/-dev$/, '');
+        const apiHostname = `${baseName}-api.onrender.com`;
         envAPIUrl = `https://${apiHostname}`;
-        console.log(`[API Discovery] Guessed API URL: ${envAPIUrl}`);
+        console.log(`[API Discovery] Computed API URL: ${envAPIUrl} (from hostname: ${hostname})`);
       }
     }
 

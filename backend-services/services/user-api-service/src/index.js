@@ -414,13 +414,17 @@ app.get('/api/engine/status', (req, res) => {
     ? Object.values(engine.strategyRegistry).filter(s => s.enabled).length
     : 0;
 
+  // Distinguish real engine from stub — stub has name 'StubProfitEngine'
+  const isRealEngine = engine && engine.name !== 'StubProfitEngine';
+
   res.json({
-    status: engine ? 'running' : 'stopped',
+    status: isRealEngine ? 'running' : 'stopped',
     lastPulse: new Date().toISOString(),
     activeStrategies: activeStrategies,
     totalStrategies: 20,
     profitMode: 'production',
-    kernelReady: verifyKernelIntegrity().valid
+    kernelReady: verifyKernelIntegrity().valid,
+    engineType: engine?.name || 'none'
   });
 });
 
